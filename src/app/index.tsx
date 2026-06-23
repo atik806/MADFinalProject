@@ -1,98 +1,160 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text, View, StyleSheet, SafeAreaView, ScrollView, Pressable } from 'react-native';
+import { Link } from 'expo-router';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function LandingPage() {
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.hero}>
+          <View style={styles.logoBox}>
+            <Text style={styles.logo}>🌿</Text>
+          </View>
+          <Text style={styles.title}>SOFOL</Text>
+          <Text style={styles.tagline}>Farmer Credit Profile Platform</Text>
+          <Text style={styles.description}>
+            Empowering Bangladeshi farmers with access to credit, financial profiles, and agricultural
+            growth opportunities.
+          </Text>
+        </View>
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+        <View style={styles.features}>
+          <View style={styles.featureRow}>
+            <Text style={styles.featureIcon}>📊</Text>
+            <View style={styles.featureText}>
+              <Text style={styles.featureTitle}>Credit Profile</Text>
+              <Text style={styles.featureDesc}>Build and track your digital credit history</Text>
+            </View>
+          </View>
+          <View style={styles.featureRow}>
+            <Text style={styles.featureIcon}>🌾</Text>
+            <View style={styles.featureText}>
+              <Text style={styles.featureTitle}>Agricultural Support</Text>
+              <Text style={styles.featureDesc}>Get tailored financial products for farming</Text>
+            </View>
+          </View>
+          <View style={styles.featureRow}>
+            <Text style={styles.featureIcon}>🔒</Text>
+            <View style={styles.featureText}>
+              <Text style={styles.featureTitle}>Secure & Transparent</Text>
+              <Text style={styles.featureDesc}>Your data is safe with end-to-end encryption</Text>
+            </View>
+          </View>
+        </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+        <Link href="view/login" asChild>
+          <Pressable style={styles.getStartedBtn}>
+            <Text style={styles.getStartedText}>শুরু করুন / Get Started</Text>
+          </Pressable>
+        </Link>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        <Link href="view/login" asChild>
+          <Pressable style={styles.signInBtn}>
+            <Text style={styles.signInText}>ইতিমধ্যে নিবন্ধিত? সাইন ইন / Already registered? Sign In</Text>
+          </Pressable>
+        </Link>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: '#006847',
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 28,
+    paddingBottom: 40,
   },
-  heroSection: {
+  hero: {
     alignItems: 'center',
+    paddingTop: 60,
+    paddingBottom: 40,
+  },
+  logoBox: {
+    width: 100,
+    height: 100,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logo: {
+    fontSize: 48,
   },
   title: {
+    fontSize: 44,
+    fontWeight: 'bold',
+    color: '#fff',
+    letterSpacing: 2,
+  },
+  tagline: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 8,
+    opacity: 0.9,
+  },
+  description: {
+    color: '#cfe8dd',
+    fontSize: 14,
     textAlign: 'center',
+    marginTop: 16,
+    lineHeight: 22,
+    paddingHorizontal: 10,
   },
-  code: {
-    textTransform: 'uppercase',
+  features: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20,
+    padding: 20,
+    gap: 20,
+    marginBottom: 32,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  featureIcon: {
+    fontSize: 28,
+  },
+  featureText: {
+    flex: 1,
+  },
+  featureTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  featureDesc: {
+    color: '#cfe8dd',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  getStartedBtn: {
+    backgroundColor: '#fff',
+    height: 58,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    marginBottom: 16,
+  },
+  getStartedText: {
+    color: '#006847',
+    fontSize: 18,
+    fontWeight: '700',  
+  },
+
+  signInBtn: {
+    alignSelf: 'center',
+    paddingVertical: 8,
+  },
+  signInText: {
+    color: '#cfe8dd',
+    fontSize: 14,
   },
 });
