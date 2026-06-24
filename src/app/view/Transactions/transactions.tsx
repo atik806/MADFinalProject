@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
-import { useAuth } from '../../../contexts/AuthContext';
 import {
   useTransactions,
   type Transaction,
@@ -35,15 +34,12 @@ const tabs: TabDef[] = [
 type FilterType = 'all' | 'income' | 'expense';
 
 export default function TransactionsScreen() {
-  const { logout } = useAuth();
   const { transactions, removeTransaction } = useTransactions();
   const [activeTab, setActiveTab] = useState<TabName>('transactions');
   const [filter, setFilter] = useState<FilterType>('all');
+  const [lang, setLang] = useState<'en' | 'bn'>('en');
 
-  const handleLogout = () => {
-    logout();
-    router.replace('/');
-  };
+  const toggleLang = () => setLang((l) => (l === 'en' ? 'bn' : 'en'));
 
   const handleTabPress = (tab: TabName) => {
     setActiveTab(tab);
@@ -52,10 +48,14 @@ export default function TransactionsScreen() {
       router.push('/view/FarmerDashboard/farmer-dashboard');
       return;
     }
-    Alert.alert(
-      'শীঘ্রই আসছে / Coming Soon',
-      `"${tabs.find((t) => t.key === tab)?.label}" বিভাগটি শীঘ্রই যুক্ত হবে।`,
-    );
+    if (tab === 'loans') {
+      router.push('/view/Loans/loans');
+      return;
+    }
+    if (tab === 'profile') {
+      router.push('/view/Profile/profile');
+      return;
+    }
   };
 
   const totalIncome = transactions
@@ -91,10 +91,12 @@ export default function TransactionsScreen() {
         </View>
         <Text style={styles.headerTitle}>Transactions</Text>
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={handleLogout} hitSlop={8}>
-            <Ionicons name="log-out-outline" size={22} color="#DC2626" />
+          <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
+            <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
           </TouchableOpacity>
-          <Ionicons name="notifications-outline" size={22} color="#555" style={{ marginLeft: 14 }} />
+          <TouchableOpacity onPress={() => router.push('/view/Notifications/notifications')} hitSlop={8}>
+            <Ionicons name="notifications-outline" size={22} color="#555" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -281,6 +283,17 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  langBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#ECFDF5',
+  },
+  langText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#006847',
   },
   logo: {
     width: 32,

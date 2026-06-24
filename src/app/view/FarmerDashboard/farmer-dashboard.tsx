@@ -6,14 +6,14 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
-  Alert,
 } from "react-native";
 import {
   Feather,
   Ionicons,
 } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useAuth } from "../../../contexts/AuthContext";
+import { useLoans } from "../../../contexts/LoanContext";
+import { useNotifications } from "../../../contexts/NotificationContext";
 
 type TabName = "home" | "transactions" | "loans" | "profile";
 
@@ -32,13 +32,12 @@ const tabs: TabDef[] = [
 ];
 
 export default function DashboardScreen() {
-  const { logout } = useAuth();
+  const { activeLoans } = useLoans();
+  const { unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState<TabName>("home");
+  const [lang, setLang] = useState<'en' | 'bn'>('en');
 
-  const handleLogout = () => {
-    logout();
-    router.replace("/");
-  };
+  const toggleLang = () => setLang((l) => (l === 'en' ? 'bn' : 'en'));
 
   const handleTabPress = (tab: TabName) => {
     setActiveTab(tab);
@@ -47,10 +46,14 @@ export default function DashboardScreen() {
       router.push('/view/Transactions/transactions');
       return;
     }
-    Alert.alert(
-      "শীঘ্রই আসছে / Coming Soon",
-      `"${tabs.find((t) => t.key === tab)?.label}" বিভাগটি শীঘ্রই যুক্ত হবে।`,
-    );
+    if (tab === "loans") {
+      router.push('/view/Loans/loans');
+      return;
+    }
+    if (tab === "profile") {
+      router.push('/view/Profile/profile');
+      return;
+    }
   };
 
   return (
@@ -66,10 +69,17 @@ export default function DashboardScreen() {
         <Text style={styles.headerTitle}>Dashboard</Text>
 
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={handleLogout} hitSlop={8}>
-            <Ionicons name="log-out-outline" size={22} color="#DC2626" />
+          <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
+            <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
           </TouchableOpacity>
-          <Ionicons name="notifications-outline" size={22} color="#555" style={{ marginLeft: 14 }} />
+          <TouchableOpacity onPress={() => router.push('/view/Notifications/notifications')} hitSlop={8}>
+            <Ionicons name="notifications-outline" size={22} color="#555" />
+            {unreadCount > 0 && (
+              <View style={styles.badgeDot}>
+                <Text style={styles.badgeCount}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -147,72 +157,83 @@ export default function DashboardScreen() {
 
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.quickCard}>
-          <ActionButton icon="trending-up" label="Add Income" color="#16A34A" />
-          <ActionButton icon="trending-down" label="Add Expense" color="#DC2626" />
-          <ActionButton icon="credit-card" label="Apply Loan" color="#0F766E" />
-          <ActionButton icon="user" label="My Profile" color="#7C3AED" />
+          <ActionButton icon="trending-up" label="Add Income" color="#16A34A" onPress={() => router.push('/view/Transactions/transactions')} />
+          <ActionButton icon="trending-down" label="Add Expense" color="#DC2626" onPress={() => router.push('/view/Transactions/transactions')} />
+          <ActionButton icon="credit-card" label="Apply Loan" color="#0F766E" onPress={() => router.push('/view/Loans/loans')} />
+          <ActionButton icon="user" label="My Profile" color="#7C3AED" onPress={() => router.push('/view/Profile/profile')} />
         </View>
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Active Loan</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/view/Loans/loans')}>
             <Text style={styles.viewAll}>View All</Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.loanCard}>
-          <View style={styles.loanTop}>
-            <View style={styles.loanTitleRow}>
-              <View style={styles.loanIcon}>
-                <Feather name="droplet" size={18} color="#006847" />
+        {activeLoans.length > 0 ? (
+          <View style={styles.loanCard}>
+            <View style={styles.loanTop}>
+              <View style={styles.loanTitleRow}>
+                <View style={styles.loanIcon}>
+                  <Feather name="droplet" size={18} color="#006847" />
+                </View>
+                <View>
+                  <Text style={styles.loanTitle}>{activeLoans[0].title}</Text>
+                  <Text style={styles.loanRef}>{activeLoans[0].id} · Approved {activeLoans[0].date}</Text>
+                </View>
               </View>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>ACTIVE</Text>
+              </View>
+            </View>
+
+            <View style={styles.loanDivider} />
+
+            <View style={styles.loanDetails}>
+              <InfoItem title="Loan Amount" value={`৳${activeLoans[0].amount.toLocaleString('en-BD')}`} />
+              <InfoItem title="Interest" value={activeLoans[0].interest} />
+              <InfoItem title="Duration" value={activeLoans[0].duration} />
+              <InfoItem title="Monthly EMI" value={`৳${activeLoans[0].emi.toLocaleString('en-BD')}`} />
+            </View>
+
+            <View style={styles.loanDivider} />
+
+            <View style={styles.nextPayment}>
               <View>
-                <Text style={styles.loanTitle}>Vegetable Irrigation</Text>
-                <Text style={styles.loanRef}>L-2024-004 · Approved 5 Jun 2024</Text>
+                <Text style={styles.nextLabel}>Next Payment Due</Text>
+                <Text style={styles.nextDate}>{activeLoans[0].nextPaymentDate}</Text>
+              </View>
+              <View style={styles.nextAmountWrap}>
+                <Text style={styles.nextAmount}>৳{activeLoans[0].nextPaymentAmount.toLocaleString('en-BD')}</Text>
+                <Text style={styles.nextSub}>EMI</Text>
               </View>
             </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>ACTIVE</Text>
+
+            <View style={styles.loanDivider} />
+
+            <View style={styles.progressSection}>
+              <View style={styles.progressHeader}>
+                <Text style={styles.progressLabel}>Repayment Progress</Text>
+                <Text style={styles.progressPercent}>{activeLoans[0].progress}%</Text>
+              </View>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: `${activeLoans[0].progress}%` }]} />
+              </View>
+              <View style={styles.progressMeta}>
+                <Text style={styles.installments}>
+                  {activeLoans[0].installmentsPaid} of {activeLoans[0].installmentsTotal} installments paid
+                </Text>
+                <Text style={styles.remaining}>
+                  {activeLoans[0].installmentsTotal - activeLoans[0].installmentsPaid} remaining
+                </Text>
+              </View>
             </View>
           </View>
-
-          <View style={styles.loanDivider} />
-
-          <View style={styles.loanDetails}>
-            <InfoItem title="Loan Amount" value="৳60,000" />
-            <InfoItem title="Interest" value="8.5%" />
-            <InfoItem title="Duration" value="8 months" />
-            <InfoItem title="Monthly EMI" value="৳7,500" />
+        ) : (
+          <View style={styles.emptyLoan}>
+            <Feather name="briefcase" size={32} color="#D1D5DB" />
+            <Text style={styles.emptyLoanText}>No active loans</Text>
           </View>
-
-          <View style={styles.loanDivider} />
-
-          <View style={styles.nextPayment}>
-            <View>
-              <Text style={styles.nextLabel}>Next Payment Due</Text>
-              <Text style={styles.nextDate}>15 Jul 2024</Text>
-            </View>
-            <View style={styles.nextAmountWrap}>
-              <Text style={styles.nextAmount}>৳7,500</Text>
-              <Text style={styles.nextSub}>EMI</Text>
-            </View>
-          </View>
-
-          <View style={styles.loanDivider} />
-
-          <View style={styles.progressSection}>
-            <View style={styles.progressHeader}>
-              <Text style={styles.progressLabel}>Repayment Progress</Text>
-              <Text style={styles.progressPercent}>25%</Text>
-            </View>
-            <View style={styles.progressBar}>
-              <View style={styles.progressFill} />
-            </View>
-            <View style={styles.progressMeta}>
-              <Text style={styles.installments}>2 of 8 installments paid</Text>
-              <Text style={styles.remaining}>6 remaining</Text>
-            </View>
-          </View>
-        </View>
+        )}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Transactions</Text>
@@ -224,6 +245,41 @@ export default function DashboardScreen() {
         <TransactionRow title="Fertilizer" date="15 Jun 2024" amount="-৳9K" />
         <TransactionRow title="Livestock" date="10 Jun 2024" amount="+৳12K" positive />
         <TransactionRow title="Labor" date="8 Jun 2024" amount="-৳6K" />
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Notifications</Text>
+          <TouchableOpacity>
+            <Text style={styles.viewAll}>View All</Text>
+          </TouchableOpacity>
+        </View>
+        <NotificationItem
+          icon="checkmark-circle"
+          color="#16A34A"
+          title="Loan Approved!"
+          time="2h ago"
+          description="Your application L-2024-004 for ৳60,000 has been approved by Sonali Bank."
+        />
+        <NotificationItem
+          icon="trending-up"
+          color="#2563EB"
+          title="Credit Score Updated"
+          time="1d ago"
+          description="Your score increased from 710 to 720. Great financial discipline!"
+        />
+        <NotificationItem
+          icon="shield-checkmark"
+          color="#7C3AED"
+          title="Profile Verified"
+          time="3d ago"
+          description="Your farm details have been verified by Field Officer Khorshed Alam."
+        />
+        <NotificationItem
+          icon="document-text"
+          color="#F59E0B"
+          title="Document Required"
+          time="5d ago"
+          description="Please upload your land deed to complete your loan application."
+        />
       </ScrollView>
 
       <View style={styles.bottomNav}>
@@ -254,9 +310,9 @@ export default function DashboardScreen() {
   );
 }
 
-function ActionButton({ icon, label, color }: { icon: string; label: string; color: string }) {
+function ActionButton({ icon, label, color, onPress }: { icon: string; label: string; color: string; onPress?: () => void }) {
   return (
-    <TouchableOpacity style={styles.actionItem}>
+    <TouchableOpacity style={styles.actionItem} onPress={onPress}>
       <View style={[styles.actionIcon, { backgroundColor: `${color}12` }]}>
         <Feather name={icon as any} size={22} color={color} />
       </View>
@@ -317,6 +373,35 @@ function TransactionRow({
   );
 }
 
+function NotificationItem({
+  icon,
+  color,
+  title,
+  time,
+  description,
+}: {
+  icon: string;
+  color: string;
+  title: string;
+  time: string;
+  description: string;
+}) {
+  return (
+    <View style={styles.notifRow}>
+      <View style={[styles.notifIcon, { backgroundColor: `${color}18` }]}>
+        <Ionicons name={icon as any} size={18} color={color} />
+      </View>
+      <View style={styles.notifContent}>
+        <View style={styles.notifTop}>
+          <Text style={styles.notifTitle}>{title}</Text>
+          <Text style={styles.notifTime}>{time}</Text>
+        </View>
+        <Text style={styles.notifDesc}>{description}</Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -340,6 +425,17 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: "row",
     alignItems: "center",
+  },
+  langBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: '#ECFDF5',
+  },
+  langText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#006847',
   },
   logo: {
     width: 32,
@@ -621,6 +717,23 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 0.5,
   },
+  badgeDot: {
+    position: "absolute",
+    top: -6,
+    right: -8,
+    backgroundColor: "#DC2626",
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  badgeCount: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
+  },
   loanDivider: {
     height: 1,
     backgroundColor: "#F3F4F6",
@@ -748,6 +861,62 @@ const styles = StyleSheet.create({
   txAmount: {
     fontWeight: "700",
     fontSize: 15,
+  },
+  notifRow: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+  },
+  notifIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+    marginTop: 2,
+  },
+  notifContent: {
+    flex: 1,
+  },
+  notifTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  notifTitle: {
+    fontWeight: "700",
+    color: "#1F2937",
+    fontSize: 14,
+    flex: 1,
+  },
+  notifTime: {
+    color: "#9CA3AF",
+    fontSize: 11,
+    marginLeft: 8,
+  },
+  notifDesc: {
+    color: "#6B7280",
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  emptyLoan: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 40,
+    alignItems: 'center',
+    gap: 10,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+  },
+  emptyLoanText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontWeight: '600',
   },
   bottomNav: {
     flexDirection: "row",
