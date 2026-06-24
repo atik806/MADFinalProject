@@ -117,7 +117,7 @@ export default function LoginScreen() {
           <Text style={styles.loginBtnText}>লগইন / Login</Text>
         </TouchableOpacity>
 
-        <Link href="/view/farmer-registration" asChild>
+        <Link href="/view/FarmerRegistration/farmer-registration" asChild>
           <Pressable style={styles.signupBtn}>
             <Text style={styles.signupText}>নিবন্ধন করুন / Sign Up</Text>
           </Pressable>

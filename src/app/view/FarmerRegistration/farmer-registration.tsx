@@ -9,15 +9,66 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+
+type FormErrors = {
+  nameBn?: string;
+  nameEn?: string;
+  nid?: string;
+  phone?: string;
+  dob?: string;
+};
 
 export default function FarmerRegistrationScreen() {
+  const [nameBn, setNameBn] = useState("");
+  const [nameEn, setNameEn] = useState("");
+  const [nid, setNid] = useState("");
+  const [phone, setPhone] = useState("");
+  const [dob, setDob] = useState("");
   const [gender, setGender] = useState("পুরুষ");
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  const validate = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    if (!nameBn.trim()) {
+      newErrors.nameBn = "বাংলায় নাম লিখুন";
+    }
+
+    if (!nameEn.trim()) {
+      newErrors.nameEn = "ইংরেজিতে নাম লিখুন";
+    }
+
+    if (!nid.trim()) {
+      newErrors.nid = "NID নম্বর লিখুন";
+    } else if (!/^\d{10}$/.test(nid) && !/^\d{17}$/.test(nid)) {
+      newErrors.nid = "১০ বা ১৭ সংখ্যার NID নম্বর দিন";
+    }
+
+    if (!phone.trim()) {
+      newErrors.phone = "মোবাইল নম্বর লিখুন";
+    } else if (!/^1\d{9}$/.test(phone)) {
+      newErrors.phone = "সঠিক মোবাইল নম্বর দিন (১xxxxxxxxx)";
+    }
+
+    if (!dob.trim()) {
+      newErrors.dob = "জন্ম তারিখ নির্বাচন করুন";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNext = () => {
+    if (validate()) {
+      router.push("/view/FarmerRegistration/land");
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color="#1F2937" />
         </TouchableOpacity>
 
@@ -28,7 +79,6 @@ export default function FarmerRegistrationScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Stepper */}
         <View style={styles.stepperContainer}>
           <View style={styles.stepItem}>
             <View style={[styles.stepBar, styles.activeBar]} />
@@ -56,19 +106,23 @@ export default function FarmerRegistrationScreen() {
           </View>
         </View>
 
-        {/* Form */}
-
         <Text style={styles.label}>পূর্ণ নাম (বাংলায়)</Text>
         <TextInput
           placeholder="যেমন: মোঃ আব্দুল করিম"
           style={styles.input}
+          value={nameBn}
+          onChangeText={(t) => { setNameBn(t); setErrors((p) => ({ ...p, nameBn: undefined })); }}
         />
+        {errors.nameBn && <Text style={styles.error}>{errors.nameBn}</Text>}
 
         <Text style={styles.label}>FULL NAME (ENGLISH)</Text>
         <TextInput
           placeholder="e.g. Md. Abdul Karim"
           style={styles.input}
+          value={nameEn}
+          onChangeText={(t) => { setNameEn(t); setErrors((p) => ({ ...p, nameEn: undefined })); }}
         />
+        {errors.nameEn && <Text style={styles.error}>{errors.nameEn}</Text>}
 
         <Text style={styles.label}>জাতীয় পরিচয়পত্র নম্বর (NID)</Text>
 
@@ -76,9 +130,13 @@ export default function FarmerRegistrationScreen() {
           <Ionicons name="document-text-outline" size={22} color="#7B8A8B" />
           <TextInput
             placeholder="১০ বা ১৭ সংখ্যা"
+            keyboardType="number-pad"
             style={styles.iconInput}
+            value={nid}
+            onChangeText={(t) => { setNid(t); setErrors((p) => ({ ...p, nid: undefined })); }}
           />
         </View>
+        {errors.nid && <Text style={styles.error}>{errors.nid}</Text>}
 
         <Text style={styles.label}>মোবাইল নম্বর</Text>
 
@@ -91,8 +149,11 @@ export default function FarmerRegistrationScreen() {
             placeholder="1XXXXXXXXX"
             keyboardType="phone-pad"
             style={styles.phoneInput}
+            value={phone}
+            onChangeText={(t) => { setPhone(t); setErrors((p) => ({ ...p, phone: undefined })); }}
           />
         </View>
+        {errors.phone && <Text style={styles.error}>{errors.phone}</Text>}
 
         <Text style={styles.label}>জন্ম তারিখ</Text>
 
@@ -101,8 +162,11 @@ export default function FarmerRegistrationScreen() {
           <TextInput
             placeholder="mm/dd/yyyy"
             style={styles.iconInput}
+            value={dob}
+            onChangeText={(t) => { setDob(t); setErrors((p) => ({ ...p, dob: undefined })); }}
           />
         </View>
+        {errors.dob && <Text style={styles.error}>{errors.dob}</Text>}
 
         <Text style={styles.label}>লিঙ্গ</Text>
 
@@ -129,13 +193,11 @@ export default function FarmerRegistrationScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.nextBtn}>
+        <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
           <Text style={styles.nextBtnText}>পরবর্তী ধাপ</Text>
           <Ionicons name="chevron-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </ScrollView>
-
-      {/* Bottom Navigation */}
 
       <View style={styles.bottomNav}>
         <NavItem icon="home-outline" text="Home" active />
@@ -362,6 +424,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     marginRight: 6,
+  },
+
+  error: {
+    color: "#DC2626",
+    fontSize: 13,
+    marginHorizontal: 22,
+    marginTop: 4,
+    fontWeight: "500",
   },
 
   bottomNav: {

@@ -1,0 +1,444 @@
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+
+type IncomeSource = {
+  label: string;
+  selected: boolean;
+};
+
+type FormErrors = {
+  farmingIncome?: string;
+  otherIncome?: string;
+  familyMembers?: string;
+  occupation?: string;
+};
+
+export default function IncomeScreen() {
+  const [farmingIncome, setFarmingIncome] = useState("");
+  const [otherIncome, setOtherIncome] = useState("");
+  const [familyMembers, setFamilyMembers] = useState("");
+  const [occupation, setOccupation] = useState("");
+  const [otherSources, setOtherSources] = useState<IncomeSource[]>([
+    { label: "কৃষি শ্রমিক", selected: false },
+    { label: "ছোট ব্যবসা", selected: false },
+    { label: "চাকরি", selected: false },
+    { label: "অন্যান্য", selected: false },
+  ]);
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  const toggleSource = (index: number) => {
+    setOtherSources((prev) =>
+      prev.map((s, i) => (i === index ? { ...s, selected: !s.selected } : s))
+    );
+  };
+
+  const validate = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    if (!farmingIncome.trim()) {
+      newErrors.farmingIncome = "বার্ষিক কৃষি আয় লিখুন";
+    } else if (isNaN(Number(farmingIncome)) || Number(farmingIncome) <= 0) {
+      newErrors.farmingIncome = "সঠিক পরিমাণ লিখুন";
+    }
+
+    if (otherIncome && (isNaN(Number(otherIncome)) || Number(otherIncome) < 0)) {
+      newErrors.otherIncome = "সঠিক পরিমাণ লিখুন";
+    }
+
+    if (!familyMembers.trim()) {
+      newErrors.familyMembers = "পরিবারের সদস্য সংখ্যা লিখুন";
+    } else if (isNaN(Number(familyMembers)) || Number(familyMembers) <= 0) {
+      newErrors.familyMembers = "সঠিক সংখ্যা লিখুন";
+    }
+
+    if (!occupation.trim()) {
+      newErrors.occupation = "প্রধান পেশা লিখুন";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNext = () => {
+    if (validate()) {
+      router.push("/view/FarmerRegistration/loan");
+    }
+  };
+
+  const formatWithCommas = (val: string) => {
+    if (!val) return val;
+    const num = val.replace(/,/g, "");
+    if (/^\d+$/.test(num)) {
+      return Number(num).toLocaleString("en-IN");
+    }
+    return val;
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={22} color="#1F2937" />
+        </TouchableOpacity>
+
+        <View>
+          <Text style={styles.title}>নতুন কৃষক নিবন্ধন</Text>
+          <Text style={styles.subtitle}>ধাপ ৩ / ৫ — আয় সংক্রান্ত তথ্য</Text>
+        </View>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.stepperContainer}>
+          <View style={styles.stepItem}>
+            <View style={[styles.stepBar, styles.completedBar]}>
+              <Ionicons name="checkmark" size={14} color="#fff" />
+            </View>
+            <Text style={styles.completedStepText}>পরিচয়</Text>
+          </View>
+
+          <View style={styles.stepItem}>
+            <View style={[styles.stepBar, styles.completedBar]}>
+              <Ionicons name="checkmark" size={14} color="#fff" />
+            </View>
+            <Text style={styles.completedStepText}>জমি</Text>
+          </View>
+
+          <View style={styles.stepItem}>
+            <View style={[styles.stepBar, styles.activeBar]} />
+            <Text style={styles.activeStepText}>আয়</Text>
+          </View>
+
+          <View style={styles.stepItem}>
+            <View style={styles.stepBar} />
+            <Text style={styles.stepText}>ঋণ</Text>
+          </View>
+
+          <View style={styles.stepItem}>
+            <View style={styles.stepBar} />
+            <Text style={styles.stepText}>ছবি</Text>
+          </View>
+        </View>
+
+        <Text style={styles.label}>বার্ষিক কৃষি আয় (টাকা)</Text>
+        <View style={styles.inputIcon}>
+          <Ionicons name="cash-outline" size={22} color="#7B8A8B" />
+          <TextInput
+            placeholder="যেমন: ১,০০,০০০"
+            keyboardType="decimal-pad"
+            style={styles.iconInput}
+            value={formatWithCommas(farmingIncome)}
+            onChangeText={(t) => {
+              setFarmingIncome(t.replace(/,/g, ""));
+              setErrors((p) => ({ ...p, farmingIncome: undefined }));
+            }}
+          />
+        </View>
+        {errors.farmingIncome && (
+          <Text style={styles.error}>{errors.farmingIncome}</Text>
+        )}
+
+        <Text style={styles.label}>অন্যান্য আয়ের উৎস (ঐচ্ছিক)</Text>
+        <View style={styles.incomeSourceContainer}>
+          {otherSources.map((source, index) => (
+            <TouchableOpacity
+              key={source.label}
+              style={[
+                styles.sourceBtn,
+                source.selected && styles.sourceBtnActive,
+              ]}
+              onPress={() => toggleSource(index)}
+            >
+              <Text
+                style={[
+                  styles.sourceText,
+                  source.selected && styles.sourceTextActive,
+                ]}
+              >
+                {source.selected ? "✓ " : ""}
+                {source.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.label}>অন্যান্য আয়ের পরিমাণ (টাকা) — ঐচ্ছিক</Text>
+        <View style={styles.inputIcon}>
+          <Ionicons name="wallet-outline" size={22} color="#7B8A8B" />
+          <TextInput
+            placeholder="যেমন: ৫০,০০০"
+            keyboardType="decimal-pad"
+            style={styles.iconInput}
+            value={otherIncome ? formatWithCommas(otherIncome) : otherIncome}
+            onChangeText={(t) => {
+              setOtherIncome(t.replace(/,/g, ""));
+              setErrors((p) => ({ ...p, otherIncome: undefined }));
+            }}
+          />
+        </View>
+        {errors.otherIncome && (
+          <Text style={styles.error}>{errors.otherIncome}</Text>
+        )}
+
+        <Text style={styles.label}>পরিবারের সদস্য সংখ্যা</Text>
+        <View style={styles.inputIcon}>
+          <Ionicons name="people-outline" size={22} color="#7B8A8B" />
+          <TextInput
+            placeholder="যেমন: ৪"
+            keyboardType="number-pad"
+            style={styles.iconInput}
+            value={familyMembers}
+            onChangeText={(t) => {
+              setFamilyMembers(t);
+              setErrors((p) => ({ ...p, familyMembers: undefined }));
+            }}
+          />
+        </View>
+        {errors.familyMembers && (
+          <Text style={styles.error}>{errors.familyMembers}</Text>
+        )}
+
+        <Text style={styles.label}>প্রধান পেশা</Text>
+        <View style={styles.inputIcon}>
+          <Ionicons name="briefcase-outline" size={22} color="#7B8A8B" />
+          <TextInput
+            placeholder="যেমন: কৃষি"
+            style={styles.iconInput}
+            value={occupation}
+            onChangeText={(t) => {
+              setOccupation(t);
+              setErrors((p) => ({ ...p, occupation: undefined }));
+            }}
+          />
+        </View>
+        {errors.occupation && (
+          <Text style={styles.error}>{errors.occupation}</Text>
+        )}
+
+        <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
+          <Text style={styles.nextBtnText}>পরবর্তী ধাপ</Text>
+          <Ionicons name="chevron-forward" size={20} color="#fff" />
+        </TouchableOpacity>
+      </ScrollView>
+
+      <View style={styles.bottomNav}>
+        <NavItem icon="home-outline" text="Home" />
+        <NavItem icon="people-outline" text="Farmers" active />
+        <NavItem icon="swap-horizontal-outline" text="Transactions" />
+        <NavItem icon="notifications-outline" text="Alerts" />
+        <NavItem icon="person-outline" text="Profile" />
+      </View>
+    </SafeAreaView>
+  );
+}
+
+type NavItemProps = {
+  icon: keyof typeof Ionicons.glyphMap;
+  text: string;
+  active?: boolean;
+};
+
+const NavItem = ({ icon, text, active }: NavItemProps) => (
+  <TouchableOpacity style={styles.navItem}>
+    <Ionicons
+      name={icon}
+      size={22}
+      color={active ? "#157A5A" : "#7B8A8B"}
+    />
+    <Text
+      style={[
+        styles.navText,
+        active && { color: "#157A5A", fontWeight: "700" },
+      ]}
+    >
+      {text}
+    </Text>
+  </TouchableOpacity>
+);
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F3F5F4",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingTop: 15,
+    paddingBottom: 10,
+  },
+  backBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  subtitle: {
+    color: "#7B8A8B",
+    marginTop: 2,
+  },
+  stepperContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    marginVertical: 20,
+  },
+  stepItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  stepBar: {
+    width: "90%",
+    height: 6,
+    borderRadius: 20,
+    backgroundColor: "#D9E5E1",
+    marginBottom: 6,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  activeBar: {
+    backgroundColor: "#157A5A",
+    height: 6,
+  },
+  completedBar: {
+    backgroundColor: "#157A5A",
+    height: 22,
+    width: 22,
+    borderRadius: 11,
+    marginBottom: 6,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  activeStepText: {
+    color: "#157A5A",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  completedStepText: {
+    color: "#157A5A",
+    fontWeight: "700",
+    fontSize: 12,
+    marginTop: -2,
+  },
+  stepText: {
+    color: "#9AA5A8",
+    fontSize: 12,
+  },
+  label: {
+    marginHorizontal: 18,
+    marginBottom: 8,
+    marginTop: 14,
+    fontWeight: "600",
+    color: "#425466",
+  },
+  input: {
+    backgroundColor: "#fff",
+    height: 60,
+    borderRadius: 18,
+    marginHorizontal: 18,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "#E4ECE9",
+  },
+  inputIcon: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    height: 60,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#E4ECE9",
+    marginHorizontal: 18,
+    paddingHorizontal: 16,
+  },
+  iconInput: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  incomeSourceContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: 18,
+    marginTop: 8,
+    gap: 8,
+  },
+  sourceBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#DDE5E2",
+  },
+  sourceBtnActive: {
+    borderColor: "#157A5A",
+    borderWidth: 2,
+    backgroundColor: "#ECFDF5",
+  },
+  sourceText: {
+    color: "#6B7280",
+    fontWeight: "600",
+  },
+  sourceTextActive: {
+    color: "#157A5A",
+    fontWeight: "700",
+  },
+  nextBtn: {
+    marginHorizontal: 18,
+    marginTop: 30,
+    marginBottom: 25,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: "#157A5A",
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
+  },
+  nextBtnText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    marginRight: 6,
+  },
+  error: {
+    color: "#DC2626",
+    fontSize: 13,
+    marginHorizontal: 22,
+    marginTop: 4,
+    fontWeight: "500",
+  },
+  bottomNav: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingVertical: 10,
+  },
+  navItem: {
+    alignItems: "center",
+  },
+  navText: {
+    fontSize: 11,
+    marginTop: 4,
+    color: "#7B8A8B",
+  },
+});
