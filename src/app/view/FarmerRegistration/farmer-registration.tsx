@@ -199,18 +199,12 @@ export default function FarmerRegistrationScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      <View style={styles.bottomNav}>
-        <NavItem icon="home-outline" text="Home" active />
-        <NavItem icon="people-outline" text="Farmers" />
-        <NavItem icon="swap-horizontal-outline" text="Transactions" />
-        <NavItem icon="notifications-outline" text="Alerts" />
-        <NavItem icon="person-outline" text="Profile" />
-      </View>
+      
     </SafeAreaView>
   );
 }
 
-type NavItemProps = {
+type NavItemProps = {   
   icon: keyof typeof Ionicons.glyphMap;
   text: string;
   active?: boolean;

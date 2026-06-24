@@ -42,13 +42,13 @@ export default function LandingPage() {
           </View>
         </View>
 
-        <Link href="view/login" asChild>
+        <Link href="/view/login" asChild>
           <Pressable style={styles.getStartedBtn}>
             <Text style={styles.getStartedText}>শুরু করুন / Get Started</Text>
           </Pressable>
         </Link>
 
-        <Link href="view/login" asChild>
+        <Link href="/view/login" asChild>
           <Pressable style={styles.signInBtn}>
             <Text style={styles.signInText}>ইতিমধ্যে নিবন্ধিত? সাইন ইন / Already registered? Sign In</Text>
           </Pressable>
