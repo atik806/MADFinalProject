@@ -18,9 +18,14 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          </TouchableOpacity>
+          <View style={styles.headerLogo}>
+            <Ionicons name="leaf" size={18} color="#fff" />
+          </View>
+        </View>
         <Text style={styles.headerTitle}>Notifications</Text>
         <View style={{ width: 24 }} />
       </View>
@@ -99,6 +104,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#1F2937",
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerLogo: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    backgroundColor: "#006847",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 10,
   },
   actions: {
     flexDirection: "row",

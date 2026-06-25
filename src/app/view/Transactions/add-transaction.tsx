@@ -54,10 +54,15 @@ export default function AddTransactionScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
+          <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
             <Ionicons name="close" size={24} color="#1F2937" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add Transaction</Text>
+          <View style={styles.headerLogo}>
+            <Ionicons name="leaf" size={18} color="#fff" />
+          </View>
+        </View>
+        <Text style={styles.headerTitle}>Add Transaction</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -156,6 +161,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#1F2937',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    backgroundColor: '#006847',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
   },
   form: {
     padding: 18,

@@ -1,5 +1,6 @@
 import { Text, View, StyleSheet, SafeAreaView, ScrollView, Pressable } from 'react-native';
 import { Link } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function LandingPage() {
 
@@ -8,7 +9,7 @@ export default function LandingPage() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.hero}>
           <View style={styles.logoBox}>
-            <Text style={styles.logo}>🌿</Text>
+            <Ionicons name="leaf" size={40} color="#fff" />
           </View>
           <Text style={styles.title}>SOFOL</Text>
           <Text style={styles.tagline}>Farmer Credit Profile Platform</Text>
@@ -82,14 +83,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  logo: {
-    fontSize: 48,
-  },
   title: {
     fontSize: 44,
     fontWeight: 'bold',
     color: '#fff',
     letterSpacing: 2,
+    marginTop: 12,
   },
   tagline: {
     color: '#fff',

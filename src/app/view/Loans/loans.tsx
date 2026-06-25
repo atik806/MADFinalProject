@@ -70,9 +70,8 @@ export default function LoansScreen() {
       <View style={styles.header}>
         <View style={styles.logoContainer}>
           <View style={styles.logo}>
-            <Text style={styles.logoText}>S</Text>
+            <Ionicons name="leaf" size={20} color="#fff" />
           </View>
-          <Text style={styles.brand}>SOFOL</Text>
         </View>
         <Text style={styles.headerTitle}>My Loans</Text>
         <View style={styles.headerIcons}>
@@ -337,17 +336,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  logoText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  brand: {
-    marginLeft: 8,
-    fontWeight: '700',
-    fontSize: 16,
-    color: '#006847',
   },
   headerTitle: {
     fontSize: 18,

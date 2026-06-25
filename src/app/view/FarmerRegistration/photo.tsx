@@ -168,9 +168,14 @@ export default function PhotoScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color="#1F2937" />
-        </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={22} color="#1F2937" />
+          </TouchableOpacity>
+          <View style={styles.headerLogo}>
+            <Ionicons name="leaf" size={18} color="#fff" />
+          </View>
+        </View>
 
         <View>
           <Text style={styles.title}>নতুন কৃষক নিবন্ধন</Text>
@@ -301,6 +306,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerLogo: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    backgroundColor: "#006847",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
   },
   title: {
     fontSize: 22,

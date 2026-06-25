@@ -84,9 +84,14 @@ export default function EditProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color="#1F2937" />
-        </TouchableOpacity>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={22} color="#1F2937" />
+          </TouchableOpacity>
+          <View style={styles.headerLogo}>
+            <Ionicons name="leaf" size={18} color="#fff" />
+          </View>
+        </View>
         <Text style={styles.headerTitle}>Edit Profile</Text>
         <View style={styles.headerRight} />
       </View>
@@ -410,6 +415,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#1F2937',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    backgroundColor: '#006847',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
   },
   headerRight: {
     width: 36,
