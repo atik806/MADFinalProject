@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useTranslation } from "../../../hooks/use-translation";
 
 type FormErrors = {
   hasLoan?: string;
@@ -28,6 +29,7 @@ const loanSources = [
 ];
 
 export default function LoanScreen() {
+  const { t } = useTranslation();
   const [hasLoan, setHasLoan] = useState<boolean | null>(null);
   const [loanAmount, setLoanAmount] = useState("");
   const [loanPurpose, setLoanPurpose] = useState("");
@@ -38,22 +40,22 @@ export default function LoanScreen() {
     const newErrors: FormErrors = {};
 
     if (hasLoan === null) {
-      newErrors.hasLoan = "অনুগ্রহ করে নির্বাচন করুন";
+      newErrors.hasLoan = t('errLoanSelection');
     }
 
     if (hasLoan === true) {
       if (!loanAmount.trim()) {
-        newErrors.loanAmount = "ঋণের পরিমাণ লিখুন";
+        newErrors.loanAmount = t('errLoanAmountRequired');
       } else if (isNaN(Number(loanAmount)) || Number(loanAmount) <= 0) {
-        newErrors.loanAmount = "সঠিক পরিমাণ লিখুন";
+        newErrors.loanAmount = t('errLoanAmountValid');
       }
 
       if (!loanPurpose.trim()) {
-        newErrors.loanPurpose = "ঋণের উদ্দেশ্য লিখুন";
+        newErrors.loanPurpose = t('errLoanPurposeRequired');
       }
 
       if (!selectedSource) {
-        newErrors.loanSource = "ঋণের উৎস নির্বাচন করুন";
+        newErrors.loanSource = t('errLoanSourceRequired');
       }
     }
 
@@ -89,8 +91,8 @@ export default function LoanScreen() {
         </View>
 
         <View>
-          <Text style={styles.title}>নতুন কৃষক নিবন্ধন</Text>
-          <Text style={styles.subtitle}>ধাপ ৪ / ৫ — ঋণ সংক্রান্ত তথ্য</Text>
+          <Text style={styles.title}>{t('newFarmerRegistration')}</Text>
+          <Text style={styles.subtitle}>{t('step4of5')}</Text>
         </View>
       </View>
 
@@ -100,35 +102,35 @@ export default function LoanScreen() {
             <View style={[styles.stepBar, styles.completedBar]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>পরিচয়</Text>
+            <Text style={styles.completedStepText}>{t('identity')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={[styles.stepBar, styles.completedBar]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>জমি</Text>
+            <Text style={styles.completedStepText}>{t('land')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={[styles.stepBar, styles.completedBar]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>আয়</Text>
+            <Text style={styles.completedStepText}>{t('incomeStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={[styles.stepBar, styles.activeBar]} />
-            <Text style={styles.activeStepText}>ঋণ</Text>
+            <Text style={styles.activeStepText}>{t('loanStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={styles.stepBar} />
-            <Text style={styles.stepText}>ছবি</Text>
+            <Text style={styles.stepText}>{t('photoStep')}</Text>
           </View>
         </View>
 
-        <Text style={styles.label}>বর্তমানে কোন ঋণ আছে?</Text>
+        <Text style={styles.label}>{t('haveLoan')}</Text>
         <View style={styles.radioRow}>
           <TouchableOpacity
             style={[
@@ -148,7 +150,7 @@ export default function LoanScreen() {
                 hasLoan === true && styles.radioTextActive,
               ]}
             >
-              হ্যাঁ
+              {t('yes')}
             </Text>
           </TouchableOpacity>
 
@@ -170,7 +172,7 @@ export default function LoanScreen() {
                 hasLoan === false && styles.radioTextActive,
               ]}
             >
-              না
+              {t('no')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -178,11 +180,11 @@ export default function LoanScreen() {
 
         {hasLoan === true && (
           <>
-            <Text style={styles.label}>ঋণের পরিমাণ (টাকা)</Text>
+            <Text style={styles.label}>{t('loanAmountLabel3')}</Text>
             <View style={styles.inputIcon}>
               <Ionicons name="trending-down-outline" size={22} color="#7B8A8B" />
               <TextInput
-                placeholder="যেমন: ৫০,০০০"
+                placeholder={t('loanAmountPlaceholder2')}
                 keyboardType="decimal-pad"
                 style={styles.iconInput}
                 value={formatWithCommas(loanAmount)}
@@ -196,11 +198,11 @@ export default function LoanScreen() {
               <Text style={styles.error}>{errors.loanAmount}</Text>
             )}
 
-            <Text style={styles.label}>ঋণের উদ্দেশ্য</Text>
+            <Text style={styles.label}>{t('loanPurposeLabel')}</Text>
             <View style={styles.inputIcon}>
               <Ionicons name="flag-outline" size={22} color="#7B8A8B" />
               <TextInput
-                placeholder="যেমন: কৃষি কাজ, গবাদি পশু"
+                placeholder={t('loanPurposePlaceholder')}
                 style={styles.iconInput}
                 value={loanPurpose}
                 onChangeText={(t) => {
@@ -213,7 +215,7 @@ export default function LoanScreen() {
               <Text style={styles.error}>{errors.loanPurpose}</Text>
             )}
 
-            <Text style={styles.label}>ঋণের উৎস</Text>
+            <Text style={styles.label}>{t('loanSourceLabel')}</Text>
             <View style={styles.sourceContainer}>
               {loanSources.map((source) => (
                 <TouchableOpacity
@@ -246,51 +248,19 @@ export default function LoanScreen() {
           <View style={styles.noLoanBanner}>
             <Ionicons name="checkmark-circle" size={48} color="#157A5A" />
             <Text style={styles.noLoanText}>
-              ভালো আছেন! কোনো ঋণের তথ্য নেই।
+              {t('noLoanMessage')}
             </Text>
           </View>
         )}
 
         <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
-          <Text style={styles.nextBtnText}>পরবর্তী ধাপ</Text>
+          <Text style={styles.nextBtnText}>{t('nextStep')}</Text>
           <Ionicons name="chevron-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </ScrollView>
-
-      <View style={styles.bottomNav}>
-        <NavItem icon="home-outline" text="Home" />
-        <NavItem icon="people-outline" text="Farmers" active />
-        <NavItem icon="swap-horizontal-outline" text="Transactions" />
-        <NavItem icon="notifications-outline" text="Alerts" />
-        <NavItem icon="person-outline" text="Profile" />
-      </View>
     </SafeAreaView>
   );
 }
-
-type NavItemProps = {
-  icon: keyof typeof Ionicons.glyphMap;
-  text: string;
-  active?: boolean;
-};
-
-const NavItem = ({ icon, text, active }: NavItemProps) => (
-  <TouchableOpacity style={styles.navItem}>
-    <Ionicons
-      name={icon}
-      size={22}
-      color={active ? "#157A5A" : "#7B8A8B"}
-    />
-    <Text
-      style={[
-        styles.navText,
-        active && { color: "#157A5A", fontWeight: "700" },
-      ]}
-    >
-      {text}
-    </Text>
-  </TouchableOpacity>
-);
 
 const styles = StyleSheet.create({
   container: {
@@ -503,21 +473,5 @@ const styles = StyleSheet.create({
     marginHorizontal: 22,
     marginTop: 4,
     fontWeight: "500",
-  },
-  bottomNav: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingVertical: 10,
-  },
-  navItem: {
-    alignItems: "center",
-  },
-  navText: {
-    fontSize: 11,
-    marginTop: 4,
-    color: "#7B8A8B",
   },
 });

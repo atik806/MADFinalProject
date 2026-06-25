@@ -1,9 +1,12 @@
 import { Text, View, StyleSheet, SafeAreaView, Pressable, Dimensions } from 'react-native';
 import { Link } from 'expo-router';
+import { useTranslation } from '../hooks/use-translation';
 
 const { width } = Dimensions.get('window');
 
 export default function NotFoundScreen() {
+  const { t } = useTranslation();
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -19,16 +22,12 @@ export default function NotFoundScreen() {
           ))}
         </View>
 
-        <Text style={styles.title}>পাতা পাওয়া যায়নি</Text>
-        <Text style={styles.subtitle}>Page Not Found</Text>
+        <Text style={styles.title}>{t('pageNotFound')}</Text>
 
         <View style={styles.divider} />
 
         <Text style={styles.description}>
-          আপনি যে পৃষ্ঠাটি খুঁজছেন তা বিদ্যমান নেই বা সরানো হয়েছে।
-        </Text>
-        <Text style={styles.descriptionSub}>
-          The page you are looking for does not exist or has been moved.
+          {t('notFoundDesc')}
         </Text>
 
         <Link href="/" asChild>
@@ -36,8 +35,7 @@ export default function NotFoundScreen() {
             styles.homeBtn,
             pressed && styles.homeBtnPressed,
           ]}>
-            <Text style={styles.homeBtnText}>মূল পাতায় ফিরে যান</Text>
-            <Text style={styles.homeBtnSub}>Back to Home</Text>
+            <Text style={styles.homeBtnText}>{t('backToHomeBtn')}</Text>
           </Pressable>
         </Link>
       </View>
@@ -88,12 +86,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 2,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: '#cfe8dd',
-    fontWeight: '600',
     marginBottom: 24,
   },
   divider: {
@@ -108,14 +100,7 @@ const styles = StyleSheet.create({
     color: '#cfe8dd',
     textAlign: 'center',
     lineHeight: 22,
-  },
-  descriptionSub: {
-    fontSize: 13,
-    color: 'rgba(207,232,221,0.7)',
-    textAlign: 'center',
-    lineHeight: 20,
     marginBottom: 40,
-    marginTop: 4,
   },
   homeBtn: {
     backgroundColor: '#fff',
@@ -134,11 +119,5 @@ const styles = StyleSheet.create({
     color: '#006847',
     fontSize: 16,
     fontWeight: '700',
-  },
-  homeBtnSub: {
-    color: '#006847',
-    fontSize: 12,
-    opacity: 0.6,
-    marginTop: 2,
   },
 });

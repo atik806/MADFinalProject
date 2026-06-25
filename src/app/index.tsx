@@ -1,21 +1,28 @@
-import { Text, View, StyleSheet, SafeAreaView, ScrollView, Pressable } from 'react-native';
+import { Text, View, StyleSheet, SafeAreaView, ScrollView, Pressable, TouchableOpacity } from 'react-native';
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '../hooks/use-translation';
 
 export default function LandingPage() {
+  const { t, lang, toggleLang } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.langRow}>
+        <View />
+        <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
+          <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
+        </TouchableOpacity>
+      </View>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.hero}>
           <View style={styles.logoBox}>
             <Ionicons name="leaf" size={40} color="#fff" />
           </View>
           <Text style={styles.title}>SOFOL</Text>
-          <Text style={styles.tagline}>Farmer Credit Profile Platform</Text>
+          <Text style={styles.tagline}>{t('tagline')}</Text>
           <Text style={styles.description}>
-            Empowering Bangladeshi farmers with access to credit, financial profiles, and agricultural
-            growth opportunities.
+            {t('landingDesc')}
           </Text>
         </View>
 
@@ -23,35 +30,35 @@ export default function LandingPage() {
           <View style={styles.featureRow}>
             <Text style={styles.featureIcon}>📊</Text>
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Credit Profile</Text>
-              <Text style={styles.featureDesc}>Build and track your digital credit history</Text>
+              <Text style={styles.featureTitle}>{t('creditProfile')}</Text>
+              <Text style={styles.featureDesc}>{t('creditProfileDesc')}</Text>
             </View>
           </View>
           <View style={styles.featureRow}>
             <Text style={styles.featureIcon}>🌾</Text>
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Agricultural Support</Text>
-              <Text style={styles.featureDesc}>Get tailored financial products for farming</Text>
+              <Text style={styles.featureTitle}>{t('agriSupport')}</Text>
+              <Text style={styles.featureDesc}>{t('agriSupportDesc')}</Text>
             </View>
           </View>
           <View style={styles.featureRow}>
             <Text style={styles.featureIcon}>🔒</Text>
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Secure & Transparent</Text>
-              <Text style={styles.featureDesc}>Your data is safe with end-to-end encryption</Text>
+              <Text style={styles.featureTitle}>{t('secureTransparent')}</Text>
+              <Text style={styles.featureDesc}>{t('secureTransparentDesc')}</Text>
             </View>
           </View>
         </View>
 
         <Link href="/view/login" asChild>
           <Pressable style={styles.getStartedBtn}>
-            <Text style={styles.getStartedText}>শুরু করুন / Get Started</Text>
+            <Text style={styles.getStartedText}>{t('getStarted')}</Text>
           </Pressable>
         </Link>
 
         <Link href="/view/login" asChild>
           <Pressable style={styles.signInBtn}>
-            <Text style={styles.signInText}>ইতিমধ্যে নিবন্ধিত? সাইন ইন / Already registered? Sign In</Text>
+            <Text style={styles.signInText}>{t('alreadyRegistered')}</Text>
           </Pressable>
         </Link>
       </ScrollView>
@@ -63,6 +70,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#006847',
+  },
+  langRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 18,
+    paddingTop: 12,
+  },
+  langBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  langText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   scrollContent: {
     flexGrow: 1,
@@ -145,9 +171,8 @@ const styles = StyleSheet.create({
   getStartedText: {
     color: '#006847',
     fontSize: 18,
-    fontWeight: '700',  
+    fontWeight: '700',
   },
-
   signInBtn: {
     alignSelf: 'center',
     paddingVertical: 8,

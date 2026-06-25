@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useTranslation } from "../../../hooks/use-translation";
 
 type IncomeSource = {
   label: string;
@@ -24,6 +25,7 @@ type FormErrors = {
 };
 
 export default function IncomeScreen() {
+  const { t } = useTranslation();
   const [farmingIncome, setFarmingIncome] = useState("");
   const [otherIncome, setOtherIncome] = useState("");
   const [familyMembers, setFamilyMembers] = useState("");
@@ -46,23 +48,23 @@ export default function IncomeScreen() {
     const newErrors: FormErrors = {};
 
     if (!farmingIncome.trim()) {
-      newErrors.farmingIncome = "বার্ষিক কৃষি আয় লিখুন";
+      newErrors.farmingIncome = t('errFarmingIncomeRequired');
     } else if (isNaN(Number(farmingIncome)) || Number(farmingIncome) <= 0) {
-      newErrors.farmingIncome = "সঠিক পরিমাণ লিখুন";
+      newErrors.farmingIncome = t('errFarmingIncomeValid');
     }
 
     if (otherIncome && (isNaN(Number(otherIncome)) || Number(otherIncome) < 0)) {
-      newErrors.otherIncome = "সঠিক পরিমাণ লিখুন";
+      newErrors.otherIncome = t('errOtherIncomeValid');
     }
 
     if (!familyMembers.trim()) {
-      newErrors.familyMembers = "পরিবারের সদস্য সংখ্যা লিখুন";
+      newErrors.familyMembers = t('errFamilyRequired');
     } else if (isNaN(Number(familyMembers)) || Number(familyMembers) <= 0) {
-      newErrors.familyMembers = "সঠিক সংখ্যা লিখুন";
+      newErrors.familyMembers = t('errFamilyValid');
     }
 
     if (!occupation.trim()) {
-      newErrors.occupation = "প্রধান পেশা লিখুন";
+      newErrors.occupation = t('errOccupationRequired');
     }
 
     setErrors(newErrors);
@@ -97,8 +99,8 @@ export default function IncomeScreen() {
         </View>
 
         <View>
-          <Text style={styles.title}>নতুন কৃষক নিবন্ধন</Text>
-          <Text style={styles.subtitle}>ধাপ ৩ / ৫ — আয় সংক্রান্ত তথ্য</Text>
+          <Text style={styles.title}>{t('newFarmerRegistration')}</Text>
+          <Text style={styles.subtitle}>{t('step3of5')}</Text>
         </View>
       </View>
 
@@ -108,37 +110,37 @@ export default function IncomeScreen() {
             <View style={[styles.stepBar, styles.completedBar]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>পরিচয়</Text>
+            <Text style={styles.completedStepText}>{t('identity')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={[styles.stepBar, styles.completedBar]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>জমি</Text>
+            <Text style={styles.completedStepText}>{t('land')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={[styles.stepBar, styles.activeBar]} />
-            <Text style={styles.activeStepText}>আয়</Text>
+            <Text style={styles.activeStepText}>{t('incomeStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={styles.stepBar} />
-            <Text style={styles.stepText}>ঋণ</Text>
+            <Text style={styles.stepText}>{t('loanStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={styles.stepBar} />
-            <Text style={styles.stepText}>ছবি</Text>
+            <Text style={styles.stepText}>{t('photoStep')}</Text>
           </View>
         </View>
 
-        <Text style={styles.label}>বার্ষিক কৃষি আয় (টাকা)</Text>
+        <Text style={styles.label}>{t('annualFarmingLabel2')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="cash-outline" size={22} color="#7B8A8B" />
           <TextInput
-            placeholder="যেমন: ১,০০,০০০"
+            placeholder={t('annualFarmingPlaceholder2')}
             keyboardType="decimal-pad"
             style={styles.iconInput}
             value={formatWithCommas(farmingIncome)}
@@ -152,7 +154,7 @@ export default function IncomeScreen() {
           <Text style={styles.error}>{errors.farmingIncome}</Text>
         )}
 
-        <Text style={styles.label}>অন্যান্য আয়ের উৎস (ঐচ্ছিক)</Text>
+        <Text style={styles.label}>{t('otherIncomeSources')}</Text>
         <View style={styles.incomeSourceContainer}>
           {otherSources.map((source, index) => (
             <TouchableOpacity
@@ -176,11 +178,11 @@ export default function IncomeScreen() {
           ))}
         </View>
 
-        <Text style={styles.label}>অন্যান্য আয়ের পরিমাণ (টাকা) — ঐচ্ছিক</Text>
+        <Text style={styles.label}>{t('otherIncomeLabel2')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="wallet-outline" size={22} color="#7B8A8B" />
           <TextInput
-            placeholder="যেমন: ৫০,০০০"
+            placeholder={t('otherIncomePlaceholder2')}
             keyboardType="decimal-pad"
             style={styles.iconInput}
             value={otherIncome ? formatWithCommas(otherIncome) : otherIncome}
@@ -194,11 +196,11 @@ export default function IncomeScreen() {
           <Text style={styles.error}>{errors.otherIncome}</Text>
         )}
 
-        <Text style={styles.label}>পরিবারের সদস্য সংখ্যা</Text>
+        <Text style={styles.label}>{t('familyMembersLabel')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="people-outline" size={22} color="#7B8A8B" />
           <TextInput
-            placeholder="যেমন: ৪"
+            placeholder={t('familyPlaceholder2')}
             keyboardType="number-pad"
             style={styles.iconInput}
             value={familyMembers}
@@ -212,11 +214,11 @@ export default function IncomeScreen() {
           <Text style={styles.error}>{errors.familyMembers}</Text>
         )}
 
-        <Text style={styles.label}>প্রধান পেশা</Text>
+        <Text style={styles.label}>{t('occupationLabel2')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="briefcase-outline" size={22} color="#7B8A8B" />
           <TextInput
-            placeholder="যেমন: কৃষি"
+            placeholder={t('occupationPlaceholder2')}
             style={styles.iconInput}
             value={occupation}
             onChangeText={(t) => {
@@ -230,45 +232,13 @@ export default function IncomeScreen() {
         )}
 
         <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
-          <Text style={styles.nextBtnText}>পরবর্তী ধাপ</Text>
+          <Text style={styles.nextBtnText}>{t('nextStep')}</Text>
           <Ionicons name="chevron-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </ScrollView>
-
-      <View style={styles.bottomNav}>
-        <NavItem icon="home-outline" text="Home" />
-        <NavItem icon="people-outline" text="Farmers" active />
-        <NavItem icon="swap-horizontal-outline" text="Transactions" />
-        <NavItem icon="notifications-outline" text="Alerts" />
-        <NavItem icon="person-outline" text="Profile" />
-      </View>
     </SafeAreaView>
   );
 }
-
-type NavItemProps = {
-  icon: keyof typeof Ionicons.glyphMap;
-  text: string;
-  active?: boolean;
-};
-
-const NavItem = ({ icon, text, active }: NavItemProps) => (
-  <TouchableOpacity style={styles.navItem}>
-    <Ionicons
-      name={icon}
-      size={22}
-      color={active ? "#157A5A" : "#7B8A8B"}
-    />
-    <Text
-      style={[
-        styles.navText,
-        active && { color: "#157A5A", fontWeight: "700" },
-      ]}
-    >
-      {text}
-    </Text>
-  </TouchableOpacity>
-);
 
 const styles = StyleSheet.create({
   container: {
@@ -442,21 +412,5 @@ const styles = StyleSheet.create({
     marginHorizontal: 22,
     marginTop: 4,
     fontWeight: "500",
-  },
-  bottomNav: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingVertical: 10,
-  },
-  navItem: {
-    alignItems: "center",
-  },
-  navText: {
-    fontSize: 11,
-    marginTop: 4,
-    color: "#7B8A8B",
   },
 });

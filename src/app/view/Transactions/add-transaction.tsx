@@ -13,11 +13,13 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTransactions } from '../../../contexts/TransactionContext';
+import { useTranslation } from '../../../hooks/use-translation';
 
 const categories = ['Income', 'Expense'] as const;
 
 export default function AddTransactionScreen() {
   const { addTransaction } = useTransactions();
+  const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -62,7 +64,7 @@ export default function AddTransactionScreen() {
             <Ionicons name="leaf" size={18} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>Add Transaction</Text>
+        <Text style={styles.headerTitle}>{t('addTransactionTitle')}</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -70,7 +72,7 @@ export default function AddTransactionScreen() {
           contentContainerStyle={styles.form}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.label}>Type</Text>
+          <Text style={styles.label}>{t('type')}</Text>
           <View style={styles.toggleRow}>
             {categories.map((cat) => (
               <TouchableOpacity
@@ -87,34 +89,34 @@ export default function AddTransactionScreen() {
                     category === cat && styles.toggleTextActive,
                   ]}
                 >
-                  {cat === 'Income' ? '💰 Income' : '💸 Expense'}
+                  {cat === 'Income' ? '💰 ' : '💸 '}{cat === 'Income' ? t('incomeType') : t('expenseType')}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={styles.label}>Title</Text>
+          <Text style={styles.label}>{t('titleLabel')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="e.g. Crop Sales"
+            placeholder={t('titlePlaceholder')}
             placeholderTextColor="#9CA3AF"
             value={title}
             onChangeText={setTitle}
           />
 
-          <Text style={styles.label}>Description (optional)</Text>
+          <Text style={styles.label}>{t('descOptional')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="e.g. Boro rice harvest"
+            placeholder={t('descPlaceholder')}
             placeholderTextColor="#9CA3AF"
             value={description}
             onChangeText={setDescription}
           />
 
-          <Text style={styles.label}>Amount (৳)</Text>
+          <Text style={styles.label}>{t('amountLabel')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="e.g. 45000"
+            placeholder={t('amountPlaceholder')}
             placeholderTextColor="#9CA3AF"
             keyboardType="decimal-pad"
             value={amount}
@@ -130,7 +132,7 @@ export default function AddTransactionScreen() {
             activeOpacity={0.8}
           >
             <Ionicons name="checkmark-circle" size={20} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={styles.saveBtnText}>Save Transaction</Text>
+            <Text style={styles.saveBtnText}>{t('saveTransaction')}</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

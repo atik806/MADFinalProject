@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useTranslation } from "../../../hooks/use-translation";
 
 type FormErrors = {
   totalLand?: string;
@@ -20,6 +21,7 @@ type FormErrors = {
 };
 
 export default function LandScreen() {
+  const { t } = useTranslation();
   const [totalLand, setTotalLand] = useState("");
   const [ownLand, setOwnLand] = useState("");
   const [leasedLand, setLeasedLand] = useState("");
@@ -41,23 +43,23 @@ export default function LandScreen() {
     const newErrors: FormErrors = {};
 
     if (!totalLand.trim()) {
-      newErrors.totalLand = "মোট জমির পরিমাণ লিখুন";
+      newErrors.totalLand = t('errTotalLandRequired');
     } else if (isNaN(Number(totalLand)) || Number(totalLand) <= 0) {
-      newErrors.totalLand = "সঠিক পরিমাণ লিখুন";
+      newErrors.totalLand = t('errTotalLandValid');
     }
 
     if (!ownLand.trim()) {
-      newErrors.ownLand = "নিজস্ব জমির পরিমাণ লিখুন";
+      newErrors.ownLand = t('errOwnLandRequired');
     } else if (isNaN(Number(ownLand)) || Number(ownLand) < 0) {
-      newErrors.ownLand = "সঠিক পরিমাণ লিখুন";
+      newErrors.ownLand = t('errOwnLandValid');
     }
 
     if (selectedCrops.length === 0) {
-      newErrors.crops = "অন্তত একটি ফসল নির্বাচন করুন";
+      newErrors.crops = t('errCropsRequired');
     }
 
     if (!location.trim()) {
-      newErrors.location = "জমির অবস্থান লিখুন";
+      newErrors.location = t('errLocationRequired');
     }
 
     setErrors(newErrors);
@@ -83,8 +85,8 @@ export default function LandScreen() {
         </View>
 
         <View>
-          <Text style={styles.title}>নতুন কৃষক নিবন্ধন</Text>
-          <Text style={styles.subtitle}>ধাপ ২ / ৫ — জমি সংক্রান্ত তথ্য</Text>
+          <Text style={styles.title}>{t('newFarmerRegistration')}</Text>
+          <Text style={styles.subtitle}>{t('step2of5')}</Text>
         </View>
       </View>
 
@@ -94,35 +96,35 @@ export default function LandScreen() {
             <View style={[styles.stepBar, styles.completedBar]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>পরিচয়</Text>
+            <Text style={styles.completedStepText}>{t('identity')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={[styles.stepBar, styles.activeBar]} />
-            <Text style={styles.activeStepText}>জমি</Text>
+            <Text style={styles.activeStepText}>{t('land')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={styles.stepBar} />
-            <Text style={styles.stepText}>আয়</Text>
+            <Text style={styles.stepText}>{t('incomeStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={styles.stepBar} />
-            <Text style={styles.stepText}>ঋণ</Text>
+            <Text style={styles.stepText}>{t('loanStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={styles.stepBar} />
-            <Text style={styles.stepText}>ছবি</Text>
+            <Text style={styles.stepText}>{t('photoStep')}</Text>
           </View>
         </View>
 
-        <Text style={styles.label}>মোট জমির পরিমাণ (শতাংশে)</Text>
+        <Text style={styles.label}>{t('totalLandLabel2')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="map-outline" size={22} color="#7B8A8B" />
           <TextInput
-            placeholder="যেমন: ৫০"
+            placeholder={t('totalLandPlaceholder2')}
             keyboardType="decimal-pad"
             style={styles.iconInput}
             value={totalLand}
@@ -131,11 +133,11 @@ export default function LandScreen() {
         </View>
         {errors.totalLand && <Text style={styles.error}>{errors.totalLand}</Text>}
 
-        <Text style={styles.label}>নিজস্ব জমি (শতাংশে)</Text>
+        <Text style={styles.label}>{t('ownLandLabel2')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="home-outline" size={22} color="#7B8A8B" />
           <TextInput
-            placeholder="যেমন: ৩০"
+            placeholder={t('ownLandPlaceholder2')}
             keyboardType="decimal-pad"
             style={styles.iconInput}
             value={ownLand}
@@ -144,11 +146,11 @@ export default function LandScreen() {
         </View>
         {errors.ownLand && <Text style={styles.error}>{errors.ownLand}</Text>}
 
-        <Text style={styles.label}>বর্গা/লীজ জমি (শতাংশে) — ঐচ্ছিক</Text>
+        <Text style={styles.label}>{t('leasedLandLabel2')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="document-outline" size={22} color="#7B8A8B" />
           <TextInput
-            placeholder="যেমন: ২০"
+            placeholder={t('leasedLandPlaceholder2')}
             keyboardType="decimal-pad"
             style={styles.iconInput}
             value={leasedLand}
@@ -156,7 +158,7 @@ export default function LandScreen() {
           />
         </View>
 
-        <Text style={styles.label}>প্রধান ফসল (অন্তত একটি নির্বাচন করুন)</Text>
+        <Text style={styles.label}>{t('selectCrops')}</Text>
         <View style={styles.cropContainer}>
           {crops.map((crop) => (
             <TouchableOpacity
@@ -181,11 +183,11 @@ export default function LandScreen() {
         </View>
         {errors.crops && <Text style={styles.error}>{errors.crops}</Text>}
 
-        <Text style={styles.label}>জমির অবস্থান (জেলা/উপজেলা)</Text>
+        <Text style={styles.label}>{t('locationLabel2')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="location-outline" size={22} color="#7B8A8B" />
           <TextInput
-            placeholder="যেমন: বগুড়া সদর, বগুড়া"
+            placeholder={t('locationPlaceholder2')}
             style={styles.iconInput}
             value={location}
             onChangeText={(t) => { setLocation(t); setErrors((p) => ({ ...p, location: undefined })); }}
@@ -194,45 +196,13 @@ export default function LandScreen() {
         {errors.location && <Text style={styles.error}>{errors.location}</Text>}
 
         <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
-          <Text style={styles.nextBtnText}>পরবর্তী ধাপ</Text>
+          <Text style={styles.nextBtnText}>{t('nextStep')}</Text>
           <Ionicons name="chevron-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </ScrollView>
-
-      <View style={styles.bottomNav}>
-        <NavItem icon="home-outline" text="Home" />
-        <NavItem icon="people-outline" text="Farmers" active />
-        <NavItem icon="swap-horizontal-outline" text="Transactions" />
-        <NavItem icon="notifications-outline" text="Alerts" />
-        <NavItem icon="person-outline" text="Profile" />
-      </View>
     </SafeAreaView>
   );
 }
-
-type NavItemProps = {
-  icon: keyof typeof Ionicons.glyphMap;
-  text: string;
-  active?: boolean;
-};
-
-const NavItem = ({ icon, text, active }: NavItemProps) => (
-  <TouchableOpacity style={styles.navItem}>
-    <Ionicons
-      name={icon}
-      size={22}
-      color={active ? "#157A5A" : "#7B8A8B"}
-    />
-    <Text
-      style={[
-        styles.navText,
-        active && { color: "#157A5A", fontWeight: "700" },
-      ]}
-    >
-      {text}
-    </Text>
-  </TouchableOpacity>
-);
 
 const styles = StyleSheet.create({
   container: {
@@ -406,21 +376,5 @@ const styles = StyleSheet.create({
     marginHorizontal: 22,
     marginTop: 4,
     fontWeight: "500",
-  },
-  bottomNav: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingVertical: 10,
-  },
-  navItem: {
-    alignItems: "center",
-  },
-  navText: {
-    fontSize: 11,
-    marginTop: 4,
-    color: "#7B8A8B",
   },
 });

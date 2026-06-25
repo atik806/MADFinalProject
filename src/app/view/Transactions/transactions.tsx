@@ -14,6 +14,7 @@ import {
   useTransactions,
   type Transaction,
 } from '../../../contexts/TransactionContext';
+import { useTranslation } from '../../../hooks/use-translation';
 
 type TabName = 'home' | 'transactions' | 'loans' | 'profile';
 
@@ -21,25 +22,23 @@ type TabDef = {
   key: TabName;
   activeIcon: keyof typeof Ionicons.glyphMap;
   inactiveIcon: keyof typeof Ionicons.glyphMap;
-  label: string;
+  labelKey: string;
 };
-
-const tabs: TabDef[] = [
-  { key: 'home', activeIcon: 'home', inactiveIcon: 'home-outline', label: 'Home' },
-  { key: 'transactions', activeIcon: 'repeat', inactiveIcon: 'repeat-outline', label: 'Transactions' },
-  { key: 'loans', activeIcon: 'wallet', inactiveIcon: 'wallet-outline', label: 'Loans' },
-  { key: 'profile', activeIcon: 'person', inactiveIcon: 'person-outline', label: 'Profile' },
-];
 
 type FilterType = 'all' | 'income' | 'expense';
 
 export default function TransactionsScreen() {
   const { transactions, removeTransaction } = useTransactions();
+  const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('transactions');
   const [filter, setFilter] = useState<FilterType>('all');
-  const [lang, setLang] = useState<'en' | 'bn'>('en');
 
-  const toggleLang = () => setLang((l) => (l === 'en' ? 'bn' : 'en'));
+  const tabs: TabDef[] = [
+    { key: 'home', activeIcon: 'home', inactiveIcon: 'home-outline', labelKey: 'home' },
+    { key: 'transactions', activeIcon: 'repeat', inactiveIcon: 'repeat-outline', labelKey: 'transactionsTab' },
+    { key: 'loans', activeIcon: 'wallet', inactiveIcon: 'wallet-outline', labelKey: 'loansTab' },
+    { key: 'profile', activeIcon: 'person', inactiveIcon: 'person-outline', labelKey: 'profileTab' },
+  ];
 
   const handleTabPress = (tab: TabName) => {
     setActiveTab(tab);
@@ -60,11 +59,11 @@ export default function TransactionsScreen() {
 
   const totalIncome = transactions
     .filter((t) => t.amount > 0)
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, tx) => sum + tx.amount, 0);
 
   const totalExpense = transactions
     .filter((t) => t.amount < 0)
-    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
   const netSavings = totalIncome - totalExpense;
 
@@ -88,7 +87,7 @@ export default function TransactionsScreen() {
             <Ionicons name="leaf" size={20} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>Transactions</Text>
+        <Text style={styles.headerTitle}>{t('transactions')}</Text>
         <View style={styles.headerIcons}>
           <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
             <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
@@ -106,14 +105,14 @@ export default function TransactionsScreen() {
         <View style={styles.summaryHero}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Total Income</Text>
+              <Text style={styles.summaryLabel}>{t('totalIncome')}</Text>
               <Text style={[styles.summaryValue, { color: '#16A34A' }]}>
                 ৳{totalIncome.toLocaleString('en-BD')}
               </Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Total Expense</Text>
+              <Text style={styles.summaryLabel}>{t('totalExpense')}</Text>
               <Text style={[styles.summaryValue, { color: '#DC2626' }]}>
                 ৳{totalExpense.toLocaleString('en-BD')}
               </Text>
@@ -121,7 +120,7 @@ export default function TransactionsScreen() {
           </View>
           <View style={styles.netRow}>
             <Feather name="bar-chart-2" size={18} color={netSavings >= 0 ? '#16A34A' : '#DC2626'} />
-            <Text style={styles.netLabel}>Net Savings (June 2024)</Text>
+            <Text style={styles.netLabel}>{t('netSavings')} (June 2024)</Text>
             <Text
               style={[
                 styles.netValue,
@@ -139,7 +138,7 @@ export default function TransactionsScreen() {
           activeOpacity={0.8}
         >
           <Ionicons name="add-circle" size={20} color="#fff" />
-          <Text style={styles.addBtnText}>Add Transaction</Text>
+          <Text style={styles.addBtnText}>{t('addTransaction')}</Text>
         </TouchableOpacity>
 
         <View style={styles.filterRow}>
@@ -166,7 +165,7 @@ export default function TransactionsScreen() {
                   filter === f && styles.filterTextActive,
                 ]}
               >
-                {f === 'all' ? 'All' : f === 'income' ? 'Income' : 'Expense'}
+                {f === 'all' ? t('all') : f === 'income' ? t('income') : t('expense')}
               </Text>
             </TouchableOpacity>
           ))}
@@ -175,8 +174,8 @@ export default function TransactionsScreen() {
         {filtered.length === 0 ? (
           <View style={styles.empty}>
             <Feather name="inbox" size={40} color="#D1D5DB" />
-            <Text style={styles.emptyText}>No transactions yet</Text>
-            <Text style={styles.emptySub}>{'Tap \u201cAdd Transaction\u201d to get started'}</Text>
+            <Text style={styles.emptyText}>{t('noTransactions')}</Text>
+            <Text style={styles.emptySub}>{t('tapToAdd')}</Text>
           </View>
         ) : (
           filtered.map((tx) => (
@@ -184,9 +183,9 @@ export default function TransactionsScreen() {
               key={tx.id}
               style={styles.txRow}
               onLongPress={() => {
-                Alert.alert('Delete Transaction', `Remove "${tx.title}"?`, [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: 'Delete', style: 'destructive', onPress: () => removeTransaction(tx.id) },
+                Alert.alert(t('deleteTransaction'), `Remove "${tx.title}"?`, [
+                  { text: t('cancel'), style: 'cancel' },
+                  { text: t('removeConfirm'), style: 'destructive', onPress: () => removeTransaction(tx.id) },
                 ]);
               }}
               activeOpacity={0.7}
@@ -249,7 +248,7 @@ export default function TransactionsScreen() {
                 />
               </View>
               <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
-                {tab.label}
+                {t(tab.labelKey as any)}
               </Text>
             </TouchableOpacity>
           );
@@ -310,6 +309,7 @@ const styles = StyleSheet.create({
   headerIcons: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
   summaryHero: {
     backgroundColor: '#fff',

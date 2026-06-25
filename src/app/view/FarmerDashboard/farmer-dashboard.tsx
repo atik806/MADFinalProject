@@ -14,6 +14,7 @@ import {
 import { router } from "expo-router";
 import { useLoans } from "../../../contexts/LoanContext";
 import { useNotifications } from "../../../contexts/NotificationContext";
+import { useTranslation } from "../../../hooks/use-translation";
 
 type TabName = "home" | "transactions" | "loans" | "profile";
 
@@ -21,23 +22,21 @@ type TabDef = {
   key: TabName;
   activeIcon: keyof typeof Ionicons.glyphMap;
   inactiveIcon: keyof typeof Ionicons.glyphMap;
-  label: string;
+  labelKey: string;
 };
-
-const tabs: TabDef[] = [
-  { key: "home", activeIcon: "home", inactiveIcon: "home-outline", label: "Home" },
-  { key: "transactions", activeIcon: "repeat", inactiveIcon: "repeat-outline", label: "Transactions" },
-  { key: "loans", activeIcon: "wallet", inactiveIcon: "wallet-outline", label: "Loans" },
-  { key: "profile", activeIcon: "person", inactiveIcon: "person-outline", label: "Profile" },
-];
 
 export default function DashboardScreen() {
   const { activeLoans } = useLoans();
   const { unreadCount } = useNotifications();
+  const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>("home");
-  const [lang, setLang] = useState<'en' | 'bn'>('en');
 
-  const toggleLang = () => setLang((l) => (l === 'en' ? 'bn' : 'en'));
+  const tabs: TabDef[] = [
+    { key: "home", activeIcon: "home", inactiveIcon: "home-outline", labelKey: "home" },
+    { key: "transactions", activeIcon: "repeat", inactiveIcon: "repeat-outline", labelKey: "transactionsTab" },
+    { key: "loans", activeIcon: "wallet", inactiveIcon: "wallet-outline", labelKey: "loansTab" },
+    { key: "profile", activeIcon: "person", inactiveIcon: "person-outline", labelKey: "profileTab" },
+  ];
 
   const handleTabPress = (tab: TabName) => {
     setActiveTab(tab);
@@ -65,7 +64,7 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        <Text style={styles.headerTitle}>Dashboard</Text>
+        <Text style={styles.headerTitle}>{t('dashboard')}</Text>
 
         <View style={styles.headerIcons}>
           <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
@@ -89,8 +88,8 @@ export default function DashboardScreen() {
         <View style={styles.heroCard}>
           <View style={styles.heroTop}>
             <View style={styles.heroInfo}>
-              <Text style={styles.welcomeLabel}>স্বাগতম / Welcome back</Text>
-              <Text style={styles.farmerName}>Mohammad Rahim</Text>
+              <Text style={styles.welcomeLabel}>{t('welcomeBack')}</Text>
+              <Text style={styles.farmerName}>{t('farmerName')}</Text>
               <View style={styles.locationRow}>
                 <Feather name="map-pin" size={14} color="#BBF7D0" />
                 <Text style={styles.locationText}>Char Fasson, Bhola</Text>
@@ -103,29 +102,29 @@ export default function DashboardScreen() {
 
           <View style={styles.scoreCard}>
             <View style={styles.scoreHeader}>
-              <Text style={styles.scoreLabel}>ক্রেডিট স্কোর / Credit Score</Text>
+              <Text style={styles.scoreLabel}>{t('creditScore')}</Text>
               <TouchableOpacity>
-                <Text style={styles.scoreDetails}>Details →</Text>
+                <Text style={styles.scoreDetails}>{t('details')} →</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.scoreRow}>
               <Text style={styles.scoreValue}>720</Text>
-              <Text style={styles.scoreRange}>out of 850</Text>
+              <Text style={styles.scoreRange}>{t('outOf')}</Text>
             </View>
             <View style={styles.scoreMeta}>
               <View style={styles.riskBadge}>
                 <View style={styles.riskDot} />
-                <Text style={styles.riskText}>Low Risk</Text>
+                <Text style={styles.riskText}>{t('lowRisk')}</Text>
               </View>
             </View>
             <View style={styles.ratingBarTrack}>
               <View style={[styles.ratingBarFill, { width: "85%" }]} />
             </View>
             <View style={styles.ratingLabels}>
-              <Text style={styles.ratingLabel}>Poor</Text>
-              <Text style={styles.ratingLabel}>Fair</Text>
-              <Text style={[styles.ratingLabel, styles.ratingLabelActive]}>Good</Text>
-              <Text style={styles.ratingLabel}>Excellent</Text>
+              <Text style={styles.ratingLabel}>{t('poor')}</Text>
+              <Text style={styles.ratingLabel}>{t('fair')}</Text>
+              <Text style={[styles.ratingLabel, styles.ratingLabelActive]}>{t('good')}</Text>
+              <Text style={styles.ratingLabel}>{t('excellent')}</Text>
             </View>
           </View>
         </View>
@@ -136,36 +135,36 @@ export default function DashboardScreen() {
               <Feather name="briefcase" size={18} color="#16A34A" />
             </View>
             <Text style={styles.statValue}>1</Text>
-            <Text style={styles.statLabel}>Active Loans</Text>
+            <Text style={styles.statLabel}>{t('activeLoans')}</Text>
           </View>
           <View style={styles.statCard}>
             <View style={[styles.statIconWrap, { backgroundColor: "#EFF6FF" }]}>
               <Feather name="trending-up" size={18} color="#2563EB" />
             </View>
             <Text style={[styles.statValue, { color: "#16A34A" }]}>৳60K</Text>
-            <Text style={styles.statLabel}>Income (Jun)</Text>
+            <Text style={styles.statLabel}>{t('income')} (Jun)</Text>
           </View>
           <View style={styles.statCard}>
             <View style={[styles.statIconWrap, { backgroundColor: "#FEF2F2" }]}>
               <Feather name="trending-down" size={18} color="#DC2626" />
             </View>
             <Text style={[styles.statValue, { color: "#DC2626" }]}>৳19K</Text>
-            <Text style={styles.statLabel}>Expense (Jun)</Text>
+            <Text style={styles.statLabel}>{t('expense')} (Jun)</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
         <View style={styles.quickCard}>
-          <ActionButton icon="trending-up" label="Add Income" color="#16A34A" onPress={() => router.push('/view/Transactions/transactions')} />
-          <ActionButton icon="trending-down" label="Add Expense" color="#DC2626" onPress={() => router.push('/view/Transactions/transactions')} />
-          <ActionButton icon="credit-card" label="Apply Loan" color="#0F766E" onPress={() => router.push('/view/Loans/loans')} />
-          <ActionButton icon="user" label="My Profile" color="#7C3AED" onPress={() => router.push('/view/Profile/profile')} />
+          <ActionButton icon="trending-up" label={t('addIncome')} color="#16A34A" onPress={() => router.push('/view/Transactions/transactions')} />
+          <ActionButton icon="trending-down" label={t('addExpense')} color="#DC2626" onPress={() => router.push('/view/Transactions/transactions')} />
+          <ActionButton icon="credit-card" label={t('applyLoan')} color="#0F766E" onPress={() => router.push('/view/Loans/loans')} />
+          <ActionButton icon="user" label={t('myProfile')} color="#7C3AED" onPress={() => router.push('/view/Profile/profile')} />
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Active Loan</Text>
+          <Text style={styles.sectionTitle}>{t('activeLoan')}</Text>
           <TouchableOpacity onPress={() => router.push('/view/Loans/loans')}>
-            <Text style={styles.viewAll}>View All</Text>
+            <Text style={styles.viewAll}>{t('viewAll')}</Text>
           </TouchableOpacity>
         </View>
         {activeLoans.length > 0 ? (
@@ -177,33 +176,33 @@ export default function DashboardScreen() {
                 </View>
                 <View>
                   <Text style={styles.loanTitle}>{activeLoans[0].title}</Text>
-                  <Text style={styles.loanRef}>{activeLoans[0].id} · Approved {activeLoans[0].date}</Text>
+                  <Text style={styles.loanRef}>{activeLoans[0].id} · {t('approved')} {activeLoans[0].date}</Text>
                 </View>
               </View>
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>ACTIVE</Text>
+                <Text style={styles.badgeText}>{t('active')}</Text>
               </View>
             </View>
 
             <View style={styles.loanDivider} />
 
             <View style={styles.loanDetails}>
-              <InfoItem title="Loan Amount" value={`৳${activeLoans[0].amount.toLocaleString('en-BD')}`} />
-              <InfoItem title="Interest" value={activeLoans[0].interest} />
-              <InfoItem title="Duration" value={activeLoans[0].duration} />
-              <InfoItem title="Monthly EMI" value={`৳${activeLoans[0].emi.toLocaleString('en-BD')}`} />
+              <InfoItem title={t('loanAmount')} value={`৳${activeLoans[0].amount.toLocaleString('en-BD')}`} />
+              <InfoItem title={t('interest')} value={activeLoans[0].interest} />
+              <InfoItem title={t('duration')} value={activeLoans[0].duration} />
+              <InfoItem title={t('monthlyEMI')} value={`৳${activeLoans[0].emi.toLocaleString('en-BD')}`} />
             </View>
 
             <View style={styles.loanDivider} />
 
             <View style={styles.nextPayment}>
               <View>
-                <Text style={styles.nextLabel}>Next Payment Due</Text>
+                <Text style={styles.nextLabel}>{t('nextPaymentDue')}</Text>
                 <Text style={styles.nextDate}>{activeLoans[0].nextPaymentDate}</Text>
               </View>
               <View style={styles.nextAmountWrap}>
                 <Text style={styles.nextAmount}>৳{activeLoans[0].nextPaymentAmount.toLocaleString('en-BD')}</Text>
-                <Text style={styles.nextSub}>EMI</Text>
+                <Text style={styles.nextSub}>{t('emi')}</Text>
               </View>
             </View>
 
@@ -211,7 +210,7 @@ export default function DashboardScreen() {
 
             <View style={styles.progressSection}>
               <View style={styles.progressHeader}>
-                <Text style={styles.progressLabel}>Repayment Progress</Text>
+                <Text style={styles.progressLabel}>{t('repaymentProgress')}</Text>
                 <Text style={styles.progressPercent}>{activeLoans[0].progress}%</Text>
               </View>
               <View style={styles.progressBar}>
@@ -219,10 +218,10 @@ export default function DashboardScreen() {
               </View>
               <View style={styles.progressMeta}>
                 <Text style={styles.installments}>
-                  {activeLoans[0].installmentsPaid} of {activeLoans[0].installmentsTotal} installments paid
+                  {activeLoans[0].installmentsPaid} of {activeLoans[0].installmentsTotal} {t('installmentsPaid')}
                 </Text>
                 <Text style={styles.remaining}>
-                  {activeLoans[0].installmentsTotal - activeLoans[0].installmentsPaid} remaining
+                  {activeLoans[0].installmentsTotal - activeLoans[0].installmentsPaid} {t('remaining')}
                 </Text>
               </View>
             </View>
@@ -230,14 +229,14 @@ export default function DashboardScreen() {
         ) : (
           <View style={styles.emptyLoan}>
             <Feather name="briefcase" size={32} color="#D1D5DB" />
-            <Text style={styles.emptyLoanText}>No active loans</Text>
+            <Text style={styles.emptyLoanText}>{t('noActiveLoans')}</Text>
           </View>
         )}
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Transactions</Text>
+          <Text style={styles.sectionTitle}>{t('recentTransactions')}</Text>
           <TouchableOpacity>
-            <Text style={styles.viewAll}>See All</Text>
+            <Text style={styles.viewAll}>{t('seeAll')}</Text>
           </TouchableOpacity>
         </View>
         <TransactionRow title="Crop Sales" date="18 Jun 2024" amount="+৳45K" positive />
@@ -246,9 +245,9 @@ export default function DashboardScreen() {
         <TransactionRow title="Labor" date="8 Jun 2024" amount="-৳6K" />
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Notifications</Text>
+          <Text style={styles.sectionTitle}>{t('notifications')}</Text>
           <TouchableOpacity>
-            <Text style={styles.viewAll}>View All</Text>
+            <Text style={styles.viewAll}>{t('viewAll')}</Text>
           </TouchableOpacity>
         </View>
         <NotificationItem
@@ -299,7 +298,7 @@ export default function DashboardScreen() {
                 />
               </View>
               <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
-                {tab.label}
+                {t(tab.labelKey as any)}
               </Text>
             </TouchableOpacity>
           );
@@ -452,6 +451,7 @@ const styles = StyleSheet.create({
   headerIcons: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 10,
   },
   heroCard: {
     backgroundColor: "#006847",
@@ -795,7 +795,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   progressFill: {
-    width: "25%",
     height: 10,
     backgroundColor: "#22C55E",
     borderRadius: 10,

@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useProfile } from '../../../contexts/ProfileContext';
+import { useTranslation } from '../../../hooks/use-translation';
 
 type TabName = 'home' | 'transactions' | 'loans' | 'profile';
 
@@ -18,23 +19,21 @@ type TabDef = {
   key: TabName;
   activeIcon: keyof typeof Ionicons.glyphMap;
   inactiveIcon: keyof typeof Ionicons.glyphMap;
-  label: string;
+  labelKey: string;
 };
-
-const tabs: TabDef[] = [
-  { key: 'home', activeIcon: 'home', inactiveIcon: 'home-outline', label: 'Home' },
-  { key: 'transactions', activeIcon: 'repeat', inactiveIcon: 'repeat-outline', label: 'Transactions' },
-  { key: 'loans', activeIcon: 'wallet', inactiveIcon: 'wallet-outline', label: 'Loans' },
-  { key: 'profile', activeIcon: 'person', inactiveIcon: 'person-outline', label: 'Profile' },
-];
 
 export default function ProfileScreen() {
   const { logout } = useAuth();
   const { profile } = useProfile();
+  const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('profile');
-  const [lang, setLang] = useState<'en' | 'bn'>('en');
 
-  const toggleLang = () => setLang((l) => (l === 'en' ? 'bn' : 'en'));
+  const tabs: TabDef[] = [
+    { key: 'home', activeIcon: 'home', inactiveIcon: 'home-outline', labelKey: 'home' },
+    { key: 'transactions', activeIcon: 'repeat', inactiveIcon: 'repeat-outline', labelKey: 'transactionsTab' },
+    { key: 'loans', activeIcon: 'wallet', inactiveIcon: 'wallet-outline', labelKey: 'loansTab' },
+    { key: 'profile', activeIcon: 'person', inactiveIcon: 'person-outline', labelKey: 'profileTab' },
+  ];
 
   const handleTabPress = (tab: TabName) => {
     setActiveTab(tab);
@@ -66,7 +65,7 @@ export default function ProfileScreen() {
             <Ionicons name="leaf" size={20} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>My Profile</Text>
+        <Text style={styles.headerTitle}>{t('myProfileTitle')}</Text>
         <View style={styles.headerIcons}>
           <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
             <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
@@ -84,66 +83,71 @@ export default function ProfileScreen() {
         <View style={styles.heroCard}>
           <View style={styles.heroTop}>
             <View style={styles.heroInfo}>
-              <Text style={styles.farmerName}>{profile.nameEn}</Text>
-              <Text style={styles.farmerId}>Farmer ID: {profile.farmerId}</Text>
+              <Text style={styles.farmerName}>{lang === 'bn' && profile.nameBn ? profile.nameBn : profile.nameEn}</Text>
+              <Text style={styles.farmerId}>{t('farmerId')}: {profile.farmerId}</Text>
             </View>
             <View style={styles.verifiedBadge}>
               <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
-              <Text style={styles.verifiedText}>verified</Text>
+              <Text style={styles.verifiedText}>{t('verified')}</Text>
             </View>
           </View>
 
           <View style={styles.heroStats}>
             <View style={styles.heroStat}>
               <Text style={styles.heroStatValue}>{profile.creditScore}</Text>
-              <Text style={styles.heroStatLabel}>Credit Score</Text>
+              <Text style={styles.heroStatLabel}>{t('creditScoreLabel')}</Text>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{profile.farmSize} ac</Text>
-              <Text style={styles.heroStatLabel}>Farm Size</Text>
+              <Text style={styles.heroStatValue}>{profile.farmSize} {t('ac')}</Text>
+              <Text style={styles.heroStatLabel}>{t('farmSize')}</Text>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{profile.experience} yr</Text>
-              <Text style={styles.heroStatLabel}>Experience</Text>
+              <Text style={styles.heroStatValue}>{profile.experience} {t('yr')}</Text>
+              <Text style={styles.heroStatLabel}>{t('experience')}</Text>
             </View>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Personal Information</Text>
+        <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/view/Profile/edit-profile')}>
+          <Ionicons name="pencil" size={16} color="#fff" />
+          <Text style={styles.editBtnText}>{t('editProfile')}</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.sectionTitle}>{t('personalInfo')}</Text>
         <View style={styles.infoCard}>
-          <ProfileRow label="Full Name" value={profile.nameEn} />
-          <ProfileRow label="National ID" value={profile.nid} />
-          <ProfileRow label="Date of Birth" value={profile.dob} />
-          <ProfileRow label="Gender" value={profile.gender} />
-          <ProfileRow label="Phone" value={profile.phone} />
-          <ProfileRow label="Address" value="" last />
-          <AddressLine label="Village" value={profile.village} />
-          <AddressLine label="Union" value={profile.union} />
-          <AddressLine label="Upazila" value={profile.upazila} />
-          <AddressLine label="District" value={profile.district} last />
+          <ProfileRow label={t('fullName')} value={lang === 'bn' && profile.nameBn ? profile.nameBn : profile.nameEn} />
+          <ProfileRow label={t('nationalId')} value={profile.nid} />
+          <ProfileRow label={t('dateOfBirth')} value={profile.dob} />
+          <ProfileRow label={t('gender')} value={profile.gender} />
+          <ProfileRow label={t('phone')} value={profile.phone} />
+          <ProfileRow label={t('address')} value="" last />
+          <AddressLine label={t('village')} value={profile.village} />
+          <AddressLine label={t('union')} value={profile.union} />
+          <AddressLine label={t('upazila')} value={profile.upazila} />
+          <AddressLine label={t('district')} value={profile.district} last />
         </View>
 
-        <Text style={styles.sectionTitle}>Farm Details</Text>
+        <Text style={styles.sectionTitle}>{t('farmDetails')}</Text>
         <View style={styles.infoCard}>
-          <ProfileRow label="Land Size" value={`${profile.farmSize} acres`} />
-          <ProfileRow label="Ownership" value={profile.ownership} />
-          <ProfileRow label="Primary Crop" value={profile.primaryCrop} />
-          <ProfileRow label="Secondary Crop" value={profile.secondaryCrop} />
-          <ProfileRow label="Crop Diversity" value={profile.cropDiversity} last />
+          <ProfileRow label={t('landSize')} value={`${profile.farmSize} ${t('acres')}`} />
+          <ProfileRow label={t('ownership')} value={profile.ownership} />
+          <ProfileRow label={t('primaryCrop')} value={profile.primaryCrop} />
+          <ProfileRow label={t('secondaryCrop')} value={profile.secondaryCrop} />
+          <ProfileRow label={t('cropDiversity')} value={profile.cropDiversity} last />
         </View>
 
-        <Text style={styles.sectionTitle}>Documents</Text>
+        <Text style={styles.sectionTitle}>{t('documentsTitle')}</Text>
         <View style={styles.infoCard}>
-          <DocRow label="National ID Card" uploaded={!!profile.nidPhoto} />
-          <DocRow label="Land Records" uploaded={!!profile.landPhoto} />
-          <DocRow label="Farm Photographs" uploaded={false} last />
+          <DocRow label={t('nidCard')} uploaded={!!profile.nidPhoto} />
+          <DocRow label={t('landRecords')} uploaded={!!profile.landPhoto} />
+          <DocRow label={t('farmPhotographs')} uploaded={false} last />
         </View>
 
         <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={20} color="#DC2626" />
-          <Text style={styles.signOutText}>Sign Out / Switch Role</Text>
+          <Text style={styles.signOutText}>{t('signOut')}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -165,7 +169,7 @@ export default function ProfileScreen() {
                 />
               </View>
               <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
-                {tab.label}
+                {t(tab.labelKey as any)}
               </Text>
             </TouchableOpacity>
           );
@@ -258,8 +262,8 @@ const styles = StyleSheet.create({
   headerIcons: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
-
   heroCard: {
     backgroundColor: '#006847',
     borderRadius: 20,
@@ -324,7 +328,21 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 4,
   },
-
+  editBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#006847',
+    marginTop: 16,
+    gap: 6,
+  },
+  editBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -332,7 +350,6 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 10,
   },
-
   infoCard: {
     backgroundColor: '#fff',
     borderRadius: 18,
@@ -362,7 +379,6 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     maxWidth: '55%',
   },
-
   addressRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -383,7 +399,6 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     fontWeight: '600',
   },
-
   docRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -417,7 +432,6 @@ const styles = StyleSheet.create({
   docStatusTextUploaded: {
     color: '#16A34A',
   },
-
   signOutBtn: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -435,7 +449,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#DC2626',
   },
-
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',

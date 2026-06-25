@@ -12,6 +12,7 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useProfile } from '../../../contexts/ProfileContext';
+import { useTranslation } from '../../../hooks/use-translation';
 
 const CROPS = ['ধান', 'পাট', 'গম', 'আলু', 'পেঁয়াজ', 'সবজি', 'চা', 'আম'];
 const INCOME_SOURCES = ['কৃষি শ্রমিক', 'ছোট ব্যবসা', 'চাকরি', 'অন্যান্য'];
@@ -19,6 +20,7 @@ const GENDERS = ['পুরুষ', 'মহিলা', 'অন্যান্য
 
 export default function EditProfileScreen() {
   const { profile, updateProfile } = useProfile();
+  const { t } = useTranslation();
 
   const [nameBn, setNameBn] = useState(profile.nameBn);
   const [nameEn, setNameEn] = useState(profile.nameEn);
@@ -76,8 +78,8 @@ export default function EditProfileScreen() {
       loanPurpose: hasLoan ? loanPurpose : '',
       loanSource: hasLoan ? loanSource : '',
     });
-    Alert.alert('Saved', 'Your profile has been updated.', [
-      { text: 'OK', onPress: () => router.back() },
+    Alert.alert(t('saved'), t('profileSaved'), [
+      { text: t('ok'), onPress: () => router.back() },
     ]);
   };
 
@@ -92,7 +94,7 @@ export default function EditProfileScreen() {
             <Ionicons name="leaf" size={18} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <Text style={styles.headerTitle}>{t('editProfile')}</Text>
         <View style={styles.headerRight} />
       </View>
 
@@ -100,25 +102,25 @@ export default function EditProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <Text style={styles.sectionLabel}>ব্যক্তিগত তথ্য / Personal Info</Text>
+        <Text style={styles.sectionLabel}>{t('personalInfoSection')}</Text>
 
-        <Text style={styles.label}>পূর্ণ নাম (বাংলায়)</Text>
+        <Text style={styles.label}>{t('nameBnLabel')}</Text>
         <TextInput
           style={styles.input}
           value={nameBn}
           onChangeText={setNameBn}
-          placeholder="যেমন: মোঃ আব্দুল করিম"
+          placeholder={t('nameBnPlaceholder')}
         />
 
-        <Text style={styles.label}>FULL NAME (ENGLISH)</Text>
+        <Text style={styles.label}>{t('nameEnLabel')}</Text>
         <TextInput
           style={styles.input}
           value={nameEn}
           onChangeText={setNameEn}
-          placeholder="e.g. Md. Abdul Karim"
+          placeholder={t('nameEnPlaceholder')}
         />
 
-        <Text style={styles.label}>NID</Text>
+        <Text style={styles.label}>{t('nidLabel')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="document-text-outline" size={20} color="#7B8A8B" />
           <TextInput
@@ -126,11 +128,11 @@ export default function EditProfileScreen() {
             value={nid}
             onChangeText={setNid}
             keyboardType="number-pad"
-            placeholder="১০ বা ১৭ সংখ্যা"
+            placeholder={t('nidPlaceholder')}
           />
         </View>
 
-        <Text style={styles.label}>মোবাইল নম্বর / Phone</Text>
+        <Text style={styles.label}>{t('phoneLabel2')}</Text>
         <View style={styles.phoneContainer}>
           <View style={styles.countryCode}>
             <Text style={styles.countryCodeText}>+880</Text>
@@ -140,22 +142,22 @@ export default function EditProfileScreen() {
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
-            placeholder="1XXXXXXXXX"
+            placeholder={t('phonePlaceholder2')}
           />
         </View>
 
-        <Text style={styles.label}>জন্ম তারিখ / DOB</Text>
+        <Text style={styles.label}>{t('dobLabel')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="calendar-outline" size={20} color="#7B8A8B" />
           <TextInput
             style={styles.iconInput}
             value={dob}
             onChangeText={setDob}
-            placeholder="mm/dd/yyyy"
+            placeholder={t('dobPlaceholder')}
           />
         </View>
 
-        <Text style={styles.label}>লিঙ্গ / Gender</Text>
+        <Text style={styles.label}>{t('genderLabel')}</Text>
         <View style={styles.genderRow}>
           {GENDERS.map((item) => (
             <TouchableOpacity
@@ -171,9 +173,9 @@ export default function EditProfileScreen() {
         </View>
 
         <View style={styles.divider} />
-        <Text style={styles.sectionLabel}>জমি ও ফসল / Land & Crops</Text>
+        <Text style={styles.sectionLabel}>{t('landCropsSection')}</Text>
 
-        <Text style={styles.label}>মোট জমি / Total Land (শতাংশ)</Text>
+        <Text style={styles.label}>{t('totalLandLabel')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="map-outline" size={20} color="#7B8A8B" />
           <TextInput
@@ -181,11 +183,11 @@ export default function EditProfileScreen() {
             value={totalLand}
             onChangeText={setTotalLand}
             keyboardType="decimal-pad"
-            placeholder="যেমন: ৫০"
+            placeholder={t('totalLandPlaceholder')}
           />
         </View>
 
-        <Text style={styles.label}>নিজস্ব জমি / Own Land (শতাংশ)</Text>
+        <Text style={styles.label}>{t('ownLandLabel')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="home-outline" size={20} color="#7B8A8B" />
           <TextInput
@@ -193,11 +195,11 @@ export default function EditProfileScreen() {
             value={ownLand}
             onChangeText={setOwnLand}
             keyboardType="decimal-pad"
-            placeholder="যেমন: ৩০"
+            placeholder={t('ownLandPlaceholder')}
           />
         </View>
 
-        <Text style={styles.label}>লীজ জমি / Leased Land (শতাংশ)</Text>
+        <Text style={styles.label}>{t('leasedLandLabel')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="document-outline" size={20} color="#7B8A8B" />
           <TextInput
@@ -205,11 +207,11 @@ export default function EditProfileScreen() {
             value={leasedLand}
             onChangeText={setLeasedLand}
             keyboardType="decimal-pad"
-            placeholder="যেমন: ২০"
+            placeholder={t('leasedLandPlaceholder')}
           />
         </View>
 
-        <Text style={styles.label}>প্রধান ফসল / Main Crops</Text>
+        <Text style={styles.label}>{t('mainCropsLabel')}</Text>
         <View style={styles.chipContainer}>
           {CROPS.map((crop) => (
             <TouchableOpacity
@@ -224,21 +226,21 @@ export default function EditProfileScreen() {
           ))}
         </View>
 
-        <Text style={styles.label}>অবস্থান / Location</Text>
+        <Text style={styles.label}>{t('locationLabel')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="location-outline" size={20} color="#7B8A8B" />
           <TextInput
             style={styles.iconInput}
             value={location}
             onChangeText={setLocation}
-            placeholder="যেমন: বগুড়া সদর, বগুড়া"
+            placeholder={t('locationPlaceholder')}
           />
         </View>
 
         <View style={styles.divider} />
-        <Text style={styles.sectionLabel}>আয় / Income</Text>
+        <Text style={styles.sectionLabel}>{t('incomeSection')}</Text>
 
-        <Text style={styles.label}>বার্ষিক কৃষি আয় / Annual Farming (টাকা)</Text>
+        <Text style={styles.label}>{t('annualFarmingLabel')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="cash-outline" size={20} color="#7B8A8B" />
           <TextInput
@@ -246,11 +248,11 @@ export default function EditProfileScreen() {
             value={farmingIncome}
             onChangeText={setFarmingIncome}
             keyboardType="decimal-pad"
-            placeholder="যেমন: ১০০০০০"
+            placeholder={t('annualFarmingPlaceholder')}
           />
         </View>
 
-        <Text style={styles.label}>অন্যান্য আয়ের উৎস / Other Sources</Text>
+        <Text style={styles.label}>{t('otherSourcesLabel')}</Text>
         <View style={styles.chipContainer}>
           {INCOME_SOURCES.map((source) => (
             <TouchableOpacity
@@ -265,7 +267,7 @@ export default function EditProfileScreen() {
           ))}
         </View>
 
-        <Text style={styles.label}>অন্যান্য আয় / Other Income (টাকা)</Text>
+        <Text style={styles.label}>{t('otherIncomeLabel')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="wallet-outline" size={20} color="#7B8A8B" />
           <TextInput
@@ -273,11 +275,11 @@ export default function EditProfileScreen() {
             value={otherIncome}
             onChangeText={setOtherIncome}
             keyboardType="decimal-pad"
-            placeholder="যেমন: ৫০০০০"
+            placeholder={t('otherIncomePlaceholder')}
           />
         </View>
 
-        <Text style={styles.label}>পরিবারের সদস্য / Family Members</Text>
+        <Text style={styles.label}>{t('familyLabel')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="people-outline" size={20} color="#7B8A8B" />
           <TextInput
@@ -285,23 +287,23 @@ export default function EditProfileScreen() {
             value={familyMembers}
             onChangeText={setFamilyMembers}
             keyboardType="number-pad"
-            placeholder="যেমন: ৪"
+            placeholder={t('familyPlaceholder')}
           />
         </View>
 
-        <Text style={styles.label}>পেশা / Occupation</Text>
+        <Text style={styles.label}>{t('occupationLabel')}</Text>
         <View style={styles.inputIcon}>
           <Ionicons name="briefcase-outline" size={20} color="#7B8A8B" />
           <TextInput
             style={styles.iconInput}
             value={occupation}
             onChangeText={setOccupation}
-            placeholder="যেমন: কৃষি"
+            placeholder={t('occupationPlaceholder')}
           />
         </View>
 
         <View style={styles.divider} />
-        <Text style={styles.sectionLabel}>ঋণ / Loan Info</Text>
+        <Text style={styles.sectionLabel}>{t('loanInfoSection')}</Text>
 
         <View style={styles.radioRow}>
           <TouchableOpacity
@@ -314,7 +316,7 @@ export default function EditProfileScreen() {
               color={hasLoan === true ? '#157A5A' : '#7B8A8B'}
             />
             <Text style={[styles.radioText, hasLoan === true && styles.radioTextActive]}>
-              হ্যাঁ / Yes
+              {t('yes')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -327,14 +329,14 @@ export default function EditProfileScreen() {
               color={hasLoan === false ? '#157A5A' : '#7B8A8B'}
             />
             <Text style={[styles.radioText, hasLoan === false && styles.radioTextActive]}>
-              না / No
+              {t('no')}
             </Text>
           </TouchableOpacity>
         </View>
 
         {hasLoan && (
           <>
-            <Text style={styles.label}>ঋণের পরিমাণ / Loan Amount (টাকা)</Text>
+            <Text style={styles.label}>{t('loanAmountLabel2')}</Text>
             <View style={styles.inputIcon}>
               <Ionicons name="trending-down-outline" size={20} color="#7B8A8B" />
               <TextInput
@@ -342,29 +344,29 @@ export default function EditProfileScreen() {
                 value={loanAmount}
                 onChangeText={setLoanAmount}
                 keyboardType="decimal-pad"
-                placeholder="যেমন: ৫০০০০"
+                placeholder={t('loanAmountPlaceholder')}
               />
             </View>
 
-            <Text style={styles.label}>ঋণের উদ্দেশ্য / Purpose</Text>
+            <Text style={styles.label}>{t('purposeLabel')}</Text>
             <View style={styles.inputIcon}>
               <Ionicons name="flag-outline" size={20} color="#7B8A8B" />
               <TextInput
                 style={styles.iconInput}
                 value={loanPurpose}
                 onChangeText={setLoanPurpose}
-                placeholder="যেমন: কৃষি কাজ"
+                placeholder={t('purposePlaceholder')}
               />
             </View>
 
-            <Text style={styles.label}>ঋণের উৎস / Source</Text>
+            <Text style={styles.label}>{t('sourceLabel')}</Text>
             <View style={styles.inputIcon}>
               <Ionicons name="business-outline" size={20} color="#7B8A8B" />
               <TextInput
                 style={styles.iconInput}
                 value={loanSource}
                 onChangeText={setLoanSource}
-                placeholder="যেমন: ব্যাংক"
+                placeholder={t('sourcePlaceholder')}
               />
             </View>
           </>
@@ -372,7 +374,7 @@ export default function EditProfileScreen() {
 
         <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.8}>
           <Ionicons name="checkmark-circle" size={22} color="#fff" />
-          <Text style={styles.saveBtnText}>Save Changes</Text>
+          <Text style={styles.saveBtnText}>{t('saveChanges')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -380,7 +382,7 @@ export default function EditProfileScreen() {
           onPress={() => router.back()}
           activeOpacity={0.8}
         >
-          <Text style={styles.cancelBtnText}>Cancel</Text>
+          <Text style={styles.cancelBtnText}>{t('cancel')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

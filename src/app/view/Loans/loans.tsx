@@ -10,6 +10,7 @@ import {
 import { router } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLoans, type LoanApplication, type ActiveLoan } from '../../../contexts/LoanContext';
+import { useTranslation } from '../../../hooks/use-translation';
 
 type TabName = 'home' | 'transactions' | 'loans' | 'profile';
 type LoansTab = 'active' | 'applications';
@@ -18,30 +19,28 @@ type TabDef = {
   key: TabName;
   activeIcon: keyof typeof Ionicons.glyphMap;
   inactiveIcon: keyof typeof Ionicons.glyphMap;
-  label: string;
+  labelKey: string;
 };
 
-const tabs: TabDef[] = [
-  { key: 'home', activeIcon: 'home', inactiveIcon: 'home-outline', label: 'Home' },
-  { key: 'transactions', activeIcon: 'repeat', inactiveIcon: 'repeat-outline', label: 'Transactions' },
-  { key: 'loans', activeIcon: 'wallet', inactiveIcon: 'wallet-outline', label: 'Loans' },
-  { key: 'profile', activeIcon: 'person', inactiveIcon: 'person-outline', label: 'Profile' },
-];
-
-const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-  pending: { label: 'Pending', color: '#D97706', bg: '#FFFBEB' },
-  under_review: { label: 'Under Review', color: '#2563EB', bg: '#EFF6FF' },
-  approved: { label: 'Approved', color: '#16A34A', bg: '#ECFDF5' },
-  rejected: { label: 'Rejected', color: '#DC2626', bg: '#FEF2F2' },
+const statusConfig: Record<string, { labelKey: string; color: string; bg: string }> = {
+  pending: { labelKey: 'pending', color: '#D97706', bg: '#FFFBEB' },
+  under_review: { labelKey: 'underReview', color: '#2563EB', bg: '#EFF6FF' },
+  approved: { labelKey: 'approved', color: '#16A34A', bg: '#ECFDF5' },
+  rejected: { labelKey: 'rejected', color: '#DC2626', bg: '#FEF2F2' },
 };
 
 export default function LoansScreen() {
   const { applications, activeLoans } = useLoans();
+  const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('loans');
   const [loansTab, setLoansTab] = useState<LoansTab>('active');
-  const [lang, setLang] = useState<'en' | 'bn'>('en');
 
-  const toggleLang = () => setLang((l) => (l === 'en' ? 'bn' : 'en'));
+  const tabs: TabDef[] = [
+    { key: 'home', activeIcon: 'home', inactiveIcon: 'home-outline', labelKey: 'home' },
+    { key: 'transactions', activeIcon: 'repeat', inactiveIcon: 'repeat-outline', labelKey: 'transactionsTab' },
+    { key: 'loans', activeIcon: 'wallet', inactiveIcon: 'wallet-outline', labelKey: 'loansTab' },
+    { key: 'profile', activeIcon: 'person', inactiveIcon: 'person-outline', labelKey: 'profileTab' },
+  ];
 
   const handleTabPress = (tab: TabName) => {
     setActiveTab(tab);
@@ -73,7 +72,7 @@ export default function LoansScreen() {
             <Ionicons name="leaf" size={20} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>My Loans</Text>
+        <Text style={styles.headerTitle}>{t('myLoans')}</Text>
         <View style={styles.headerIcons}>
           <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
             <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
@@ -92,12 +91,12 @@ export default function LoansScreen() {
           <View style={styles.summaryCard}>
             <Feather name="briefcase" size={18} color="#16A34A" />
             <Text style={styles.summaryValue}>৳{totalActiveAmount.toLocaleString('en-BD')}</Text>
-            <Text style={styles.summaryLabel}>Active Loans</Text>
+            <Text style={styles.summaryLabel}>{t('activeLoans')}</Text>
           </View>
           <View style={styles.summaryCard}>
             <Feather name="clock" size={18} color="#D97706" />
             <Text style={styles.summaryValue}>৳{totalPendingAmount.toLocaleString('en-BD')}</Text>
-            <Text style={styles.summaryLabel}>Pending Approval</Text>
+            <Text style={styles.summaryLabel}>{t('pendingApproval')}</Text>
           </View>
         </View>
 
@@ -107,7 +106,7 @@ export default function LoansScreen() {
           activeOpacity={0.8}
         >
           <Ionicons name="add-circle" size={20} color="#fff" />
-          <Text style={styles.applyBtnText}>Apply for New Loan</Text>
+          <Text style={styles.applyBtnText}>{t('applyForNewLoan')}</Text>
         </TouchableOpacity>
 
         <View style={styles.tabRow}>
@@ -116,7 +115,7 @@ export default function LoansScreen() {
             onPress={() => setLoansTab('active')}
           >
             <Text style={[styles.tabText, loansTab === 'active' && styles.tabTextActive]}>
-              My Loans {activeLoans.length > 0 && `(${activeLoans.length})`}
+              {t('myLoansTab')} {activeLoans.length > 0 && `(${activeLoans.length})`}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -124,7 +123,7 @@ export default function LoansScreen() {
             onPress={() => setLoansTab('applications')}
           >
             <Text style={[styles.tabText, loansTab === 'applications' && styles.tabTextActive]}>
-              My Loan Applications {applications.length > 0 && `(${applications.length})`}
+              {t('myApplications')} {applications.length > 0 && `(${applications.length})`}
             </Text>
           </TouchableOpacity>
         </View>
@@ -133,24 +132,24 @@ export default function LoansScreen() {
           activeLoans.length === 0 ? (
             <View style={styles.empty}>
               <Feather name="briefcase" size={40} color="#D1D5DB" />
-              <Text style={styles.emptyText}>No active loans</Text>
-              <Text style={styles.emptySub}>Apply for a loan to get started</Text>
+              <Text style={styles.emptyText}>{t('noActiveLoans')}</Text>
+              <Text style={styles.emptySub}>{t('applyFirst')}</Text>
             </View>
           ) : (
             activeLoans.map((loan) => (
-              <ActiveLoanCard key={loan.id} loan={loan} />
+              <ActiveLoanCard key={loan.id} loan={loan} t={t} />
             ))
           )
         ) : (
           applications.length === 0 ? (
             <View style={styles.empty}>
               <Feather name="file-text" size={40} color="#D1D5DB" />
-              <Text style={styles.emptyText}>No applications yet</Text>
-              <Text style={styles.emptySub}>Apply for your first loan</Text>
+              <Text style={styles.emptyText}>{t('noApplications')}</Text>
+              <Text style={styles.emptySub}>{t('applyFirst')}</Text>
             </View>
           ) : (
             applications.map((app) => (
-              <ApplicationCard key={app.id} app={app} />
+              <ApplicationCard key={app.id} app={app} t={t} />
             ))
           )
         )}
@@ -174,7 +173,7 @@ export default function LoansScreen() {
                 />
               </View>
               <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
-                {tab.label}
+                {t(tab.labelKey as any)}
               </Text>
             </TouchableOpacity>
           );
@@ -184,7 +183,7 @@ export default function LoansScreen() {
   );
 }
 
-function ActiveLoanCard({ loan }: { loan: ActiveLoan }) {
+function ActiveLoanCard({ loan, t }: { loan: ActiveLoan; t: (key: any) => string }) {
   return (
     <View style={styles.loanCard}>
       <View style={styles.loanTop}>
@@ -194,33 +193,33 @@ function ActiveLoanCard({ loan }: { loan: ActiveLoan }) {
           </View>
           <View>
             <Text style={styles.loanTitle}>{loan.title}</Text>
-            <Text style={styles.loanRef}>{loan.id} · Approved {loan.date}</Text>
+            <Text style={styles.loanRef}>{loan.id} · {t('approved')} {loan.date}</Text>
           </View>
         </View>
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>ACTIVE</Text>
+          <Text style={styles.badgeText}>{t('active')}</Text>
         </View>
       </View>
 
       <View style={styles.loanDivider} />
 
       <View style={styles.loanDetails}>
-        <InfoItem title="Loan Amount" value={`৳${loan.amount.toLocaleString('en-BD')}`} />
-        <InfoItem title="Interest" value={loan.interest} />
-        <InfoItem title="Duration" value={loan.duration} />
-        <InfoItem title="Monthly EMI" value={`৳${loan.emi.toLocaleString('en-BD')}`} />
+        <InfoItem title={t('loanAmount')} value={`৳${loan.amount.toLocaleString('en-BD')}`} />
+        <InfoItem title={t('interest')} value={loan.interest} />
+        <InfoItem title={t('duration')} value={loan.duration} />
+        <InfoItem title={t('monthlyEMI')} value={`৳${loan.emi.toLocaleString('en-BD')}`} />
       </View>
 
       <View style={styles.loanDivider} />
 
       <View style={styles.nextPayment}>
         <View>
-          <Text style={styles.nextLabel}>Next Payment Due</Text>
+          <Text style={styles.nextLabel}>{t('nextPaymentDue')}</Text>
           <Text style={styles.nextDate}>{loan.nextPaymentDate}</Text>
         </View>
         <View style={styles.nextAmountWrap}>
           <Text style={styles.nextAmount}>৳{loan.nextPaymentAmount.toLocaleString('en-BD')}</Text>
-          <Text style={styles.nextSub}>EMI</Text>
+          <Text style={styles.nextSub}>{t('emi')}</Text>
         </View>
       </View>
 
@@ -228,7 +227,7 @@ function ActiveLoanCard({ loan }: { loan: ActiveLoan }) {
 
       <View style={styles.progressSection}>
         <View style={styles.progressHeader}>
-          <Text style={styles.progressLabel}>Repayment Progress</Text>
+          <Text style={styles.progressLabel}>{t('repaymentProgress')}</Text>
           <Text style={styles.progressPercent}>{loan.progress}%</Text>
         </View>
         <View style={styles.progressBar}>
@@ -236,10 +235,10 @@ function ActiveLoanCard({ loan }: { loan: ActiveLoan }) {
         </View>
         <View style={styles.progressMeta}>
           <Text style={styles.installments}>
-            {loan.installmentsPaid} of {loan.installmentsTotal} installments paid
+            {loan.installmentsPaid} of {loan.installmentsTotal} {t('installmentsPaid')}
           </Text>
           <Text style={styles.remaining}>
-            {loan.installmentsTotal - loan.installmentsPaid} remaining
+            {loan.installmentsTotal - loan.installmentsPaid} {t('remaining')}
           </Text>
         </View>
       </View>
@@ -247,7 +246,7 @@ function ActiveLoanCard({ loan }: { loan: ActiveLoan }) {
   );
 }
 
-function ApplicationCard({ app }: { app: LoanApplication }) {
+function ApplicationCard({ app, t }: { app: LoanApplication; t: (key: any) => string }) {
   const status = statusConfig[app.status] || statusConfig.pending;
   return (
     <TouchableOpacity
@@ -261,7 +260,7 @@ function ApplicationCard({ app }: { app: LoanApplication }) {
           <Text style={styles.appRef}>{app.id} · {app.date}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: status.bg }]}>
-          <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
+          <Text style={[styles.statusText, { color: status.color }]}>{t(status.labelKey as any)}</Text>
         </View>
       </View>
 
@@ -269,16 +268,16 @@ function ApplicationCard({ app }: { app: LoanApplication }) {
 
       <View style={styles.appBottom}>
         <View style={styles.appDetail}>
-          <Text style={styles.appDetailLabel}>Amount</Text>
+          <Text style={styles.appDetailLabel}>{t('amount')}</Text>
           <Text style={styles.appDetailValue}>৳{app.amount.toLocaleString('en-BD')}</Text>
         </View>
         <View style={styles.appDetail}>
-          <Text style={styles.appDetailLabel}>Duration</Text>
+          <Text style={styles.appDetailLabel}>{t('duration')}</Text>
           <Text style={styles.appDetailValue}>{app.duration}</Text>
         </View>
         <View style={styles.appDetail}>
-          <Text style={styles.appDetailLabel}>Type</Text>
-          <Text style={styles.appDetailValue}>{app.installmentType === 'monthly' ? 'Monthly' : 'Seasonal'}</Text>
+          <Text style={styles.appDetailLabel}>{t('type')}</Text>
+          <Text style={styles.appDetailValue}>{app.installmentType === 'monthly' ? t('monthly') : t('seasonal')}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -345,6 +344,7 @@ const styles = StyleSheet.create({
   headerIcons: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
   summaryRow: {
     flexDirection: 'row',

@@ -10,6 +10,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLoans, type TimelineEntry } from '../../../contexts/LoanContext';
+import { useTranslation } from '../../../hooks/use-translation';
 
 const labelMap: Record<string, string> = {
   pending: 'Pending',
@@ -28,6 +29,7 @@ const statusColors: Record<string, { color: string; bg: string }> = {
 export default function ApplicationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { applications } = useLoans();
+  const { t } = useTranslation();
   const app = applications.find((a) => a.id === id);
 
   if (!app) {
@@ -42,12 +44,12 @@ export default function ApplicationDetailScreen() {
               <Ionicons name="leaf" size={18} color="#fff" />
             </View>
           </View>
-          <Text style={styles.headerTitle}>Loan Status</Text>
+          <Text style={styles.headerTitle}>{t('loanStatus')}</Text>
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.empty}>
           <Feather name="alert-circle" size={40} color="#D1D5DB" />
-          <Text style={styles.emptyText}>Application not found</Text>
+          <Text style={styles.emptyText}>{t('applicationNotFound')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -67,7 +69,7 @@ export default function ApplicationDetailScreen() {
             <Ionicons name="leaf" size={18} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>Loan Status</Text>
+        <Text style={styles.headerTitle}>{t('loanStatus')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -79,7 +81,7 @@ export default function ApplicationDetailScreen() {
           <View style={styles.statusTop}>
             <View style={{ flex: 1, marginRight: 10 }}>
               <Text style={styles.statusTitle}>{app.title}</Text>
-              <Text style={styles.statusRef}>{app.id} · Submitted {app.date}</Text>
+              <Text style={styles.statusRef}>{app.id} · {t('submitted')} {app.date}</Text>
             </View>
             <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
               <Text style={[styles.statusBadgeText, { color: sc.color }]}>
@@ -90,14 +92,14 @@ export default function ApplicationDetailScreen() {
         </View>
 
         <View style={styles.detailsRow}>
-          <DetailBox label="Amount" value={`৳${app.amount.toLocaleString('en-BD')}`} />
+          <DetailBox label={t('amount')} value={`৳${app.amount.toLocaleString('en-BD')}`} />
           <View style={styles.detailDivider} />
-          <DetailBox label="Duration" value={app.duration} />
+          <DetailBox label={t('duration')} value={app.duration} />
           <View style={styles.detailDivider} />
           <DetailBox label="EMI" value={`৳${app.emi.toLocaleString('en-BD')}/mo`} />
         </View>
 
-        <Text style={styles.sectionTitle}>Application Timeline</Text>
+        <Text style={styles.sectionTitle}>{t('applicationTimeline')}</Text>
         <View style={styles.timelineCard}>
           {app.timeline.map((entry, index) => (
             <TimelineStep
@@ -105,11 +107,12 @@ export default function ApplicationDetailScreen() {
               entry={entry}
               isLast={index === app.timeline.length - 1}
               isCurrent={index === currentIndex}
+              t={t}
             />
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>Assigned Bank Officer</Text>
+        <Text style={styles.sectionTitle}>{t('assignedBankOfficer')}</Text>
         <View style={styles.officerCard}>
           <View style={styles.officerAvatar}>
             <Feather name="user" size={22} color="#006847" />
@@ -134,7 +137,7 @@ function DetailBox({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TimelineStep({ entry, isLast, isCurrent }: { entry: TimelineEntry; isLast: boolean; isCurrent: boolean }) {
+function TimelineStep({ entry, isLast, isCurrent, t }: { entry: TimelineEntry; isLast: boolean; isCurrent: boolean; t: (key: any) => string }) {
   const isFailed = entry.status === 'failed';
   const isDone = entry.status === 'done';
 
@@ -169,10 +172,10 @@ function TimelineStep({ entry, isLast, isCurrent }: { entry: TimelineEntry; isLa
           ) : null}
         </View>
         {isCurrent && (
-          <Text style={styles.timelineNote}>⏳ In progress — estimated 2–3 days</Text>
+          <Text style={styles.timelineNote}>⏳ {t('inProgress')} — {t('estimatedDays')}</Text>
         )}
         {isFailed && (
-          <Text style={styles.timelineNoteFail}>Application was not approved</Text>
+          <Text style={styles.timelineNoteFail}>{t('notApproved')}</Text>
         )}
       </View>
     </View>

@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { useTranslation } from "../../../hooks/use-translation";
 
 type PhotoType = "profile" | "nid" | "land";
 type FormErrors = {
@@ -19,6 +20,7 @@ type FormErrors = {
 };
 
 export default function PhotoScreen() {
+  const { t } = useTranslation();
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [nidPhoto, setNidPhoto] = useState<string | null>(null);
   const [landPhoto, setLandPhoto] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export default function PhotoScreen() {
   const pickImage = async (type: PhotoType) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      alert("গ্যালারি অ্যাক্সেসের অনুমতি প্রয়োজন");
+      alert(t('galleryPermission'));
       return;
     }
 
@@ -53,7 +55,7 @@ export default function PhotoScreen() {
   const takePhoto = async (type: PhotoType) => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      alert("ক্যামেরা অ্যাক্সেসের অনুমতি প্রয়োজন");
+      alert(t('cameraPermission'));
       return;
     }
 
@@ -77,14 +79,13 @@ export default function PhotoScreen() {
 
   const showPicker = (type: PhotoType) => {
     const labels: Record<PhotoType, string> = {
-      profile: "প্রোফাইল ছবি",
-      nid: "জাতীয় পরিচয়পত্র",
-      land: "জমির ছবি",
+      profile: t('profilePhoto'),
+      nid: t('nidPhoto'),
+      land: t('landPhoto'),
     };
-    const title = `${labels[type]} নির্বাচন করুন`;
+    const title = `${labels[type]} ${t('selectPhoto')}`;
 
-    alert(title); // simple fallback
-    // In a real app, use ActionSheet. For now, use ImagePicker directly:
+    alert(title);
     pickImage(type);
   };
 
@@ -92,11 +93,11 @@ export default function PhotoScreen() {
     const newErrors: FormErrors = {};
 
     if (!profilePhoto) {
-      newErrors.profile = "প্রোফাইল ছবি তুলুন বা আপলোড করুন";
+      newErrors.profile = t('profilePhotoRequired');
     }
 
     if (!nidPhoto) {
-      newErrors.nid = "জাতীয় পরিচয়পত্রের ছবি আপলোড করুন";
+      newErrors.nid = t('nidPhotoRequired');
     }
 
     setErrors(newErrors);
@@ -133,27 +134,27 @@ export default function PhotoScreen() {
             <Image source={{ uri: photoUri }} style={styles.previewImage} />
             <View style={styles.photoOverlay}>
               <Ionicons name="camera" size={24} color="#fff" />
-              <Text style={styles.changeText}>পরিবর্তন</Text>
+              <Text style={styles.changeText}>{t('change')}</Text>
             </View>
           </>
         ) : (
           <View style={styles.photoPlaceholder}>
             <Ionicons name={icon} size={48} color="#A0B4B7" />
-            <Text style={styles.uploadText}>ছবি নির্বাচন করুন</Text>
+            <Text style={styles.uploadText}>{t('selectPhoto')}</Text>
             <View style={styles.photoActions}>
               <TouchableOpacity
                 style={styles.photoActionBtn}
                 onPress={() => pickImage(type)}
               >
                 <Ionicons name="images-outline" size={18} color="#157A5A" />
-                <Text style={styles.photoActionText}>গ্যালারি</Text>
+                <Text style={styles.photoActionText}>{t('gallery')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.photoActionBtn}
                 onPress={() => takePhoto(type)}
               >
                 <Ionicons name="camera-outline" size={18} color="#157A5A" />
-                <Text style={styles.photoActionText}>ক্যামেরা</Text>
+                <Text style={styles.photoActionText}>{t('camera')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -178,8 +179,8 @@ export default function PhotoScreen() {
         </View>
 
         <View>
-          <Text style={styles.title}>নতুন কৃষক নিবন্ধন</Text>
-          <Text style={styles.subtitle}>ধাপ ৫ / ৫ — ছবি আপলোড</Text>
+          <Text style={styles.title}>{t('newFarmerRegistration')}</Text>
+          <Text style={styles.subtitle}>{t('step5of5')}</Text>
         </View>
       </View>
 
@@ -189,40 +190,40 @@ export default function PhotoScreen() {
             <View style={[styles.stepBar, styles.completedBar]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>পরিচয়</Text>
+            <Text style={styles.completedStepText}>{t('identity')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={[styles.stepBar, styles.completedBar]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>জমি</Text>
+            <Text style={styles.completedStepText}>{t('land')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={[styles.stepBar, styles.completedBar]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>আয়</Text>
+            <Text style={styles.completedStepText}>{t('incomeStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={[styles.stepBar, styles.completedBar]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>ঋণ</Text>
+            <Text style={styles.completedStepText}>{t('loanStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={[styles.stepBar, styles.activeBar]} />
-            <Text style={styles.activeStepText}>ছবি</Text>
+            <Text style={styles.activeStepText}>{t('photoStep')}</Text>
           </View>
         </View>
 
         {renderPhotoBox(
           "profile",
-          "প্রোফাইল ছবি",
-          "একটি স্পষ্ট সামনের দিকের ছবি আপলোড করুন",
+          t('profilePhoto'),
+          t('profilePhotoSub'),
           "person-circle-outline",
           profilePhoto,
           true
@@ -230,8 +231,8 @@ export default function PhotoScreen() {
 
         {renderPhotoBox(
           "nid",
-          "জাতীয় পরিচয়পত্র (NID)",
-          "NID কার্ডের সামনের ও পিছনের ছবি একসাথে আপলোড করুন",
+          t('nidPhoto'),
+          t('nidPhotoSub'),
           "card-outline",
           nidPhoto,
           true
@@ -239,52 +240,20 @@ export default function PhotoScreen() {
 
         {renderPhotoBox(
           "land",
-          "জমির ছবি (ঐচ্ছিক)",
-          "আপনার কৃষি জমির একটি ছবি আপলোড করুন",
+          t('landPhoto'),
+          t('landPhotoSub'),
           "leaf-outline",
           landPhoto
         )}
 
         <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
           <Ionicons name="checkmark-circle" size={22} color="#fff" />
-          <Text style={styles.submitBtnText}>নিবন্ধন সম্পন্ন করুন</Text>
+          <Text style={styles.submitBtnText}>{t('submitRegistration')}</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      <View style={styles.bottomNav}>
-        <NavItem icon="home-outline" text="Home" />
-        <NavItem icon="people-outline" text="Farmers" active />
-        <NavItem icon="swap-horizontal-outline" text="Transactions" />
-        <NavItem icon="notifications-outline" text="Alerts" />
-        <NavItem icon="person-outline" text="Profile" />
-      </View>
     </SafeAreaView>
   );
 }
-
-type NavItemProps = {
-  icon: keyof typeof Ionicons.glyphMap;
-  text: string;
-  active?: boolean;
-};
-
-const NavItem = ({ icon, text, active }: NavItemProps) => (
-  <TouchableOpacity style={styles.navItem}>
-    <Ionicons
-      name={icon}
-      size={22}
-      color={active ? "#157A5A" : "#7B8A8B"}
-    />
-    <Text
-      style={[
-        styles.navText,
-        active && { color: "#157A5A", fontWeight: "700" },
-      ]}
-    >
-      {text}
-    </Text>
-  </TouchableOpacity>
-);
 
 const styles = StyleSheet.create({
   container: {
@@ -478,21 +447,5 @@ const styles = StyleSheet.create({
     marginHorizontal: 22,
     marginTop: 4,
     fontWeight: "500",
-  },
-  bottomNav: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingVertical: 10,
-  },
-  navItem: {
-    alignItems: "center",
-  },
-  navText: {
-    fontSize: 11,
-    marginTop: 4,
-    color: "#7B8A8B",
   },
 });

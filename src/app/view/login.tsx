@@ -18,17 +18,18 @@ import {
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from '../../hooks/use-translation';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 const loginSchema = z.object({
   phone: z
     .string()
-    .min(1, "মোবাইল নম্বর দিন / Enter phone number")
-    .regex(/^01\d{9}$/, "বৈধ মোবাইল নম্বর দিন / Enter a valid 11-digit phone number"),
+    .min(1, "Enter phone number")
+    .regex(/^01\d{9}$/, "Enter a valid 11-digit phone number"),
   password: z
     .string()
-    .min(1, "পাসওয়ার্ড দিন / Enter password")
-    .min(6, "পাসওয়ার্ড কমপক্ষে ৬ অক্ষর / Password must be at least 6 characters"),
+    .min(1, "Enter password")
+    .min(6, "Password must be at least 6 characters"),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -44,6 +45,7 @@ export default function LoginScreen() {
   const passwordRef = useRef<TextInput>(null);
 
   const { login, isLoggedIn } = useAuth();
+  const { t, lang, toggleLang } = useTranslation();
   const router = useRouter();
 
   useEffect(() => {
@@ -68,10 +70,10 @@ export default function LoginScreen() {
   const onSubmit = async (data: LoginFormData) => {
     if (data.phone !== '01302228993' || data.password !== '123456') {
       if (data.phone !== '01302228993') {
-        setError('phone', { message: 'ভুল মোবাইল নম্বর / Invalid phone number' });
+        setError('phone', { message: t('invalidPhone') });
       }
       if (data.password !== '123456') {
-        setError('password', { message: 'ভুল পাসওয়ার্ড / Invalid password' });
+        setError('password', { message: t('invalidPassword') });
       }
       return;
     }
@@ -81,10 +83,7 @@ export default function LoginScreen() {
   };
 
   const handleForgotPassword = () => {
-    Alert.alert(
-      'পাসওয়ার্ড রিসেট / Reset Password',
-      'এই ফিচার শীঘ্রই আসছে।\n\nThis feature is coming soon.',
-    );
+    router.push('/view/reset-password');
   };
 
   return (
@@ -94,22 +93,27 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.root}>
+          <View style={styles.langRow}>
+            <View />
+            <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
+              <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.header}>
             <View style={styles.logoBox}>
               <Ionicons name="leaf" size={40} color="#fff" />
             </View>
             <Text style={styles.title}>SOFOL</Text>
-            <Text style={styles.subtitle}>কৃষক ক্রেডিট প্রোফাইল প্ল্যাটফর্ম</Text>
-            <Text style={styles.subText}>Farmer Credit Profile Platform - Bangladesh</Text>
+            <Text style={styles.subtitle}>{t('tagline')}</Text>
           </View>
 
           <Animated.View
             entering={FadeInDown.duration(400).springify()}
             style={styles.card}
           >
-            <Text style={styles.loginTitle}>লগইন / Sign In</Text>
+            <Text style={styles.loginTitle}>{t('loginTitle')}</Text>
 
-            <Text style={styles.label}>মোবাইল নম্বর / Phone Number</Text>
+            <Text style={styles.label}>{t('phoneLabel')}</Text>
             <View style={styles.inputGroup}>
               <Ionicons
                 name="phone-portrait-outline"
@@ -128,7 +132,7 @@ export default function LoginScreen() {
                       focusedField === 'phone' && styles.inputFocused,
                       errors.phone && styles.inputError,
                     ]}
-                    placeholder="01711-234567"
+                    placeholder={t('phonePlaceholder')}
                     placeholderTextColor="#9CA3AF"
                     keyboardType="phone-pad"
                     value={value}
@@ -148,7 +152,7 @@ export default function LoginScreen() {
               <Text style={styles.errorText}>{errors.phone.message}</Text>
             )}
 
-            <Text style={styles.label}>পাসওয়ার্ড / Password</Text>
+            <Text style={styles.label}>{t('passwordLabel')}</Text>
             <View style={styles.inputGroup}>
               <Ionicons
                 name="lock-closed-outline"
@@ -168,7 +172,7 @@ export default function LoginScreen() {
                       focusedField === 'password' && styles.inputFocused,
                       errors.password && styles.inputError,
                     ]}
-                    placeholder="********"
+                    placeholder={t('passwordPlaceholder')}
                     placeholderTextColor="#9CA3AF"
                     secureTextEntry={!showPassword}
                     value={value}
@@ -200,9 +204,7 @@ export default function LoginScreen() {
             )}
 
             <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotButton}>
-              <Text style={styles.forgotText}>
-                পাসওয়ার্ড ভুলে গেছেন? / Forgot Password?
-              </Text>
+              <Text style={styles.forgotText}>{t('forgotPassword')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -214,13 +216,13 @@ export default function LoginScreen() {
               {isSubmitting ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.loginButtonText}>লগইন / Login</Text>
+                <Text style={styles.loginButtonText}>{t('loginButton')}</Text>
               )}
             </TouchableOpacity>
 
             <Link href="/view/FarmerRegistration/farmer-registration" asChild>
               <Pressable style={styles.signupButton}>
-                <Text style={styles.signupText}>নিবন্ধন করুন / Sign Up</Text>
+                <Text style={styles.signupText}>{t('signUp')}</Text>
               </Pressable>
             </Link>
 
@@ -232,7 +234,7 @@ export default function LoginScreen() {
                   color={BRAND_GREEN}
                   style={styles.backIcon}
                 />
-                <Text style={styles.backText}>Back to home</Text>
+                <Text style={styles.backText}>{t('backToHome')}</Text>
               </Pressable>
             </Link>
           </Animated.View>
@@ -279,10 +281,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.9,
   },
-  subText: {
-    color: '#cfe8dd',
-    marginTop: 2,
+  langRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 18,
+    paddingTop: 12,
+  },
+  langBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  langText: {
+    color: '#fff',
     fontSize: 12,
+    fontWeight: '700',
   },
   card: {
     flex: 1,

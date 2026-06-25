@@ -10,10 +10,12 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useNotifications } from "../../../contexts/NotificationContext";
+import { useTranslation } from "../../../hooks/use-translation";
 
 export default function NotificationsScreen() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications } =
     useNotifications();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -26,7 +28,7 @@ export default function NotificationsScreen() {
             <Ionicons name="leaf" size={18} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={styles.headerTitle}>{t('notifications')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -35,12 +37,12 @@ export default function NotificationsScreen() {
           {unreadCount > 0 && (
             <TouchableOpacity style={styles.actionBtn} onPress={markAllAsRead}>
               <Ionicons name="checkmark-done" size={16} color="#006847" />
-              <Text style={styles.actionText}>Mark all read</Text>
+              <Text style={styles.actionText}>{t('markAllRead')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.actionBtn} onPress={clearNotifications}>
             <Ionicons name="trash-outline" size={16} color="#DC2626" />
-            <Text style={[styles.actionText, { color: "#DC2626" }]}>Clear all</Text>
+            <Text style={[styles.actionText, { color: "#DC2626" }]}>{t('clearAll')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -48,8 +50,8 @@ export default function NotificationsScreen() {
       {notifications.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="notifications-off-outline" size={48} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>No notifications</Text>
-          <Text style={styles.emptyDesc}>You're all caught up!</Text>
+          <Text style={styles.emptyTitle}>{t('noNotifications')}</Text>
+          <Text style={styles.emptyDesc}>{t('allCaughtUp')}</Text>
         </View>
       ) : (
         <ScrollView

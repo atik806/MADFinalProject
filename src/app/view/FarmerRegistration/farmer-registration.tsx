@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useTranslation } from "../../../hooks/use-translation";
 
 type FormErrors = {
   nameBn?: string;
@@ -20,39 +21,40 @@ type FormErrors = {
 };
 
 export default function FarmerRegistrationScreen() {
+  const { t } = useTranslation();
   const [nameBn, setNameBn] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [nid, setNid] = useState("");
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState("");
-  const [gender, setGender] = useState("পুরুষ");
+  const [gender, setGender] = useState(t('male'));
   const [errors, setErrors] = useState<FormErrors>({});
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
 
     if (!nameBn.trim()) {
-      newErrors.nameBn = "বাংলায় নাম লিখুন";
+      newErrors.nameBn = t('errNameBnRequired');
     }
 
     if (!nameEn.trim()) {
-      newErrors.nameEn = "ইংরেজিতে নাম লিখুন";
+      newErrors.nameEn = t('errNameEnRequired');
     }
 
     if (!nid.trim()) {
-      newErrors.nid = "NID নম্বর লিখুন";
+      newErrors.nid = t('errNidRequired');
     } else if (!/^\d{10}$/.test(nid) && !/^\d{17}$/.test(nid)) {
-      newErrors.nid = "১০ বা ১৭ সংখ্যার NID নম্বর দিন";
+      newErrors.nid = t('errNidFormat');
     }
 
     if (!phone.trim()) {
-      newErrors.phone = "মোবাইল নম্বর লিখুন";
+      newErrors.phone = t('errPhoneRequired');
     } else if (!/^1\d{9}$/.test(phone)) {
-      newErrors.phone = "সঠিক মোবাইল নম্বর দিন (১xxxxxxxxx)";
+      newErrors.phone = t('errPhoneFormat');
     }
 
     if (!dob.trim()) {
-      newErrors.dob = "জন্ম তারিখ নির্বাচন করুন";
+      newErrors.dob = t('errDobRequired');
     }
 
     setErrors(newErrors);
@@ -78,8 +80,8 @@ export default function FarmerRegistrationScreen() {
         </View>
 
         <View>
-          <Text style={styles.title}>নতুন কৃষক নিবন্ধন</Text>
-          <Text style={styles.subtitle}>ধাপ ১ / ৫ — ব্যক্তিগত তথ্য</Text>
+          <Text style={styles.title}>{t('newFarmerRegistration')}</Text>
+          <Text style={styles.subtitle}>{t('step1of5')}</Text>
         </View>
       </View>
 
@@ -87,54 +89,54 @@ export default function FarmerRegistrationScreen() {
         <View style={styles.stepperContainer}>
           <View style={styles.stepItem}>
             <View style={[styles.stepBar, styles.activeBar]} />
-            <Text style={styles.activeStepText}>পরিচয়</Text>
+            <Text style={styles.activeStepText}>{t('identity')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={styles.stepBar} />
-            <Text style={styles.stepText}>জমি</Text>
+            <Text style={styles.stepText}>{t('land')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={styles.stepBar} />
-            <Text style={styles.stepText}>আয়</Text>
+            <Text style={styles.stepText}>{t('incomeStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={styles.stepBar} />
-            <Text style={styles.stepText}>ঋণ</Text>
+            <Text style={styles.stepText}>{t('loanStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
             <View style={styles.stepBar} />
-            <Text style={styles.stepText}>ছবি</Text>
+            <Text style={styles.stepText}>{t('photoStep')}</Text>
           </View>
         </View>
 
-        <Text style={styles.label}>পূর্ণ নাম (বাংলায়)</Text>
+        <Text style={styles.label}>{t('fullNameBn')}</Text>
         <TextInput
-          placeholder="যেমন: মোঃ আব্দুল করিম"
+          placeholder={t('nameBnPlaceholder2')}
           style={styles.input}
           value={nameBn}
           onChangeText={(t) => { setNameBn(t); setErrors((p) => ({ ...p, nameBn: undefined })); }}
         />
         {errors.nameBn && <Text style={styles.error}>{errors.nameBn}</Text>}
 
-        <Text style={styles.label}>FULL NAME (ENGLISH)</Text>
+        <Text style={styles.label}>{t('fullNameEn')}</Text>
         <TextInput
-          placeholder="e.g. Md. Abdul Karim"
+          placeholder={t('nameEnPlaceholder2')}
           style={styles.input}
           value={nameEn}
           onChangeText={(t) => { setNameEn(t); setErrors((p) => ({ ...p, nameEn: undefined })); }}
         />
         {errors.nameEn && <Text style={styles.error}>{errors.nameEn}</Text>}
 
-        <Text style={styles.label}>জাতীয় পরিচয়পত্র নম্বর (NID)</Text>
+        <Text style={styles.label}>{t('nidNumber')}</Text>
 
         <View style={styles.inputIcon}>
           <Ionicons name="document-text-outline" size={22} color="#7B8A8B" />
           <TextInput
-            placeholder="১০ বা ১৭ সংখ্যা"
+            placeholder={t('nidPlaceholder2')}
             keyboardType="number-pad"
             style={styles.iconInput}
             value={nid}
@@ -143,7 +145,7 @@ export default function FarmerRegistrationScreen() {
         </View>
         {errors.nid && <Text style={styles.error}>{errors.nid}</Text>}
 
-        <Text style={styles.label}>মোবাইল নম্বর</Text>
+        <Text style={styles.label}>{t('mobileNumber')}</Text>
 
         <View style={styles.phoneContainer}>
           <View style={styles.countryCode}>
@@ -151,7 +153,7 @@ export default function FarmerRegistrationScreen() {
           </View>
 
           <TextInput
-            placeholder="1XXXXXXXXX"
+            placeholder={t('mobilePlaceholder')}
             keyboardType="phone-pad"
             style={styles.phoneInput}
             value={phone}
@@ -160,12 +162,12 @@ export default function FarmerRegistrationScreen() {
         </View>
         {errors.phone && <Text style={styles.error}>{errors.phone}</Text>}
 
-        <Text style={styles.label}>জন্ম তারিখ</Text>
+        <Text style={styles.label}>{t('dateOfBirthLabel')}</Text>
 
         <View style={styles.inputIcon}>
           <Ionicons name="calendar-outline" size={22} color="#7B8A8B" />
           <TextInput
-            placeholder="mm/dd/yyyy"
+            placeholder={t('dobPlaceholder2')}
             style={styles.iconInput}
             value={dob}
             onChangeText={(t) => { setDob(t); setErrors((p) => ({ ...p, dob: undefined })); }}
@@ -173,10 +175,10 @@ export default function FarmerRegistrationScreen() {
         </View>
         {errors.dob && <Text style={styles.error}>{errors.dob}</Text>}
 
-        <Text style={styles.label}>লিঙ্গ</Text>
+        <Text style={styles.label}>{t('genderLabel2')}</Text>
 
         <View style={styles.genderRow}>
-          {["পুরুষ", "মহিলা", "অন্যান্য"].map((item) => (
+          {[t('male'), t('female'), t('other')].map((item) => (
             <TouchableOpacity
               key={item}
               style={[
@@ -199,39 +201,13 @@ export default function FarmerRegistrationScreen() {
         </View>
 
         <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
-          <Text style={styles.nextBtnText}>পরবর্তী ধাপ</Text>
+          <Text style={styles.nextBtnText}>{t('nextStep')}</Text>
           <Ionicons name="chevron-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </ScrollView>
-
-      
     </SafeAreaView>
   );
 }
-
-type NavItemProps = {   
-  icon: keyof typeof Ionicons.glyphMap;
-  text: string;
-  active?: boolean;
-};
-
-const NavItem = ({ icon, text, active }: NavItemProps) => (
-  <TouchableOpacity style={styles.navItem}>
-    <Ionicons
-      name={icon}
-      size={22}
-      color={active ? "#157A5A" : "#7B8A8B"}
-    />
-    <Text
-      style={[
-        styles.navText,
-        active && { color: "#157A5A", fontWeight: "700" },
-      ]}
-    >
-      {text}
-    </Text>
-  </TouchableOpacity>
-);
 
 const styles = StyleSheet.create({
   container: {
@@ -445,24 +421,5 @@ const styles = StyleSheet.create({
     marginHorizontal: 22,
     marginTop: 4,
     fontWeight: "500",
-  },
-
-  bottomNav: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingVertical: 10,
-  },
-
-  navItem: {
-    alignItems: "center",
-  },
-
-  navText: {
-    fontSize: 11,
-    marginTop: 4,
-    color: "#7B8A8B",
   },
 });

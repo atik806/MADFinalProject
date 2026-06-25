@@ -11,6 +11,7 @@ import {
 import { router } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLoans } from '../../../contexts/LoanContext';
+import { useTranslation } from '../../../hooks/use-translation';
 
 type Step = 1 | 2 | 3;
 type InstallmentType = 'monthly' | 'seasonal';
@@ -37,6 +38,7 @@ function calculateEMI(principal: number, months: number, annualRate: number): nu
 
 export default function ApplyLoanScreen() {
   const { addApplication } = useLoans();
+  const { t } = useTranslation();
   const [step, setStep] = useState<Step>(1);
 
   const [amount, setAmount] = useState(75000);
@@ -104,7 +106,7 @@ export default function ApplyLoanScreen() {
             <Ionicons name="leaf" size={18} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>Apply for Loan</Text>
+        <Text style={styles.headerTitle}>{t('applyForLoan')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -112,6 +114,7 @@ export default function ApplyLoanScreen() {
         {([1, 2, 3] as const).map((s) => {
           const isDone = s < step;
           const isCurrent = s === step;
+          const label = s === 1 ? t('loanDetails') : s === 2 ? t('documents') : t('review');
           return (
             <View key={s} style={styles.stepItem}>
               <View style={[styles.stepCircle, isDone && styles.stepCircleDone, isCurrent && styles.stepCircleCurrent]}>
@@ -122,7 +125,7 @@ export default function ApplyLoanScreen() {
                 )}
               </View>
               <Text style={[styles.stepLabel, isCurrent && styles.stepLabelCurrent]}>
-                {s === 1 ? 'Loan Details' : s === 2 ? 'Documents' : 'Review'}
+                {label}
               </Text>
             </View>
           );
@@ -148,12 +151,14 @@ export default function ApplyLoanScreen() {
             setInstallmentType={setInstallmentType}
             emi={emi}
             annualRate={annualRate}
+            t={t}
           />
         )}
         {step === 2 && (
           <StepDocuments
             documents={documents}
             toggleDoc={toggleDoc}
+            t={t}
           />
         )}
         {step === 3 && (
@@ -165,6 +170,7 @@ export default function ApplyLoanScreen() {
             emi={emi}
             annualRate={annualRate}
             totalRepayment={totalRepayment}
+            t={t}
           />
         )}
       </ScrollView>
@@ -178,7 +184,7 @@ export default function ApplyLoanScreen() {
             activeOpacity={0.8}
           >
             <Text style={styles.primaryBtnText}>
-              {step === 2 ? 'Next: Review →' : 'Next: Upload Documents →'}
+              {step === 2 ? t('nextReview') : t('nextUploadDocs')}
             </Text>
             <Ionicons name="arrow-forward" size={18} color="#fff" />
           </TouchableOpacity>
@@ -190,7 +196,7 @@ export default function ApplyLoanScreen() {
             activeOpacity={0.8}
           >
             <Ionicons name="checkmark-circle" size={18} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={styles.primaryBtnText}>Submit Application</Text>
+            <Text style={styles.primaryBtnText}>{t('submitApplication')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -203,7 +209,7 @@ function StepLoanDetails({
   purpose, setPurpose,
   durationMonths, setDurationMonths,
   installmentType, setInstallmentType,
-  emi, annualRate,
+  emi, annualRate, t,
 }: {
   amount: number;
   setAmount: (v: number) => void;
@@ -217,10 +223,11 @@ function StepLoanDetails({
   setInstallmentType: (v: InstallmentType) => void;
   emi: number;
   annualRate: number;
+  t: (key: any) => string;
 }) {
   return (
     <View>
-      <Text style={styles.sectionLabel}>Loan Amount (৳)</Text>
+      <Text style={styles.sectionLabel}>{t('loanAmountLabel')}</Text>
       <View style={styles.chipRow}>
         {amountPresets.map((preset) => (
           <TouchableOpacity
@@ -236,14 +243,14 @@ function StepLoanDetails({
       </View>
       <TextInput
         style={[styles.input, customAmount.length > 0 && styles.inputActive]}
-        placeholder="Custom amount"
+        placeholder={t('customAmount')}
         placeholderTextColor="#9CA3AF"
         keyboardType="decimal-pad"
         value={customAmount}
         onChangeText={(v) => { setCustomAmount(v); const n = parseInt(v.replace(/,/g, ''), 10); if (!isNaN(n)) setAmount(n); }}
       />
 
-      <Text style={styles.sectionLabel}>Loan Purpose</Text>
+      <Text style={styles.sectionLabel}>{t('loanPurpose')}</Text>
       <View style={styles.purposeGrid}>
         {purposes.map((p) => (
           <TouchableOpacity
@@ -256,7 +263,7 @@ function StepLoanDetails({
         ))}
       </View>
 
-      <Text style={styles.sectionLabel}>Duration</Text>
+      <Text style={styles.sectionLabel}>{t('durationLabel')}</Text>
       <View style={styles.chipRow}>
         {durationPresets.map((m) => (
           <TouchableOpacity
@@ -265,13 +272,13 @@ function StepLoanDetails({
             onPress={() => setDurationMonths(m)}
           >
             <Text style={[styles.chipText, durationMonths === m && styles.chipTextActive]}>
-              {m} mo
+              {m} {t('months')}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <Text style={styles.sectionLabel}>Installment Type</Text>
+      <Text style={styles.sectionLabel}>{t('installmentType')}</Text>
       <View style={styles.toggleRow}>
         <TouchableOpacity
           style={[styles.toggleBtn, installmentType === 'monthly' && styles.toggleBtnActive]}
@@ -279,7 +286,7 @@ function StepLoanDetails({
         >
           <Feather name="calendar" size={16} color={installmentType === 'monthly' ? '#006847' : '#6B7280'} />
           <Text style={[styles.toggleText, installmentType === 'monthly' && styles.toggleTextActive]}>
-            Monthly
+            {t('monthly')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -288,24 +295,24 @@ function StepLoanDetails({
         >
           <Feather name="sun" size={16} color={installmentType === 'seasonal' ? '#006847' : '#6B7280'} />
           <Text style={[styles.toggleText, installmentType === 'seasonal' && styles.toggleTextActive]}>
-            Seasonal
+            {t('seasonal')}
           </Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.emiCard}>
-        <Text style={styles.emiTitle}>EMI Preview</Text>
+        <Text style={styles.emiTitle}>{t('emiPreview')}</Text>
         <View style={styles.emiDivider} />
         <View style={styles.emiRow}>
-          <Text style={styles.emiLabel}>Principal</Text>
+          <Text style={styles.emiLabel}>{t('principal')}</Text>
           <Text style={styles.emiValue}>৳{amount.toLocaleString('en-BD')}</Text>
         </View>
         <View style={styles.emiRow}>
-          <Text style={styles.emiLabel}>Rate</Text>
-          <Text style={styles.emiValue}>{annualRate}% p.a.</Text>
+          <Text style={styles.emiLabel}>{t('rate')}</Text>
+          <Text style={styles.emiValue}>{annualRate}% {t('perAnnum')}</Text>
         </View>
         <View style={styles.emiRow}>
-          <Text style={styles.emiLabel}>{installmentType === 'monthly' ? 'Monthly' : 'Seasonal'} EMI</Text>
+          <Text style={styles.emiLabel}>{installmentType === 'monthly' ? t('monthly') : t('seasonal')} {t('emi')}</Text>
           <Text style={styles.emiValueHighlight}>৳{emi.toLocaleString('en-BD')}</Text>
         </View>
       </View>
@@ -314,21 +321,22 @@ function StepLoanDetails({
 }
 
 function StepDocuments({
-  documents, toggleDoc,
+  documents, toggleDoc, t,
 }: {
   documents: { nid: boolean; landDocument: boolean; farmPhotograph: boolean; previousLoanStatement: boolean };
   toggleDoc: (key: keyof typeof documents) => void;
+  t: (key: any) => string;
 }) {
-  const docList: { key: keyof typeof documents; label: string; required: boolean }[] = [
-    { key: 'nid', label: 'National ID Card (NID)', required: true },
-    { key: 'landDocument', label: 'Land Ownership Document', required: true },
-    { key: 'farmPhotograph', label: 'Farm Photograph', required: true },
-    { key: 'previousLoanStatement', label: 'Previous Loan Statement', required: false },
+  const docList: { key: keyof typeof documents; labelKey: string; required: boolean }[] = [
+    { key: 'nid', labelKey: 'nidCard', required: true },
+    { key: 'landDocument', labelKey: 'landRecords', required: true },
+    { key: 'farmPhotograph', labelKey: 'farmPhotographs', required: true },
+    { key: 'previousLoanStatement', labelKey: 'previousLoanStatement', required: false },
   ];
 
   return (
     <View>
-      <Text style={styles.sectionLabel}>Required Documents</Text>
+      <Text style={styles.sectionLabel}>{t('requiredDocuments')}</Text>
       {docList.map((doc) => {
         const uploaded = documents[doc.key];
         return (
@@ -347,9 +355,9 @@ function StepDocuments({
                 )}
               </View>
               <View style={styles.docInfo}>
-                <Text style={[styles.docLabel, uploaded && styles.docLabelDone]}>{doc.label}</Text>
+                <Text style={[styles.docLabel, uploaded && styles.docLabelDone]}>{t(doc.labelKey)}</Text>
                 <Text style={styles.docStatus}>
-                  {uploaded ? 'Uploaded ✓' : doc.required ? 'Required — tap to upload' : 'Optional'}
+                  {uploaded ? `${t('uploaded')} ✓` : doc.required ? `${t('required')} — ${t('tapToUpload')}` : t('optional')}
                 </Text>
               </View>
             </View>
@@ -366,7 +374,7 @@ function StepDocuments({
 }
 
 function StepReview({
-  amount, purpose, durationMonths, installmentType, emi, annualRate, totalRepayment,
+  amount, purpose, durationMonths, installmentType, emi, annualRate, totalRepayment, t,
 }: {
   amount: number;
   purpose: string;
@@ -375,27 +383,28 @@ function StepReview({
   emi: number;
   annualRate: number;
   totalRepayment: number;
+  t: (key: any) => string;
 }) {
-  const monthsLabel = durationMonths === 1 ? '1 month' : `${durationMonths} months`;
+  const monthsLabel = durationMonths === 1 ? `1 ${t('month')}` : `${durationMonths} ${t('months')}`;
 
   return (
     <View>
       <View style={styles.reviewCard}>
-        <Text style={styles.reviewTitle}>Review Application</Text>
+        <Text style={styles.reviewTitle}>{t('reviewApplication')}</Text>
         <View style={styles.reviewDivider} />
-        <ReviewRow label="Loan Amount" value={`৳${amount.toLocaleString('en-BD')}`} />
-        <ReviewRow label="Purpose" value={purpose} />
-        <ReviewRow label="Duration" value={monthsLabel} />
-        <ReviewRow label="Installment Type" value={installmentType === 'monthly' ? 'Monthly' : 'Seasonal'} />
-        <ReviewRow label={`${installmentType === 'monthly' ? 'Monthly' : 'Seasonal'} EMI`} value={`৳${emi.toLocaleString('en-BD')}`} />
-        <ReviewRow label="Interest Rate" value={`${annualRate}% per annum`} />
-        <ReviewRow label="Total Repayment" value={`৳${totalRepayment.toLocaleString('en-BD')}`} highlight />
+        <ReviewRow label={t('loanAmount')} value={`৳${amount.toLocaleString('en-BD')}`} />
+        <ReviewRow label={t('loanPurpose')} value={purpose} />
+        <ReviewRow label={t('duration')} value={monthsLabel} />
+        <ReviewRow label={t('installmentType')} value={installmentType === 'monthly' ? t('monthly') : t('seasonal')} />
+        <ReviewRow label={`${installmentType === 'monthly' ? t('monthly') : t('seasonal')} ${t('emi')}`} value={`৳${emi.toLocaleString('en-BD')}`} />
+        <ReviewRow label={t('rate')} value={`${annualRate}% ${t('perAnnum')}`} />
+        <ReviewRow label={t('totalRepayment')} value={`৳${totalRepayment.toLocaleString('en-BD')}`} highlight />
       </View>
 
       <View style={styles.infoBox}>
         <Ionicons name="information-circle" size={18} color="#006847" />
         <Text style={styles.infoText}>
-          By submitting, you confirm all information is accurate. Your application will be reviewed within 3–5 business days.
+          {t('submitConfirm')}
         </Text>
       </View>
     </View>
