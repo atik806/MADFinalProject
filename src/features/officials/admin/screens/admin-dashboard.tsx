@@ -1,7 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { ActionCard } from '@/features/officials/shared/components/action-card';
 import { BarChart } from '@/features/officials/shared/components/charts/bar-chart';
