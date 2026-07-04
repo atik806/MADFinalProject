@@ -13,23 +13,25 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth, getRouteForRole } from '../../contexts/AuthContext';
 import { useTranslation } from '../../hooks/use-translation';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
+const isPhone = (value: string) => /^01\d{9}$/.test(value);
+const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
 const loginSchema = z.object({
-  phone: z
+  identifier: z
     .string()
-    .min(1, "Enter phone number")
-    .regex(/^01\d{9}$/, "Enter a valid 11-digit phone number"),
+    .min(1, 'Enter email or phone number')
+    .refine((val) => isPhone(val) || isEmail(val), 'Enter a valid email or 11-digit phone number'),
   password: z
     .string()
-    .min(1, "Enter password")
-    .min(6, "Password must be at least 6 characters"),
+    .min(1, 'Enter password')
+    .min(6, 'Password must be at least 6 characters'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -41,21 +43,21 @@ export default function LoginScreen() {
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [shouldRedirect, setShouldRedirect] = useState(false);
 
-  const phoneRef = useRef<TextInput>(null);
+  const identifierRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
-  const { login, isLoggedIn } = useAuth();
+  const { login, isLoggedIn, user } = useAuth();
   const { t, lang, toggleLang } = useTranslation();
   const router = useRouter();
 
   useEffect(() => {
-    if (shouldRedirect && isLoggedIn) {
+    if (shouldRedirect && isLoggedIn && user) {
       const timer = setTimeout(() => {
-        router.replace('/view/FarmerDashboard/farmer-dashboard');
+        router.replace(getRouteForRole(user.role));
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [shouldRedirect, isLoggedIn, router]);
+  }, [shouldRedirect, isLoggedIn, user, router]);
 
   const {
     control,
@@ -64,27 +66,26 @@ export default function LoginScreen() {
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { phone: '01302228993', password: '' },
+    defaultValues: { identifier: '', password: '' },
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    if (data.phone !== '01302228993' || data.password !== '123456') {
-      if (data.phone !== '01302228993') {
-        setError('phone', { message: t('invalidPhone') });
-      }
-      if (data.password !== '123456') {
-        setError('password', { message: t('invalidPassword') });
-      }
-      return;
+    try {
+      await login(data.identifier, data.password);
+      setShouldRedirect(true);
+    } catch {
+      setError('identifier', { message: t('invalidCredentials') });
+      setError('password', { message: '' });
     }
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    login(data.phone);
-    setShouldRedirect(true);
   };
 
   const handleForgotPassword = () => {
     router.push('/view/reset-password');
   };
+
+  const identifierIcon = focusedField === 'identifier'
+    ? 'mail-outline'
+    : 'phone-portrait-outline';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -113,44 +114,46 @@ export default function LoginScreen() {
           >
             <Text style={styles.loginTitle}>{t('loginTitle')}</Text>
 
-            <Text style={styles.label}>{t('phoneLabel')}</Text>
+            <Text style={styles.label}>{t('identifierLabel')}</Text>
             <View style={styles.inputGroup}>
               <Ionicons
-                name="phone-portrait-outline"
+                name={identifierIcon}
                 size={18}
-                color={focusedField === 'phone' ? BRAND_GREEN : '#9CA3AF'}
+                color={focusedField === 'identifier' ? BRAND_GREEN : '#9CA3AF'}
                 style={styles.inputIcon}
               />
               <Controller
                 control={control}
-                name="phone"
+                name="identifier"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextInput
-                    ref={phoneRef}
+                    ref={identifierRef}
                     style={[
                       styles.input,
-                      focusedField === 'phone' && styles.inputFocused,
-                      errors.phone && styles.inputError,
+                      focusedField === 'identifier' && styles.inputFocused,
+                      errors.identifier && styles.inputError,
                     ]}
-                    placeholder={t('phonePlaceholder')}
+                    placeholder={t('identifierPlaceholder')}
                     placeholderTextColor="#9CA3AF"
-                    keyboardType="phone-pad"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
                     value={value}
                     onChangeText={onChange}
                     onBlur={() => {
                       onBlur();
                       setFocusedField(null);
                     }}
-                    onFocus={() => setFocusedField('phone')}
+                    onFocus={() => setFocusedField('identifier')}
                     returnKeyType="next"
                     onSubmitEditing={() => passwordRef.current?.focus()}
                   />
                 )}
               />
             </View>
-            {errors.phone && (
-              <Text style={styles.errorText}>{errors.phone.message}</Text>
-            )}
+            {errors.identifier && errors.identifier.message ? (
+              <Text style={styles.errorText}>{errors.identifier.message}</Text>
+            ) : null}
 
             <Text style={styles.label}>{t('passwordLabel')}</Text>
             <View style={styles.inputGroup}>
@@ -199,9 +202,9 @@ export default function LoginScreen() {
                 />
               </Pressable>
             </View>
-            {errors.password && (
+            {errors.password && errors.password.message ? (
               <Text style={styles.errorText}>{errors.password.message}</Text>
-            )}
+            ) : null}
 
             <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotButton}>
               <Text style={styles.forgotText}>{t('forgotPassword')}</Text>

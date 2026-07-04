@@ -18,6 +18,8 @@ export const translations = {
   loginTitle: { en: 'Login / Sign In', bn: 'লগইন / সাইন ইন' },
   phoneLabel: { en: 'Phone Number', bn: 'মোবাইল নম্বর' },
   phonePlaceholder: { en: '01711-234567', bn: '০১৭১১-২৩৪৫৬৭' },
+  identifierLabel: { en: 'Email or Phone Number', bn: 'ইমেইল বা মোবাইল নম্বর' },
+  identifierPlaceholder: { en: 'email@example.com / 01XXXXXXXXX', bn: 'ইমেইল বা মোবাইল নম্বর দিন' },
   passwordLabel: { en: 'Password', bn: 'পাসওয়ার্ড' },
   passwordPlaceholder: { en: '********', bn: '********' },
   forgotPassword: { en: 'Forgot Password?', bn: 'পাসওয়ার্ড ভুলে গেছেন?' },
@@ -26,11 +28,12 @@ export const translations = {
   backToHome: { en: 'Back to home', bn: 'হোম পেজে ফিরুন' },
   comingSoon: { en: 'This feature is coming soon.', bn: 'এই ফিচার শীঘ্রই আসছে।' },
   resetPassword: { en: 'Reset Password', bn: 'পাসওয়ার্ড রিসেট' },
+  invalidCredentials: { en: 'Invalid email/phone or password', bn: 'ভুল ইমেইল/ফোন বা পাসওয়ার্ড' },
   invalidPhone: { en: 'Invalid phone number', bn: 'ভুল মোবাইল নম্বর' },
   invalidPassword: { en: 'Invalid password', bn: 'ভুল পাসওয়ার্ড' },
-  enterPhone: { en: 'Enter phone number', bn: 'মোবাইল নম্বর দিন' },
+  enterIdentifier: { en: 'Enter email or phone number', bn: 'ইমেইল বা ফোন নম্বর দিন' },
   enterPassword: { en: 'Enter password', bn: 'পাসওয়ার্ড দিন' },
-  valid11Digit: { en: 'Enter a valid 11-digit phone number', bn: 'বৈধ মোবাইল নম্বর দিন' },
+  validIdentifier: { en: 'Enter a valid email or 11-digit phone number', bn: 'বৈধ ইমেইল বা ১১ অঙ্কের ফোন নম্বর দিন' },
   passwordMin6: { en: 'Password must be at least 6 characters', bn: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষর' },
 
   // Forgot / Reset Password (reset-password.tsx)
