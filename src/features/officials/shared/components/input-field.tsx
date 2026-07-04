@@ -1,6 +1,6 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { BrandColors } from '@/features/officials/shared/constants/theme';
+import { useColors } from '@/features/officials/shared/constants/theme';
 
 type InputFieldProps = {
   label: string;
@@ -13,15 +13,17 @@ type InputFieldProps = {
 };
 
 export function InputField({ label, value, onChangeText, secureTextEntry, rightAction, ...props }: InputFieldProps) {
+  const colors = useColors();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{label}</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: colors.inputBorder, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.cardBg }]}
         value={value}
         onChangeText={onChangeText}
         secureTextEntry={secureTextEntry}
-        placeholderTextColor="rgba(0,0,0,0.3)"
+        placeholderTextColor={colors.dashboard.textSecondary}
         {...props}
       />
       {rightAction && <View style={styles.rightAction}>{rightAction}</View>}
@@ -36,18 +38,14 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: BrandColors.dashboard.textSecondary,
     marginBottom: 6,
   },
   input: {
     height: 52,
     borderWidth: 1.5,
-    borderColor: BrandColors.inputBorder,
     borderRadius: 14,
     paddingHorizontal: 16,
     fontSize: 15,
-    color: '#1F2937',
-    backgroundColor: '#FFFFFF',
   },
   rightAction: {
     position: 'absolute',

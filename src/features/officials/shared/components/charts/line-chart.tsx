@@ -1,7 +1,7 @@
 import { useWindowDimensions } from 'react-native';
 import Svg, { Circle, Defs, G, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg';
 
-import { BrandColors } from '@/features/officials/shared/constants/theme';
+import { useColors } from '@/features/officials/shared/constants/theme';
 
 type LineChartData = {
   label: string;
@@ -14,7 +14,9 @@ type LineChartProps = {
   title?: string;
 };
 
-export function LineChart({ data, color = BrandColors.greenLight }: LineChartProps) {
+export function LineChart({ data, color }: LineChartProps) {
+  const colors = useColors();
+  const lineColor = color || colors.greenLight;
   const { width: screenW } = useWindowDimensions();
   const width = Math.min(screenW - 64, 500);
   const height = 200;
@@ -41,8 +43,8 @@ export function LineChart({ data, color = BrandColors.greenLight }: LineChartPro
     <Svg width={width} height={height}>
       <Defs>
         <LinearGradient id="lineFill" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={color} stopOpacity="0.25" />
-          <Stop offset="1" stopColor={color} stopOpacity="0" />
+          <Stop offset="0" stopColor={lineColor} stopOpacity="0.25" />
+          <Stop offset="1" stopColor={lineColor} stopOpacity="0" />
         </LinearGradient>
       </Defs>
 
@@ -50,7 +52,7 @@ export function LineChart({ data, color = BrandColors.greenLight }: LineChartPro
         <G key={i}>
           <Path
             d={`M ${pad.left} ${y(tick)} L ${width - pad.right} ${y(tick)}`}
-            stroke="#E5E7EB"
+            stroke={colors.dashboard.border}
             strokeWidth={1}
           />
           <SvgText
@@ -58,7 +60,7 @@ export function LineChart({ data, color = BrandColors.greenLight }: LineChartPro
             y={y(tick) + 4}
             textAnchor="end"
             fontSize={10}
-            fill="#9CA3AF">
+            fill={colors.dashboard.textSecondary}>
             {tick}
           </SvgText>
         </G>
@@ -67,7 +69,7 @@ export function LineChart({ data, color = BrandColors.greenLight }: LineChartPro
       <Path d={areaPath} fill="url(#lineFill)" />
       <Path
         d={linePath}
-        stroke={color}
+        stroke={lineColor}
         strokeWidth={2.5}
         fill="none"
         strokeLinecap="round"
@@ -76,14 +78,14 @@ export function LineChart({ data, color = BrandColors.greenLight }: LineChartPro
 
       {data.map((d, i) => (
         <G key={i}>
-          <Circle cx={x(i)} cy={y(d.value)} r={4} fill={color} />
-          <Circle cx={x(i)} cy={y(d.value)} r={2} fill="#fff" />
+          <Circle cx={x(i)} cy={y(d.value)} r={4} fill={lineColor} />
+          <Circle cx={x(i)} cy={y(d.value)} r={2} fill={colors.dashboard.cardBg} />
           <SvgText
             x={x(i)}
             y={height - 5}
             textAnchor="middle"
             fontSize={10}
-            fill="#6B7280"
+            fill={colors.dashboard.textSecondary}
             fontWeight="500">
             {d.label}
           </SvgText>

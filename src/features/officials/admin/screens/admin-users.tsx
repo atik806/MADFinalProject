@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Animated,
   Pressable,
   RefreshControl,
@@ -191,14 +192,31 @@ export default function AdminUsersScreen() {
           </View>
         ) : (
           filtered.map((user) => (
-            <UserCard key={user.id} user={user} />
+            <UserCard
+              key={user.id}
+              user={user}
+              onView={(u) => Alert.alert(u.name, `ID: ${u.id}\nRole: ${u.role}\nLocation: ${u.location}\nCrop: ${u.crop}\nStatus: ${u.status}`)}
+              onEdit={(u) => Alert.alert('Edit User', `Edit functionality for ${u.name} coming soon.`)}
+              onDeactivate={(u) => {
+                Alert.alert(
+                  'Deactivate User',
+                  `Are you sure you want to deactivate ${u.name}?`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Deactivate', style: 'destructive', onPress: () => Alert.alert('Done', `${u.name} has been deactivated.`) },
+                  ],
+                );
+              }}
+            />
           ))
         )}
 
         <View style={{ height: 80 }} />
       </ScrollView>
 
-      <Pressable style={({ pressed }) => [{ backgroundColor: colors.deepGreen, ...styles.fabBase }, pressed && styles.fabPressed]}>
+      <Pressable
+        onPress={() => Alert.alert('Add New User', 'User creation form coming soon.')}
+        style={({ pressed }) => [{ backgroundColor: colors.deepGreen, ...styles.fabBase }, pressed && styles.fabPressed]}>
         <Ionicons name="add" size={22} color="#FFFFFF" />
         <Text style={styles.fabText}>Add New User</Text>
       </Pressable>

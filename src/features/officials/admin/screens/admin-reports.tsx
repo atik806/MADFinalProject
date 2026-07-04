@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BrandColors } from '@/features/officials/shared/constants/theme';
+import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidthWide } from '@/features/officials/shared/constants/layout';
 
 type Report = {
@@ -12,19 +12,21 @@ type Report = {
 };
 
 const REPORTS: Report[] = [
-  { icon: 'people', title: 'Farmer Report', description: 'All registered farmers, profiles, and credit scores', accent: BrandColors.greenLight },
-  { icon: 'cash', title: 'Loan Report', description: 'Application stats, approvals, rejections, disbursements', accent: BrandColors.blueLight },
+  { icon: 'people', title: 'Farmer Report', description: 'All registered farmers, profiles, and credit scores', accent: '#1A8F5C' },
+  { icon: 'cash', title: 'Loan Report', description: 'Application stats, approvals, rejections, disbursements', accent: '#3A9BD5' },
   { icon: 'location', title: 'Regional Report', description: 'District-wise farmer and loan distribution', accent: '#8B5CF6' },
   { icon: 'analytics', title: 'Credit Score Report', description: 'Score distribution and risk assessment summary', accent: '#F59E0B' },
 ];
 
 export default function AdminReportsScreen() {
+  const colors = useColors();
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.brand}>SOFOL</Text>
+    <ScrollView style={[styles.container, { backgroundColor: colors.dashboard.bg }]} contentContainerStyle={styles.content}>
+      <Text style={[styles.brand, { color: colors.greenLight }]}>SOFOL</Text>
 
       {REPORTS.map((report, i) => (
-        <View key={i} style={styles.card}>
+        <View key={i} style={[styles.card, { backgroundColor: colors.dashboard.cardBg }]}>
           <View style={[styles.accentBar, { backgroundColor: report.accent }]} />
           <View style={styles.cardBody}>
             <View style={styles.cardHeader}>
@@ -32,8 +34,8 @@ export default function AdminReportsScreen() {
                 <Ionicons name={report.icon} size={20} color={report.accent} />
               </View>
               <View style={styles.cardHeaderText}>
-                <Text style={styles.cardTitle}>{report.title}</Text>
-                <Text style={styles.cardDesc}>{report.description}</Text>
+                <Text style={[styles.cardTitle, { color: colors.dashboard.textPrimary }]}>{report.title}</Text>
+                <Text style={[styles.cardDesc, { color: colors.dashboard.textSecondary }]}>{report.description}</Text>
               </View>
             </View>
             <View style={styles.exportRow}>
@@ -58,7 +60,6 @@ export default function AdminReportsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BrandColors.dashboard.bg,
   },
   content: {
     padding: 16,
@@ -69,13 +70,11 @@ const styles = StyleSheet.create({
   brand: {
     fontSize: 13,
     fontWeight: '800',
-    color: BrandColors.greenLight,
     letterSpacing: 1.5,
     marginTop: 8,
     marginBottom: 16,
   },
   card: {
-    backgroundColor: BrandColors.dashboard.cardBg,
     borderRadius: 14,
     marginBottom: 12,
     flexDirection: 'row',
@@ -115,12 +114,10 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: BrandColors.dashboard.textPrimary,
     marginBottom: 3,
   },
   cardDesc: {
     fontSize: 13,
-    color: BrandColors.dashboard.textSecondary,
     lineHeight: 18,
   },
   exportRow: {

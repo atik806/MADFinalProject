@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { BrandColors } from '@/features/officials/shared/constants/theme';
+import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidth } from '@/features/officials/shared/constants/layout';
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
 import { SettingsRow, settingsCardStyles } from '@/features/officials/shared/components/settings-row';
@@ -14,6 +14,7 @@ type SettingsItem = {
   label: string;
   value?: string | boolean;
   type?: 'switch';
+  onSwitchChange?: (value: boolean) => void;
 };
 
 type SettingsSection = {
@@ -26,6 +27,7 @@ type SettingsViewProps = {
 };
 
 export function SettingsView({ sections }: SettingsViewProps) {
+  const colors = useColors();
   const router = useRouter();
   const { logout } = useAuth();
 
@@ -35,13 +37,13 @@ export function SettingsView({ sections }: SettingsViewProps) {
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: colors.dashboard.bg }]}>
       <ScreenHeader title="Settings" />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {sections.map((section, si) => (
           <View key={si} style={styles.section}>
-            <Text style={styles.sectionLabel}>{section.title}</Text>
-            <View style={settingsCardStyles.card}>
+            <Text style={[styles.sectionLabel, { color: colors.dashboard.textSecondary }]}>{section.title}</Text>
+            <View style={[settingsCardStyles.card, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
               {section.items.map((item, ii) => (
                 <View key={ii}>
                   <SettingsRow
@@ -50,8 +52,9 @@ export function SettingsView({ sections }: SettingsViewProps) {
                     value={item.type === 'switch' ? undefined : (item.value as string | undefined)}
                     showSwitch={item.type === 'switch'}
                     switchValue={item.type === 'switch' ? Boolean(item.value) : undefined}
+                    onSwitchChange={item.onSwitchChange}
                   />
-                  {ii < section.items.length - 1 && <View style={settingsCardStyles.divider} />}
+                  {ii < section.items.length - 1 && <View style={[settingsCardStyles.divider, { backgroundColor: colors.dashboard.border }]} />}
                 </View>
               ))}
             </View>
@@ -68,7 +71,6 @@ export function SettingsView({ sections }: SettingsViewProps) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: BrandColors.dashboard.bg,
   },
   container: {
     flex: 1,
@@ -85,7 +87,6 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: BrandColors.dashboard.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 8,

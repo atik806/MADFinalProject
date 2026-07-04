@@ -3,8 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { useColors } from '@/features/officials/shared/constants/theme';
 
-const STATUS_LIST = ['verified', 'pending', 'rejected', 'approved', 'active', 'under_review'] as const;
-export type StatusType = (typeof STATUS_LIST)[number];
+export type StatusType = 'verified' | 'pending' | 'rejected' | 'approved' | 'active' | 'under_review';
 
 type StatusBadgeProps = {
   status: StatusType;
@@ -14,6 +13,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   const colors = useColors();
 
   const STATUS_CONFIG: Record<StatusType, { bg: string; text: string; color: string; icon: keyof typeof Ionicons.glyphMap }> = {
+
     verified: { bg: colors.userVerified, text: 'Verified', color: colors.userVerifiedText, icon: 'checkmark-circle' },
     pending: { bg: colors.userPending, text: 'Pending', color: colors.userPendingText, icon: 'time' },
     rejected: { bg: colors.userRejected, text: 'Rejected', color: colors.userRejectedText, icon: 'close-circle' },
