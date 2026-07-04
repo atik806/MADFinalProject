@@ -27,8 +27,8 @@ export function DonutChart({ data, size: propSize, innerRadius: propInner }: Don
     return { x: cx + radius * Math.cos(rad), y: cy + radius * Math.sin(rad) };
   };
 
-  let currentAngle = 0;
-  const slices = data.map((d) => {
+  const slices = data.reduce<(DonutSegment & { path: string; startAngle: number; sweep: number })[]>((acc, d) => {
+    const currentAngle = acc.length > 0 ? acc[acc.length - 1].startAngle + acc[acc.length - 1].sweep : 0;
     const sweep = (d.value / total) * 360;
     const outerStart = polarToCartesian(currentAngle, outerR);
     const outerEnd = polarToCartesian(currentAngle + sweep, outerR);
@@ -42,10 +42,9 @@ export function DonutChart({ data, size: propSize, innerRadius: propInner }: Don
       `A ${innerR} ${innerR} 0 ${largeArc} 0 ${innerEnd.x} ${innerEnd.y}`,
       'Z',
     ].join(' ');
-    const slice = { ...d, path, startAngle: currentAngle, sweep };
-    currentAngle += sweep;
-    return slice;
-  });
+    acc.push({ ...d, path, startAngle: currentAngle, sweep });
+    return acc;
+  }, []);
 
   return (
     <View style={{ alignItems: 'center' }}>
