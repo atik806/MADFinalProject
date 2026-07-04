@@ -7,11 +7,13 @@ import {
   ScrollView,
   StyleSheet,
   Image,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "../../../hooks/use-translation";
+import { useColors } from "../../../features/officials/shared/constants/theme";
 
 type PhotoType = "profile" | "nid" | "land";
 type FormErrors = {
@@ -20,6 +22,7 @@ type FormErrors = {
 };
 
 export default function PhotoScreen() {
+  const colors = useColors();
   const { t } = useTranslation();
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [nidPhoto, setNidPhoto] = useState<string | null>(null);
@@ -29,7 +32,7 @@ export default function PhotoScreen() {
   const pickImage = async (type: PhotoType) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      alert(t('galleryPermission'));
+      Alert.alert(t('galleryPermission'));
       return;
     }
 
@@ -55,7 +58,7 @@ export default function PhotoScreen() {
   const takePhoto = async (type: PhotoType) => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      alert(t('cameraPermission'));
+      Alert.alert(t('cameraPermission'));
       return;
     }
 
@@ -85,8 +88,11 @@ export default function PhotoScreen() {
     };
     const title = `${labels[type]} ${t('selectPhoto')}`;
 
-    alert(title);
-    pickImage(type);
+    Alert.alert(title, "", [
+      { text: t('gallery'), onPress: () => pickImage(type) },
+      { text: t('camera'), onPress: () => takePhoto(type) },
+      { text: t('cancel'), style: 'cancel' },
+    ]);
   };
 
   const validate = (): boolean => {
@@ -106,7 +112,7 @@ export default function PhotoScreen() {
 
   const handleSubmit = () => {
     if (validate()) {
-      router.replace("/view/FarmerRegistration/farmer-registration");
+      router.replace("/view/FarmerDashboard/farmer-dashboard");
     }
   };
 
@@ -119,14 +125,14 @@ export default function PhotoScreen() {
     required?: boolean
   ) => (
     <View style={styles.photoSection}>
-      <Text style={styles.label}>
+      <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>
         {label}
-        {required && <Text style={styles.requiredMark}> *</Text>}
+        {required && <Text style={[styles.requiredMark, { color: colors.dashboard.redDown }]}> *</Text>}
       </Text>
-      <Text style={styles.photoSubtitle}>{subtitle}</Text>
+      <Text style={[styles.photoSubtitle, { color: colors.dashboard.textSecondary }]}>{subtitle}</Text>
 
       <TouchableOpacity
-        style={styles.photoBox}
+        style={[styles.photoBox, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}
         onPress={() => showPicker(type)}
       >
         {photoUri ? (
@@ -139,84 +145,84 @@ export default function PhotoScreen() {
           </>
         ) : (
           <View style={styles.photoPlaceholder}>
-            <Ionicons name={icon} size={48} color="#A0B4B7" />
-            <Text style={styles.uploadText}>{t('selectPhoto')}</Text>
+            <Ionicons name={icon} size={48} color={colors.dashboard.textSecondary} />
+            <Text style={[styles.uploadText, { color: colors.dashboard.textSecondary }]}>{t('selectPhoto')}</Text>
             <View style={styles.photoActions}>
               <TouchableOpacity
-                style={styles.photoActionBtn}
+                style={[styles.photoActionBtn, { backgroundColor: colors.userVerified }]}
                 onPress={() => pickImage(type)}
               >
-                <Ionicons name="images-outline" size={18} color="#157A5A" />
-                <Text style={styles.photoActionText}>{t('gallery')}</Text>
+                <Ionicons name="images-outline" size={18} color={colors.deepGreen} />
+                <Text style={[styles.photoActionText, { color: colors.deepGreen }]}>{t('gallery')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.photoActionBtn}
+                style={[styles.photoActionBtn, { backgroundColor: colors.userVerified }]}
                 onPress={() => takePhoto(type)}
               >
-                <Ionicons name="camera-outline" size={18} color="#157A5A" />
-                <Text style={styles.photoActionText}>{t('camera')}</Text>
+                <Ionicons name="camera-outline" size={18} color={colors.deepGreen} />
+                <Text style={[styles.photoActionText, { color: colors.deepGreen }]}>{t('camera')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
       </TouchableOpacity>
       {type !== "land" && errors[type] && (
-        <Text style={styles.error}>{errors[type]}</Text>
+        <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors[type]}</Text>
       )}
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color="#1F2937" />
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={22} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
-          <View style={styles.headerLogo}>
+          <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
             <Ionicons name="leaf" size={18} color="#fff" />
           </View>
         </View>
 
         <View>
-          <Text style={styles.title}>{t('newFarmerRegistration')}</Text>
-          <Text style={styles.subtitle}>{t('step5of5')}</Text>
+          <Text style={[styles.title, { color: colors.dashboard.textPrimary }]}>{t('newFarmerRegistration')}</Text>
+          <Text style={[styles.subtitle, { color: colors.dashboard.textSecondary }]}>{t('step5of5')}</Text>
         </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.stepperContainer}>
           <View style={styles.stepItem}>
-            <View style={[styles.stepBar, styles.completedBar]}>
+            <View style={[styles.stepBar, styles.completedBar, { backgroundColor: colors.deepGreen }]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>{t('identity')}</Text>
+            <Text style={[styles.completedStepText, { color: colors.deepGreen }]}>{t('identity')}</Text>
           </View>
 
           <View style={styles.stepItem}>
-            <View style={[styles.stepBar, styles.completedBar]}>
+            <View style={[styles.stepBar, styles.completedBar, { backgroundColor: colors.deepGreen }]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>{t('land')}</Text>
+            <Text style={[styles.completedStepText, { color: colors.deepGreen }]}>{t('land')}</Text>
           </View>
 
           <View style={styles.stepItem}>
-            <View style={[styles.stepBar, styles.completedBar]}>
+            <View style={[styles.stepBar, styles.completedBar, { backgroundColor: colors.deepGreen }]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>{t('incomeStep')}</Text>
+            <Text style={[styles.completedStepText, { color: colors.deepGreen }]}>{t('incomeStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
-            <View style={[styles.stepBar, styles.completedBar]}>
+            <View style={[styles.stepBar, styles.completedBar, { backgroundColor: colors.deepGreen }]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>{t('loanStep')}</Text>
+            <Text style={[styles.completedStepText, { color: colors.deepGreen }]}>{t('loanStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
-            <View style={[styles.stepBar, styles.activeBar]} />
-            <Text style={styles.activeStepText}>{t('photoStep')}</Text>
+            <View style={[styles.stepBar, styles.activeBar, { backgroundColor: colors.deepGreen }]} />
+            <Text style={[styles.activeStepText, { color: colors.deepGreen }]}>{t('photoStep')}</Text>
           </View>
         </View>
 
@@ -246,7 +252,7 @@ export default function PhotoScreen() {
           landPhoto
         )}
 
-        <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit}>
+        <TouchableOpacity style={[styles.submitBtn, { backgroundColor: colors.deepGreen }]} onPress={handleSubmit}>
           <Ionicons name="checkmark-circle" size={22} color="#fff" />
           <Text style={styles.submitBtnText}>{t('submitRegistration')}</Text>
         </TouchableOpacity>
@@ -258,7 +264,6 @@ export default function PhotoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F3F5F4",
   },
   header: {
     flexDirection: "row",
@@ -271,7 +276,6 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -284,7 +288,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 7,
-    backgroundColor: "#006847",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 10,
@@ -292,10 +295,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#1F2937",
   },
   subtitle: {
-    color: "#7B8A8B",
     marginTop: 2,
   },
   stepperContainer: {
@@ -312,17 +313,14 @@ const styles = StyleSheet.create({
     width: "90%",
     height: 6,
     borderRadius: 20,
-    backgroundColor: "#D9E5E1",
     marginBottom: 6,
     justifyContent: "center",
     alignItems: "center",
   },
   activeBar: {
-    backgroundColor: "#157A5A",
     height: 6,
   },
   completedBar: {
-    backgroundColor: "#157A5A",
     height: 22,
     width: 22,
     borderRadius: 11,
@@ -350,14 +348,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 18,
     fontWeight: "600",
-    color: "#425466",
   },
-  requiredMark: {
-    color: "#DC2626",
-  },
+  requiredMark: {},
   photoSubtitle: {
     marginHorizontal: 18,
-    color: "#7B8A8B",
     fontSize: 13,
     marginBottom: 10,
   },
@@ -365,9 +359,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 18,
     height: 200,
     borderRadius: 18,
-    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#E4ECE9",
     borderStyle: "dashed",
     overflow: "hidden",
   },
@@ -377,7 +369,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   uploadText: {
-    color: "#7B8A8B",
     marginTop: 10,
     fontWeight: "500",
   },
@@ -390,13 +381,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#ECFDF5",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
   },
   photoActionText: {
-    color: "#157A5A",
     fontWeight: "600",
     fontSize: 14,
   },
@@ -430,7 +419,6 @@ const styles = StyleSheet.create({
     marginBottom: 25,
     height: 60,
     borderRadius: 18,
-    backgroundColor: "#157A5A",
     justifyContent: "center",
     alignItems: "center",
     flexDirection: "row",
@@ -442,7 +430,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   error: {
-    color: "#DC2626",
     fontSize: 13,
     marginHorizontal: 22,
     marginTop: 4,

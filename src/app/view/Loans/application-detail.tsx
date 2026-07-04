@@ -11,6 +11,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLoans, type TimelineEntry } from '../../../contexts/LoanContext';
 import { useTranslation } from '../../../hooks/use-translation';
+import { useColors } from '../../../features/officials/shared/constants/theme';
 
 const labelMap: Record<string, string> = {
   pending: 'Pending',
@@ -27,6 +28,7 @@ const statusColors: Record<string, { color: string; bg: string }> = {
 };
 
 export default function ApplicationDetailScreen() {
+  const colors = useColors();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { applications } = useLoans();
   const { t } = useTranslation();
@@ -34,22 +36,22 @@ export default function ApplicationDetailScreen() {
 
   if (!app) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
+        <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
           <View style={styles.headerLeft}>
             <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-              <Ionicons name="arrow-back" size={24} color="#1F2937" />
+              <Ionicons name="arrow-back" size={24} color={colors.dashboard.textPrimary} />
             </TouchableOpacity>
-            <View style={styles.headerLogo}>
+            <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
               <Ionicons name="leaf" size={18} color="#fff" />
             </View>
           </View>
-          <Text style={styles.headerTitle}>{t('loanStatus')}</Text>
+          <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('loanStatus')}</Text>
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.empty}>
-          <Feather name="alert-circle" size={40} color="#D1D5DB" />
-          <Text style={styles.emptyText}>{t('applicationNotFound')}</Text>
+          <Feather name="alert-circle" size={40} color={colors.dashboard.border} />
+          <Text style={[styles.emptyText, { color: colors.dashboard.textSecondary }]}>{t('applicationNotFound')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -59,17 +61,17 @@ export default function ApplicationDetailScreen() {
   const currentIndex = app.timeline.findIndex((t) => t.status === 'current');
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
+      <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            <Ionicons name="arrow-back" size={24} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
-          <View style={styles.headerLogo}>
+          <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
             <Ionicons name="leaf" size={18} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>{t('loanStatus')}</Text>
+        <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('loanStatus')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -77,11 +79,11 @@ export default function ApplicationDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.statusCard}>
+        <View style={[styles.statusCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
           <View style={styles.statusTop}>
             <View style={{ flex: 1, marginRight: 10 }}>
-              <Text style={styles.statusTitle}>{app.title}</Text>
-              <Text style={styles.statusRef}>{app.id} · {t('submitted')} {app.date}</Text>
+              <Text style={[styles.statusTitle, { color: colors.dashboard.textPrimary }]}>{app.title}</Text>
+              <Text style={[styles.statusRef, { color: colors.dashboard.textSecondary }]}>{app.id} · {t('submitted')} {app.date}</Text>
             </View>
             <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
               <Text style={[styles.statusBadgeText, { color: sc.color }]}>
@@ -91,16 +93,16 @@ export default function ApplicationDetailScreen() {
           </View>
         </View>
 
-        <View style={styles.detailsRow}>
-          <DetailBox label={t('amount')} value={`৳${app.amount.toLocaleString('en-BD')}`} />
-          <View style={styles.detailDivider} />
-          <DetailBox label={t('duration')} value={app.duration} />
-          <View style={styles.detailDivider} />
-          <DetailBox label="EMI" value={`৳${app.emi.toLocaleString('en-BD')}/mo`} />
+        <View style={[styles.detailsRow, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }]}>
+          <DetailBox label={t('amount')} value={`৳${app.amount.toLocaleString('en-BD')}`} colors={colors} />
+          <View style={[styles.detailDivider, { backgroundColor: colors.dashboard.border }]} />
+          <DetailBox label={t('duration')} value={app.duration} colors={colors} />
+          <View style={[styles.detailDivider, { backgroundColor: colors.dashboard.border }]} />
+          <DetailBox label="EMI" value={`৳${app.emi.toLocaleString('en-BD')}/mo`} colors={colors} />
         </View>
 
-        <Text style={styles.sectionTitle}>{t('applicationTimeline')}</Text>
-        <View style={styles.timelineCard}>
+        <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('applicationTimeline')}</Text>
+        <View style={[styles.timelineCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
           {app.timeline.map((entry, index) => (
             <TimelineStep
               key={entry.label}
@@ -108,19 +110,20 @@ export default function ApplicationDetailScreen() {
               isLast={index === app.timeline.length - 1}
               isCurrent={index === currentIndex}
               t={t}
+              colors={colors}
             />
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>{t('assignedBankOfficer')}</Text>
-        <View style={styles.officerCard}>
-          <View style={styles.officerAvatar}>
-            <Feather name="user" size={22} color="#006847" />
+        <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('assignedBankOfficer')}</Text>
+        <View style={[styles.officerCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
+          <View style={[styles.officerAvatar, { backgroundColor: colors.userVerified }]}>
+            <Feather name="user" size={22} color={colors.deepGreen} />
           </View>
           <View style={styles.officerInfo}>
-            <Text style={styles.officerName}>{app.bankOfficer.name}</Text>
-            <Text style={styles.officerDetail}>{app.bankOfficer.bank}</Text>
-            <Text style={styles.officerDetail}>{app.bankOfficer.branch}</Text>
+            <Text style={[styles.officerName, { color: colors.dashboard.textPrimary }]}>{app.bankOfficer.name}</Text>
+            <Text style={[styles.officerDetail, { color: colors.dashboard.textSecondary }]}>{app.bankOfficer.bank}</Text>
+            <Text style={[styles.officerDetail, { color: colors.dashboard.textSecondary }]}>{app.bankOfficer.branch}</Text>
           </View>
         </View>
       </ScrollView>
@@ -128,29 +131,29 @@ export default function ApplicationDetailScreen() {
   );
 }
 
-function DetailBox({ label, value }: { label: string; value: string }) {
+function DetailBox({ label, value, colors }: { label: string; value: string; colors: any }) {
   return (
     <View style={styles.detailBox}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue}>{value}</Text>
+      <Text style={[styles.detailLabel, { color: colors.dashboard.textSecondary }]}>{label}</Text>
+      <Text style={[styles.detailValue, { color: colors.dashboard.textPrimary }]}>{value}</Text>
     </View>
   );
 }
 
-function TimelineStep({ entry, isLast, isCurrent, t }: { entry: TimelineEntry; isLast: boolean; isCurrent: boolean; t: (key: any) => string }) {
+function TimelineStep({ entry, isLast, isCurrent, t, colors }: { entry: TimelineEntry; isLast: boolean; isCurrent: boolean; t: (key: any) => string; colors: any }) {
   const isFailed = entry.status === 'failed';
   const isDone = entry.status === 'done';
 
-  let circleBg = '#E5E7EB';
-  let circleIcon: React.ReactNode = <View style={styles.timelineDot} />;
+  let circleBg = colors.dashboard.border;
+  let circleIcon: React.ReactNode = <View style={[styles.timelineDot, { backgroundColor: colors.dashboard.textSecondary }]} />;
   if (isDone) {
-    circleBg = '#16A34A';
+    circleBg = colors.dashboard.greenUp;
     circleIcon = <Ionicons name="checkmark" size={12} color="#fff" />;
   } else if (isCurrent) {
-    circleBg = '#006847';
-    circleIcon = <View style={styles.timelineCurrentDot} />;
+    circleBg = colors.deepGreen;
+    circleIcon = <View style={[styles.timelineCurrentDot, { backgroundColor: '#fff' }]} />;
   } else if (isFailed) {
-    circleBg = '#DC2626';
+    circleBg = colors.dashboard.redDown;
     circleIcon = <Ionicons name="close" size={12} color="#fff" />;
   }
 
@@ -160,22 +163,22 @@ function TimelineStep({ entry, isLast, isCurrent, t }: { entry: TimelineEntry; i
         <View style={[styles.timelineCircle, { backgroundColor: circleBg }]}>
           {circleIcon}
         </View>
-        {!isLast && <View style={styles.timelineLine} />}
+        {!isLast && <View style={[styles.timelineLine, { backgroundColor: colors.dashboard.border }]} />}
       </View>
-      <View style={[styles.timelineContent, isCurrent && styles.timelineContentCurrent]}>
+      <View style={[styles.timelineContent, isCurrent && { backgroundColor: colors.userVerified, borderRadius: 12, padding: 12, marginBottom: 12, marginLeft: 12 }]}>
         <View style={styles.timelineTop}>
-          <Text style={[styles.timelineLabel, (isDone || isCurrent) && styles.timelineLabelDone, isFailed && styles.timelineLabelFailed]}>
+          <Text style={[styles.timelineLabel, { color: colors.dashboard.textSecondary }, (isDone || isCurrent) && { color: colors.dashboard.textPrimary, fontWeight: '600' }, isFailed && { color: colors.dashboard.redDown, fontWeight: '600' }]}>
             {entry.label}
           </Text>
           {entry.date ? (
-            <Text style={styles.timelineDate}>{entry.date}</Text>
+            <Text style={[styles.timelineDate, { color: colors.dashboard.textSecondary }]}>{entry.date}</Text>
           ) : null}
         </View>
         {isCurrent && (
-          <Text style={styles.timelineNote}>⏳ {t('inProgress')} — {t('estimatedDays')}</Text>
+          <Text style={[styles.timelineNote, { color: colors.deepGreen }]}>⏳ {t('inProgress')} — {t('estimatedDays')}</Text>
         )}
         {isFailed && (
-          <Text style={styles.timelineNoteFail}>{t('notApproved')}</Text>
+          <Text style={[styles.timelineNoteFail, { color: colors.dashboard.redDown }]}>{t('notApproved')}</Text>
         )}
       </View>
     </View>
@@ -185,7 +188,6 @@ function TimelineStep({ entry, isLast, isCurrent, t }: { entry: TimelineEntry; i
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8F8',
   },
   header: {
     flexDirection: 'row',
@@ -194,14 +196,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 14,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -211,7 +210,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 7,
-    backgroundColor: '#006847',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 10,
@@ -221,10 +219,8 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   statusCard: {
-    backgroundColor: '#fff',
     borderRadius: 18,
     padding: 18,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
   },
   statusTop: {
     flexDirection: 'row',
@@ -234,11 +230,9 @@ const styles = StyleSheet.create({
   statusTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1F2937',
   },
   statusRef: {
     fontSize: 12,
-    color: '#9CA3AF',
     marginTop: 3,
   },
   statusBadge: {
@@ -252,11 +246,9 @@ const styles = StyleSheet.create({
   },
   detailsRow: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 18,
     marginTop: 12,
-    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
   },
   detailBox: {
     flex: 1,
@@ -264,32 +256,26 @@ const styles = StyleSheet.create({
   },
   detailDivider: {
     width: 1,
-    backgroundColor: '#F0F0F0',
     marginVertical: -18,
   },
   detailLabel: {
     fontSize: 11,
-    color: '#9CA3AF',
     fontWeight: '500',
     marginBottom: 4,
   },
   detailValue: {
     fontSize: 15,
-    color: '#1F2937',
     fontWeight: '700',
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
     marginTop: 24,
     marginBottom: 12,
   },
   timelineCard: {
-    backgroundColor: '#fff',
     borderRadius: 18,
     padding: 18,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
   },
   timelineRow: {
     flexDirection: 'row',
@@ -310,31 +296,21 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#9CA3AF',
   },
   timelineCurrentDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#fff',
   },
   timelineLine: {
     width: 2,
     flex: 1,
-    backgroundColor: '#E5E7EB',
     minHeight: 36,
   },
   timelineContent: {
     flex: 1,
     marginLeft: 12,
     paddingBottom: 24,
-  },
-  timelineContentCurrent: {
-    backgroundColor: '#F0FDF4',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    marginLeft: 12,
   },
   timelineTop: {
     flexDirection: 'row',
@@ -344,48 +320,33 @@ const styles = StyleSheet.create({
   timelineLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
     flex: 1,
-  },
-  timelineLabelDone: {
-    color: '#1F2937',
-    fontWeight: '600',
-  },
-  timelineLabelFailed: {
-    color: '#DC2626',
-    fontWeight: '600',
   },
   timelineDate: {
     fontSize: 12,
-    color: '#9CA3AF',
     fontWeight: '500',
     marginLeft: 8,
   },
   timelineNote: {
     fontSize: 12,
-    color: '#006847',
     fontWeight: '600',
     marginTop: 6,
   },
   timelineNoteFail: {
     fontSize: 12,
-    color: '#DC2626',
     fontWeight: '500',
     marginTop: 4,
   },
   officerCard: {
-    backgroundColor: '#fff',
     borderRadius: 18,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
   },
   officerAvatar: {
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: '#ECFDF5',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -396,11 +357,9 @@ const styles = StyleSheet.create({
   officerName: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
   },
   officerDetail: {
     fontSize: 13,
-    color: '#6B7280',
     marginTop: 2,
   },
   empty: {
@@ -412,6 +371,5 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#9CA3AF',
   },
 });

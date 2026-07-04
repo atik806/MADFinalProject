@@ -12,6 +12,7 @@ import { router } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLoans } from '../../../contexts/LoanContext';
 import { useTranslation } from '../../../hooks/use-translation';
+import { useColors } from '../../../features/officials/shared/constants/theme';
 
 type Step = 1 | 2 | 3;
 type InstallmentType = 'monthly' | 'seasonal';
@@ -37,6 +38,7 @@ function calculateEMI(principal: number, months: number, annualRate: number): nu
 }
 
 export default function ApplyLoanScreen() {
+  const colors = useColors();
   const { addApplication } = useLoans();
   const { t } = useTranslation();
   const [step, setStep] = useState<Step>(1);
@@ -96,35 +98,35 @@ export default function ApplyLoanScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
+      <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={handleBackStep} hitSlop={8}>
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            <Ionicons name="arrow-back" size={24} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
-          <View style={styles.headerLogo}>
+          <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
             <Ionicons name="leaf" size={18} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>{t('applyForLoan')}</Text>
+        <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('applyForLoan')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
-      <View style={styles.stepper}>
+      <View style={[styles.stepper, { backgroundColor: colors.dashboard.cardBg }]}>
         {([1, 2, 3] as const).map((s) => {
           const isDone = s < step;
           const isCurrent = s === step;
           const label = s === 1 ? t('loanDetails') : s === 2 ? t('documents') : t('review');
           return (
             <View key={s} style={styles.stepItem}>
-              <View style={[styles.stepCircle, isDone && styles.stepCircleDone, isCurrent && styles.stepCircleCurrent]}>
+              <View style={[styles.stepCircle, { backgroundColor: colors.dashboard.border }, isDone && { backgroundColor: colors.dashboard.greenUp }, isCurrent && { backgroundColor: colors.deepGreen }]}>
                 {isDone ? (
                   <Ionicons name="checkmark" size={14} color="#fff" />
                 ) : (
-                  <Text style={[styles.stepNum, isCurrent && styles.stepNumCurrent]}>{s}</Text>
+                  <Text style={[styles.stepNum, { color: colors.dashboard.textSecondary }, isCurrent && { color: '#fff' }]}>{s}</Text>
                 )}
               </View>
-              <Text style={[styles.stepLabel, isCurrent && styles.stepLabelCurrent]}>
+              <Text style={[styles.stepLabel, { color: colors.dashboard.textSecondary }, isCurrent && { color: colors.deepGreen, fontWeight: '700' }]}>
                 {label}
               </Text>
             </View>
@@ -152,6 +154,7 @@ export default function ApplyLoanScreen() {
             emi={emi}
             annualRate={annualRate}
             t={t}
+            colors={colors}
           />
         )}
         {step === 2 && (
@@ -159,6 +162,7 @@ export default function ApplyLoanScreen() {
             documents={documents}
             toggleDoc={toggleDoc}
             t={t}
+            colors={colors}
           />
         )}
         {step === 3 && (
@@ -171,14 +175,15 @@ export default function ApplyLoanScreen() {
             annualRate={annualRate}
             totalRepayment={totalRepayment}
             t={t}
+            colors={colors}
           />
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: colors.dashboard.cardBg, borderTopColor: colors.dashboard.border }]}>
         {step < 3 && (
           <TouchableOpacity
-            style={[styles.primaryBtn, !canContinue && styles.primaryBtnDisabled]}
+            style={[styles.primaryBtn, { backgroundColor: colors.deepGreen }, !canContinue && { opacity: 0.5 }]}
             onPress={handleNext}
             disabled={!canContinue}
             activeOpacity={0.8}
@@ -191,7 +196,7 @@ export default function ApplyLoanScreen() {
         )}
         {step === 3 && (
           <TouchableOpacity
-            style={styles.primaryBtn}
+            style={[styles.primaryBtn, { backgroundColor: colors.deepGreen }]}
             onPress={handleSubmit}
             activeOpacity={0.8}
           >
@@ -209,7 +214,7 @@ function StepLoanDetails({
   purpose, setPurpose,
   durationMonths, setDurationMonths,
   installmentType, setInstallmentType,
-  emi, annualRate, t,
+  emi, annualRate, t, colors,
 }: {
   amount: number;
   setAmount: (v: number) => void;
@@ -224,96 +229,97 @@ function StepLoanDetails({
   emi: number;
   annualRate: number;
   t: (key: any) => string;
+  colors: any;
 }) {
   return (
     <View>
-      <Text style={styles.sectionLabel}>{t('loanAmountLabel')}</Text>
+      <Text style={[styles.sectionLabel, { color: colors.dashboard.textPrimary }]}>{t('loanAmountLabel')}</Text>
       <View style={styles.chipRow}>
         {amountPresets.map((preset) => (
           <TouchableOpacity
             key={preset}
-            style={[styles.chip, amount === preset && !customAmount && styles.chipActive]}
+            style={[styles.chip, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }, amount === preset && !customAmount && { borderColor: colors.deepGreen, backgroundColor: colors.userVerified }]}
             onPress={() => { setAmount(preset); setCustomAmount(''); }}
           >
-            <Text style={[styles.chipText, amount === preset && !customAmount && styles.chipTextActive]}>
+            <Text style={[styles.chipText, { color: colors.dashboard.textSecondary }, amount === preset && !customAmount && { color: colors.deepGreen }]}>
               ৳{preset.toLocaleString('en-BD')}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
       <TextInput
-        style={[styles.input, customAmount.length > 0 && styles.inputActive]}
+        style={[styles.input, { borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.cardBg }, customAmount.length > 0 && { borderColor: colors.deepGreen }]}
         placeholder={t('customAmount')}
-        placeholderTextColor="#9CA3AF"
+        placeholderTextColor={colors.dashboard.textSecondary}
         keyboardType="decimal-pad"
         value={customAmount}
         onChangeText={(v) => { setCustomAmount(v); const n = parseInt(v.replace(/,/g, ''), 10); if (!isNaN(n)) setAmount(n); }}
       />
 
-      <Text style={styles.sectionLabel}>{t('loanPurpose')}</Text>
+      <Text style={[styles.sectionLabel, { color: colors.dashboard.textPrimary }]}>{t('loanPurpose')}</Text>
       <View style={styles.purposeGrid}>
         {purposes.map((p) => (
           <TouchableOpacity
             key={p}
-            style={[styles.purposeBtn, purpose === p && styles.purposeBtnActive]}
+            style={[styles.purposeBtn, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }, purpose === p && { borderColor: colors.deepGreen, backgroundColor: colors.userVerified }]}
             onPress={() => setPurpose(p)}
           >
-            <Text style={[styles.purposeText, purpose === p && styles.purposeTextActive]}>{p}</Text>
+            <Text style={[styles.purposeText, { color: colors.dashboard.textSecondary }, purpose === p && { color: colors.deepGreen }]}>{p}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <Text style={styles.sectionLabel}>{t('durationLabel')}</Text>
+      <Text style={[styles.sectionLabel, { color: colors.dashboard.textPrimary }]}>{t('durationLabel')}</Text>
       <View style={styles.chipRow}>
         {durationPresets.map((m) => (
           <TouchableOpacity
             key={m}
-            style={[styles.chip, durationMonths === m && styles.chipActive]}
+            style={[styles.chip, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }, durationMonths === m && { borderColor: colors.deepGreen, backgroundColor: colors.userVerified }]}
             onPress={() => setDurationMonths(m)}
           >
-            <Text style={[styles.chipText, durationMonths === m && styles.chipTextActive]}>
+            <Text style={[styles.chipText, { color: colors.dashboard.textSecondary }, durationMonths === m && { color: colors.deepGreen }]}>
               {m} {t('months')}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <Text style={styles.sectionLabel}>{t('installmentType')}</Text>
+      <Text style={[styles.sectionLabel, { color: colors.dashboard.textPrimary }]}>{t('installmentType')}</Text>
       <View style={styles.toggleRow}>
         <TouchableOpacity
-          style={[styles.toggleBtn, installmentType === 'monthly' && styles.toggleBtnActive]}
+          style={[styles.toggleBtn, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }, installmentType === 'monthly' && { borderColor: colors.deepGreen, backgroundColor: colors.userVerified }]}
           onPress={() => setInstallmentType('monthly')}
         >
-          <Feather name="calendar" size={16} color={installmentType === 'monthly' ? '#006847' : '#6B7280'} />
-          <Text style={[styles.toggleText, installmentType === 'monthly' && styles.toggleTextActive]}>
+          <Feather name="calendar" size={16} color={installmentType === 'monthly' ? colors.deepGreen : colors.dashboard.textSecondary} />
+          <Text style={[styles.toggleText, { color: colors.dashboard.textSecondary }, installmentType === 'monthly' && { color: colors.deepGreen }]}>
             {t('monthly')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.toggleBtn, installmentType === 'seasonal' && styles.toggleBtnActive]}
+          style={[styles.toggleBtn, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }, installmentType === 'seasonal' && { borderColor: colors.deepGreen, backgroundColor: colors.userVerified }]}
           onPress={() => setInstallmentType('seasonal')}
         >
-          <Feather name="sun" size={16} color={installmentType === 'seasonal' ? '#006847' : '#6B7280'} />
-          <Text style={[styles.toggleText, installmentType === 'seasonal' && styles.toggleTextActive]}>
+          <Feather name="sun" size={16} color={installmentType === 'seasonal' ? colors.deepGreen : colors.dashboard.textSecondary} />
+          <Text style={[styles.toggleText, { color: colors.dashboard.textSecondary }, installmentType === 'seasonal' && { color: colors.deepGreen }]}>
             {t('seasonal')}
           </Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.emiCard}>
-        <Text style={styles.emiTitle}>{t('emiPreview')}</Text>
-        <View style={styles.emiDivider} />
+      <View style={[styles.emiCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
+        <Text style={[styles.emiTitle, { color: colors.dashboard.textPrimary }]}>{t('emiPreview')}</Text>
+        <View style={[styles.emiDivider, { backgroundColor: colors.dashboard.border }]} />
         <View style={styles.emiRow}>
-          <Text style={styles.emiLabel}>{t('principal')}</Text>
-          <Text style={styles.emiValue}>৳{amount.toLocaleString('en-BD')}</Text>
+          <Text style={[styles.emiLabel, { color: colors.dashboard.textSecondary }]}>{t('principal')}</Text>
+          <Text style={[styles.emiValue, { color: colors.dashboard.textPrimary }]}>৳{amount.toLocaleString('en-BD')}</Text>
         </View>
         <View style={styles.emiRow}>
-          <Text style={styles.emiLabel}>{t('rate')}</Text>
-          <Text style={styles.emiValue}>{annualRate}% {t('perAnnum')}</Text>
+          <Text style={[styles.emiLabel, { color: colors.dashboard.textSecondary }]}>{t('rate')}</Text>
+          <Text style={[styles.emiValue, { color: colors.dashboard.textPrimary }]}>{annualRate}% {t('perAnnum')}</Text>
         </View>
         <View style={styles.emiRow}>
-          <Text style={styles.emiLabel}>{installmentType === 'monthly' ? t('monthly') : t('seasonal')} {t('emi')}</Text>
-          <Text style={styles.emiValueHighlight}>৳{emi.toLocaleString('en-BD')}</Text>
+          <Text style={[styles.emiLabel, { color: colors.dashboard.textSecondary }]}>{installmentType === 'monthly' ? t('monthly') : t('seasonal')} {t('emi')}</Text>
+          <Text style={[styles.emiValueHighlight, { color: colors.deepGreen }]}>৳{emi.toLocaleString('en-BD')}</Text>
         </View>
       </View>
     </View>
@@ -321,11 +327,12 @@ function StepLoanDetails({
 }
 
 function StepDocuments({
-  documents, toggleDoc, t,
+  documents, toggleDoc, t, colors,
 }: {
   documents: { nid: boolean; landDocument: boolean; farmPhotograph: boolean; previousLoanStatement: boolean };
   toggleDoc: (key: keyof typeof documents) => void;
   t: (key: any) => string;
+  colors: any;
 }) {
   const docList: { key: keyof typeof documents; labelKey: string; required: boolean }[] = [
     { key: 'nid', labelKey: 'nidCard', required: true },
@@ -336,34 +343,34 @@ function StepDocuments({
 
   return (
     <View>
-      <Text style={styles.sectionLabel}>{t('requiredDocuments')}</Text>
+      <Text style={[styles.sectionLabel, { color: colors.dashboard.textPrimary }]}>{t('requiredDocuments')}</Text>
       {docList.map((doc) => {
         const uploaded = documents[doc.key];
         return (
           <TouchableOpacity
             key={doc.key}
-            style={[styles.docCard, uploaded && styles.docCardDone]}
+            style={[styles.docCard, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }, uploaded && { borderColor: '#BBF7D0', backgroundColor: colors.userVerified }]}
             onPress={() => toggleDoc(doc.key)}
             activeOpacity={0.7}
           >
             <View style={styles.docLeft}>
-              <View style={[styles.docIcon, uploaded && styles.docIconDone]}>
+              <View style={[styles.docIcon, { backgroundColor: colors.dashboard.border }, uploaded && { backgroundColor: colors.userVerified }]}>
                 {uploaded ? (
-                  <Ionicons name="document-text" size={20} color="#16A34A" />
+                  <Ionicons name="document-text" size={20} color={colors.dashboard.greenUp} />
                 ) : (
-                  <Feather name="upload" size={20} color="#6B7280" />
+                  <Feather name="upload" size={20} color={colors.dashboard.textSecondary} />
                 )}
               </View>
               <View style={styles.docInfo}>
-                <Text style={[styles.docLabel, uploaded && styles.docLabelDone]}>{t(doc.labelKey)}</Text>
-                <Text style={styles.docStatus}>
+                <Text style={[styles.docLabel, { color: colors.dashboard.textPrimary }, uploaded && { color: colors.dashboard.greenUp }]}>{t(doc.labelKey)}</Text>
+                <Text style={[styles.docStatus, { color: colors.dashboard.textSecondary }]}>
                   {uploaded ? `${t('uploaded')} ✓` : doc.required ? `${t('required')} — ${t('tapToUpload')}` : t('optional')}
                 </Text>
               </View>
             </View>
             {uploaded && (
               <View style={styles.docBadge}>
-                <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+                <Ionicons name="checkmark-circle" size={20} color={colors.dashboard.greenUp} />
               </View>
             )}
           </TouchableOpacity>
@@ -374,7 +381,7 @@ function StepDocuments({
 }
 
 function StepReview({
-  amount, purpose, durationMonths, installmentType, emi, annualRate, totalRepayment, t,
+  amount, purpose, durationMonths, installmentType, emi, annualRate, totalRepayment, t, colors,
 }: {
   amount: number;
   purpose: string;
@@ -384,26 +391,27 @@ function StepReview({
   annualRate: number;
   totalRepayment: number;
   t: (key: any) => string;
+  colors: any;
 }) {
   const monthsLabel = durationMonths === 1 ? `1 ${t('month')}` : `${durationMonths} ${t('months')}`;
 
   return (
     <View>
-      <View style={styles.reviewCard}>
-        <Text style={styles.reviewTitle}>{t('reviewApplication')}</Text>
-        <View style={styles.reviewDivider} />
-        <ReviewRow label={t('loanAmount')} value={`৳${amount.toLocaleString('en-BD')}`} />
-        <ReviewRow label={t('loanPurpose')} value={purpose} />
-        <ReviewRow label={t('duration')} value={monthsLabel} />
-        <ReviewRow label={t('installmentType')} value={installmentType === 'monthly' ? t('monthly') : t('seasonal')} />
-        <ReviewRow label={`${installmentType === 'monthly' ? t('monthly') : t('seasonal')} ${t('emi')}`} value={`৳${emi.toLocaleString('en-BD')}`} />
-        <ReviewRow label={t('rate')} value={`${annualRate}% ${t('perAnnum')}`} />
-        <ReviewRow label={t('totalRepayment')} value={`৳${totalRepayment.toLocaleString('en-BD')}`} highlight />
+      <View style={[styles.reviewCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
+        <Text style={[styles.reviewTitle, { color: colors.dashboard.textPrimary }]}>{t('reviewApplication')}</Text>
+        <View style={[styles.reviewDivider, { backgroundColor: colors.dashboard.border }]} />
+        <ReviewRow label={t('loanAmount')} value={`৳${amount.toLocaleString('en-BD')}`} colors={colors} />
+        <ReviewRow label={t('loanPurpose')} value={purpose} colors={colors} />
+        <ReviewRow label={t('duration')} value={monthsLabel} colors={colors} />
+        <ReviewRow label={t('installmentType')} value={installmentType === 'monthly' ? t('monthly') : t('seasonal')} colors={colors} />
+        <ReviewRow label={`${installmentType === 'monthly' ? t('monthly') : t('seasonal')} ${t('emi')}`} value={`৳${emi.toLocaleString('en-BD')}`} colors={colors} />
+        <ReviewRow label={t('rate')} value={`${annualRate}% ${t('perAnnum')}`} colors={colors} />
+        <ReviewRow label={t('totalRepayment')} value={`৳${totalRepayment.toLocaleString('en-BD')}`} highlight colors={colors} />
       </View>
 
-      <View style={styles.infoBox}>
-        <Ionicons name="information-circle" size={18} color="#006847" />
-        <Text style={styles.infoText}>
+      <View style={[styles.infoBox, { backgroundColor: colors.userVerified }]}>
+        <Ionicons name="information-circle" size={18} color={colors.deepGreen} />
+        <Text style={[styles.infoText, { color: colors.userVerifiedText }]}>
           {t('submitConfirm')}
         </Text>
       </View>
@@ -411,11 +419,11 @@ function StepReview({
   );
 }
 
-function ReviewRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function ReviewRow({ label, value, highlight, colors }: { label: string; value: string; highlight?: boolean; colors: any }) {
   return (
     <View style={styles.reviewRow}>
-      <Text style={styles.reviewLabel}>{label}</Text>
-      <Text style={[styles.reviewValue, highlight && styles.reviewValueHighlight]}>{value}</Text>
+      <Text style={[styles.reviewLabel, { color: colors.dashboard.textSecondary }]}>{label}</Text>
+      <Text style={[styles.reviewValue, { color: colors.dashboard.textPrimary }, highlight && { color: colors.deepGreen, fontSize: 16, fontWeight: '700' }]}>{value}</Text>
     </View>
   );
 }
@@ -423,7 +431,6 @@ function ReviewRow({ label, value, highlight }: { label: string; value: string; 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8F8',
   },
   header: {
     flexDirection: 'row',
@@ -432,14 +439,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 14,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -449,19 +453,16 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 7,
-    backgroundColor: '#006847',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 10,
   },
-
   stepper: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 18,
     paddingHorizontal: 18,
-    backgroundColor: '#fff',
     gap: 0,
   },
   stepItem: {
@@ -472,49 +473,29 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  stepCircleDone: {
-    backgroundColor: '#16A34A',
-  },
-  stepCircleCurrent: {
-    backgroundColor: '#006847',
   },
   stepNum: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#9CA3AF',
-  },
-  stepNumCurrent: {
-    color: '#fff',
   },
   stepLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#9CA3AF',
     marginLeft: 6,
     marginRight: 24,
   },
-  stepLabelCurrent: {
-    color: '#006847',
-    fontWeight: '700',
-  },
-
   scrollContent: {
     padding: 18,
     paddingBottom: 20,
   },
-
   sectionLabel: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1F2937',
     marginTop: 20,
     marginBottom: 10,
   },
-
   chipRow: {
     flexDirection: 'row',
     gap: 10,
@@ -524,39 +505,21 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  chipActive: {
-    borderColor: '#006847',
-    backgroundColor: '#ECFDF5',
   },
   chipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
   },
-  chipTextActive: {
-    color: '#006847',
-  },
-
   input: {
     height: 48,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
     borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 14,
-    color: '#1F2937',
-    backgroundColor: '#fff',
     marginTop: 10,
   },
-  inputActive: {
-    borderColor: '#006847',
-  },
-
   purposeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -567,22 +530,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#fff',
-  },
-  purposeBtnActive: {
-    borderColor: '#006847',
-    backgroundColor: '#ECFDF5',
   },
   purposeText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
   },
-  purposeTextActive: {
-    color: '#006847',
-  },
-
   toggleRow: {
     flexDirection: 'row',
     gap: 10,
@@ -592,41 +544,26 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
-    backgroundColor: '#fff',
     gap: 6,
-  },
-  toggleBtnActive: {
-    borderColor: '#006847',
-    backgroundColor: '#ECFDF5',
   },
   toggleText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#6B7280',
   },
-  toggleTextActive: {
-    color: '#006847',
-  },
-
   emiCard: {
-    backgroundColor: '#fff',
     borderRadius: 18,
     padding: 18,
     marginTop: 24,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
   },
   emiTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1F2937',
   },
   emiDivider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
     marginVertical: 12,
   },
   emiRow: {
@@ -637,22 +574,17 @@ const styles = StyleSheet.create({
   },
   emiLabel: {
     fontSize: 13,
-    color: '#6B7280',
     fontWeight: '500',
   },
   emiValue: {
     fontSize: 14,
-    color: '#1F2937',
     fontWeight: '600',
   },
   emiValueHighlight: {
     fontSize: 16,
-    color: '#006847',
     fontWeight: '700',
   },
-
   docCard: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
     marginBottom: 10,
@@ -660,11 +592,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-  },
-  docCardDone: {
-    borderColor: '#BBF7D0',
-    backgroundColor: '#F0FDF4',
   },
   docLeft: {
     flexDirection: 'row',
@@ -675,13 +602,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
-  },
-  docIconDone: {
-    backgroundColor: '#ECFDF5',
   },
   docInfo: {
     flex: 1,
@@ -689,34 +612,24 @@ const styles = StyleSheet.create({
   docLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
-  },
-  docLabelDone: {
-    color: '#16A34A',
   },
   docStatus: {
     fontSize: 11,
-    color: '#9CA3AF',
     marginTop: 2,
   },
   docBadge: {
     marginLeft: 8,
   },
-
   reviewCard: {
-    backgroundColor: '#fff',
     borderRadius: 18,
     padding: 18,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
   },
   reviewTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#1F2937',
   },
   reviewDivider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
     marginVertical: 14,
   },
   reviewRow: {
@@ -727,25 +640,16 @@ const styles = StyleSheet.create({
   },
   reviewLabel: {
     fontSize: 13,
-    color: '#6B7280',
     fontWeight: '500',
   },
   reviewValue: {
     fontSize: 14,
-    color: '#1F2937',
     fontWeight: '600',
   },
-  reviewValueHighlight: {
-    fontSize: 16,
-    color: '#006847',
-    fontWeight: '700',
-  },
-
   infoBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: '#ECFDF5',
     borderRadius: 14,
     padding: 16,
     marginTop: 20,
@@ -753,30 +657,22 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 13,
-    color: '#065F46',
     lineHeight: 20,
     fontWeight: '500',
   },
-
   footer: {
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 24,
-    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
   },
   primaryBtn: {
     height: 54,
     borderRadius: 14,
-    backgroundColor: '#006847',
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
     gap: 6,
-  },
-  primaryBtnDisabled: {
-    opacity: 0.5,
   },
   primaryBtnText: {
     color: '#fff',
