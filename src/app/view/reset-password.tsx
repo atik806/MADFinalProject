@@ -98,10 +98,10 @@ export default function ResetPasswordScreen() {
       return;
     }
     if (newPwd !== confirmPwd) {
-      setError(t('passwordsDoNotMatch'));
+      setError('Passwords do not match');
       return;
     }
-    Alert.alert(t('success'), t('passwordResetSuccess'), [
+    Alert.alert('Success', t('passwordResetSuccess'), [
       { text: t('ok'), onPress: () => router.push('/view/login') },
     ]);
   };

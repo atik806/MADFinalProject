@@ -323,12 +323,13 @@ export default function DashboardScreen() {
 }
 
 function ActionButton({ icon, label, color, onPress }: { icon: string; label: string; color: string; onPress?: () => void }) {
+  const c = useColors();
   return (
     <TouchableOpacity style={styles.actionItem} onPress={onPress}>
       <View style={[styles.actionIcon, { backgroundColor: `${color}12` }]}>
         <Feather name={icon as any} size={22} color={color} />
       </View>
-      <Text style={[styles.actionLabel, { color: colors?.dashboard?.textSecondary || '#4B5563' }]}>{label}</Text>
+      <Text style={[styles.actionLabel, { color: c.dashboard.textSecondary }]}>{label}</Text>
     </TouchableOpacity>
   );
 }

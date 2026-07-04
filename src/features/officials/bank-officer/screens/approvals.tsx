@@ -61,7 +61,7 @@ export default function ApprovalsScreen() {
                 ৳{app.amount.toLocaleString()} • {app.date}
               </Text>
             </View>
-            <StatusBadge status={app.status === 'under_review' ? 'pending' : app.status as any} />
+            <StatusBadge status={app.status} />
           </View>
 
           <View style={styles.cardMeta}>

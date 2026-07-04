@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionCard } from '@/features/officials/shared/components/action-card';
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
@@ -40,6 +41,7 @@ const SCHEDULED_TASKS = [
 ];
 
 export default function FieldOfficerDashboardScreen() {
+  const router = useRouter();
   const colors = useColors();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -114,7 +116,18 @@ export default function FieldOfficerDashboardScreen() {
         <Text style={[styles.sectionLabel, { color: textSecondary }]}>Quick Actions</Text>
         <View style={styles.quickActionsGrid}>
           {QUICK_ACTIONS.map((action, i) => (
-            <ActionCard key={i} icon={action.icon} iconBg={action.iconBg} title={action.title} onPress={() => {}} />
+            <ActionCard
+              key={i}
+              icon={action.icon}
+              iconBg={action.iconBg}
+              title={action.title}
+              onPress={() => {
+                if (i === 0) router.push('/officials/users');
+                else if (i === 1) router.push('/officials/visits');
+                else if (i === 2) router.push('/officials/applications');
+                else if (i === 3) Alert.alert('Success', 'Documents uploaded successfully');
+              }}
+            />
           ))}
         </View>
 
@@ -170,7 +183,7 @@ export default function FieldOfficerDashboardScreen() {
         ) : (
           <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
             {MOCK_FARMERS.map((farmer, i) => (
-              <Pressable key={farmer.id} onPress={() => {}} style={({ pressed }) => pressed && styles.pressed}>
+              <Pressable key={farmer.id} onPress={() => router.push('/officials/users')} style={({ pressed }) => pressed && styles.pressed}>
                 <View style={styles.farmerRow}>
                   <Ionicons
                     name="person-circle"

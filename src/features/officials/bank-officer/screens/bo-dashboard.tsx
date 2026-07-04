@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -12,6 +13,7 @@ import { useColors } from '@/features/officials/shared/constants/theme';
 import { useLoans } from '@/contexts/LoanContext';
 
 export default function BankOfficerDashboardScreen() {
+  const router = useRouter();
   const colors = useColors();
   const { applications, activeLoans } = useLoans();
   const [refreshing, setRefreshing] = useState(false);
@@ -88,7 +90,7 @@ export default function BankOfficerDashboardScreen() {
             <Text style={[styles.sectionLabel, { color: colors.dashboard.textSecondary }]}>Pending Applications</Text>
             <View style={[styles.card, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
               {pendingApps.slice(0, 3).map((app, i) => (
-                <Pressable key={app.id} onPress={() => {}} style={({ pressed }) => pressed && styles.pressed}>
+                <Pressable key={app.id} onPress={() => router.push('/officials/approvals')} style={({ pressed }) => pressed && styles.pressed}>
                   <View style={styles.pendingRow}>
                     <View style={styles.pendingInfo}>
                       <Text style={[styles.pendingTitle, { color: colors.dashboard.textPrimary }]}>{app.title}</Text>
@@ -134,10 +136,10 @@ export default function BankOfficerDashboardScreen() {
 
         <Text style={[styles.sectionLabel, { color: colors.dashboard.textSecondary }]}>Quick Actions</Text>
         <View style={styles.actionsGrid}>
-          <ActionCard icon="checkmark-circle-outline" iconBg="#22C55E" title="Review Applications" onPress={() => {}} />
-          <ActionCard icon="cash-outline" iconBg="#3B82F6" title="Manage Loans" onPress={() => {}} />
-          <ActionCard icon="bar-chart-outline" iconBg="#8B5CF6" title="View Reports" onPress={() => {}} />
-          <ActionCard icon="settings-outline" iconBg="#F59E0B" title="Settings" onPress={() => {}} />
+          <ActionCard icon="checkmark-circle-outline" iconBg="#22C55E" title="Review Applications" onPress={() => router.push('/officials/approvals')} />
+          <ActionCard icon="cash-outline" iconBg="#3B82F6" title="Manage Loans" onPress={() => router.push('/officials/loans')} />
+          <ActionCard icon="bar-chart-outline" iconBg="#8B5CF6" title="View Reports" onPress={() => router.push('/officials/reports')} />
+          <ActionCard icon="settings-outline" iconBg="#F59E0B" title="Settings" onPress={() => router.push('/officials/settings')} />
         </View>
 
         <View style={{ height: 32 }} />

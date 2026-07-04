@@ -10,6 +10,23 @@ import { useLoans, type LoanApplication } from '@/contexts/LoanContext';
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected' | 'active';
 
+type DisplayItem = Record<string, unknown> & {
+  id: string;
+  title: string;
+  amount: number;
+  status: string;
+  purpose?: string;
+  date?: string;
+  interest?: string;
+  duration?: string;
+  progress?: number;
+  nextPaymentAmount?: number;
+  nextPaymentDate?: string;
+  emi?: number;
+  installmentsPaid?: number;
+  installmentsTotal?: number;
+};
+
 const FILTERS: { key: FilterTab; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'pending', label: 'Pending' },
@@ -33,10 +50,10 @@ export default function LoanManagementScreen() {
 
   const displayList = activeFilter === 'active' ? activeLoans : filteredApps;
 
-  const searchedList = displayList.filter((item: any) =>
+  const searchedList: DisplayItem[] = displayList.filter((item) =>
     item.title?.toLowerCase().includes(search.toLowerCase()) ||
     item.id?.toLowerCase().includes(search.toLowerCase()),
-  );
+  ) as DisplayItem[];
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.dashboard.bg }]}>
@@ -76,7 +93,7 @@ export default function LoanManagementScreen() {
           })}
         </View>
 
-        {(searchedList as any[]).length === 0 ? (
+        {searchedList.length === 0 ? (
           <View style={[styles.emptyCard, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
             <Ionicons name="cash-outline" size={48} color={colors.dashboard.textSecondary} />
             <Text style={[styles.emptyTitle, { color: colors.dashboard.textPrimary }]}>No loans found</Text>
@@ -85,8 +102,8 @@ export default function LoanManagementScreen() {
             </Text>
           </View>
         ) : (
-          (searchedList as any[]).map((item: any, i: number) => {
-            const isApp = 'status' in item && 'purpose' in item;
+          searchedList.map((item, i) => {
+            const isApp = 'purpose' in item;
             const expanded = expandedId === item.id;
             const status = isApp ? (item as LoanApplication).status : 'active';
 
@@ -136,7 +153,7 @@ export default function LoanManagementScreen() {
                       <Text style={[styles.expandedLabel, { color: colors.dashboard.textSecondary }]}>Progress</Text>
                       <View style={styles.progressRow}>
                         <View style={[styles.progressBar, { backgroundColor: colors.dashboard.border }]}>
-                          <View style={[styles.progressFill, { backgroundColor: colors.greenLight, width: `${item.progress}%` }]} />
+                          <View style={[styles.progressFill, { backgroundColor: colors.greenLight, width: `${item.progress ?? 0}%` }]} />
                         </View>
                         <Text style={[styles.progressText, { color: colors.greenLight }]}>{item.progress}%</Text>
                       </View>

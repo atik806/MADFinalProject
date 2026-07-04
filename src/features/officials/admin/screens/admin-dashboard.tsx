@@ -63,10 +63,10 @@ export default function AdminDashboardScreen() {
   ];
 
   const actions = [
-    { icon: 'people' as const, iconBg: colors.blueLight, title: 'User Management', route: 'users' as const },
-    { icon: 'document-text' as const, iconBg: colors.greenLight, title: 'Reports', route: 'reports' as const },
-    { icon: 'settings' as const, iconBg: '#8B5CF6', title: 'System Config', route: 'settings' as const },
-    { icon: 'document-lock' as const, iconBg: '#F59E0B', title: 'Audit Logs', route: 'settings' as const },
+    { icon: 'people' as const, iconBg: colors.blueLight, title: 'User Management', route: '/officials/(admin)/users' },
+    { icon: 'document-text' as const, iconBg: colors.greenLight, title: 'Reports', route: '/officials/(admin)/reports' },
+    { icon: 'settings' as const, iconBg: '#8B5CF6', title: 'System Config', route: '/officials/(admin)/settings' },
+    { icon: 'document-lock' as const, iconBg: '#F59E0B', title: 'Audit Logs', route: '/officials/(admin)/audit-logs' },
   ];
 
   if (loading) {
@@ -88,7 +88,7 @@ export default function AdminDashboardScreen() {
     <View style={[styles.screen, { backgroundColor: colors.dashboard.bg }]}>
       <ScreenHeader
         title="Admin Dashboard"
-        actions={[{ icon: 'notifications-outline', accessibilityLabel: 'Notifications' }]}
+        actions={[{ icon: 'notifications-outline', accessibilityLabel: 'Notifications', onPress: () => router.push('/view/Notifications/notifications' as unknown as any) }]}
       />
       <ScrollView
         style={styles.container}
@@ -148,7 +148,7 @@ export default function AdminDashboardScreen() {
               icon={action.icon}
               iconBg={action.iconBg}
               title={action.title}
-              onPress={() => router.push(action.route as any)}
+              onPress={() => router.push(action.route as unknown as any)}
             />
           ))}
         </View>

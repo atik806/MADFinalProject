@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidthWide } from '@/features/officials/shared/constants/layout';
@@ -18,12 +18,39 @@ const REPORTS: Report[] = [
   { icon: 'analytics', title: 'Credit Score Report', description: 'Score distribution and risk assessment summary', accent: '#F59E0B' },
 ];
 
+const STATS = [
+  { icon: 'leaf' as const, value: '510', label: 'Total Farmers', color: '#22C55E' },
+  { icon: 'wallet' as const, value: '234', label: 'Total Loans', color: '#3B82F6' },
+  { icon: 'checkmark-circle' as const, value: '72%', label: 'Approval Rate', color: '#A78BFA' },
+  { icon: 'people' as const, value: '89', label: 'Active Users', color: '#F472B6' },
+];
+
 export default function AdminReportsScreen() {
   const colors = useColors();
+
+  const handleExportPdf = (title: string) => {
+    Alert.alert('Export PDF', `${title} exported as PDF`);
+  };
+
+  const handleExportExcel = (title: string) => {
+    Alert.alert('Export Excel', `${title} exported as Excel`);
+  };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.dashboard.bg }]} contentContainerStyle={styles.content}>
       <Text style={[styles.brand, { color: colors.greenLight }]}>SOFOL</Text>
+
+      <View style={styles.statsRow}>
+        {STATS.map((stat, i) => (
+          <View key={i} style={[styles.statCard, { backgroundColor: colors.dashboard.cardBg }]}>
+            <View style={[styles.statIcon, { backgroundColor: stat.color + '20' }]}>
+              <Ionicons name={stat.icon} size={20} color={stat.color} />
+            </View>
+            <Text style={[styles.statValue, { color: colors.dashboard.textPrimary }]}>{stat.value}</Text>
+            <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{stat.label}</Text>
+          </View>
+        ))}
+      </View>
 
       {REPORTS.map((report, i) => (
         <View key={i} style={[styles.card, { backgroundColor: colors.dashboard.cardBg }]}>
@@ -39,11 +66,15 @@ export default function AdminReportsScreen() {
               </View>
             </View>
             <View style={styles.exportRow}>
-              <Pressable style={({ pressed }) => [styles.exportBtn, styles.exportBtnPdf, pressed && styles.exportBtnPressed]}>
+              <Pressable
+                style={({ pressed }) => [styles.exportBtn, styles.exportBtnPdf, pressed && styles.exportBtnPressed]}
+                onPress={() => handleExportPdf(report.title)}>
                 <Ionicons name="document" size={15} color="#DC2626" />
                 <Text style={styles.exportBtnPdfText}>Export PDF</Text>
               </Pressable>
-              <Pressable style={({ pressed }) => [styles.exportBtn, styles.exportBtnExcel, pressed && styles.exportBtnPressed]}>
+              <Pressable
+                style={({ pressed }) => [styles.exportBtn, styles.exportBtnExcel, pressed && styles.exportBtnPressed]}
+                onPress={() => handleExportExcel(report.title)}>
                 <Ionicons name="grid" size={15} color="#16A34A" />
                 <Text style={styles.exportBtnExcelText}>Export Excel</Text>
               </Pressable>
@@ -73,6 +104,40 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginTop: 8,
     marginBottom: 16,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
+  },
+  statCard: {
+    width: '48%',
+    flexGrow: 1,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  statValue: {
+    fontSize: 26,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   card: {
     borderRadius: 14,
