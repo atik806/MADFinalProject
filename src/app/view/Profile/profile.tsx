@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useProfile } from '../../../contexts/ProfileContext';
 import { useTranslation } from '../../../hooks/use-translation';
+import { useColors } from '../../../features/officials/shared/constants/theme';
 
 type TabName = 'home' | 'transactions' | 'loans' | 'profile';
 
@@ -23,6 +24,7 @@ type TabDef = {
 };
 
 export default function ProfileScreen() {
+  const colors = useColors();
   const { logout } = useAuth();
   const { profile } = useProfile();
   const { t, lang, toggleLang } = useTranslation();
@@ -58,20 +60,20 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
+      <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
         <View style={styles.logoContainer}>
-          <View style={styles.logo}>
+          <View style={[styles.logo, { backgroundColor: colors.deepGreen }]}>
             <Ionicons name="leaf" size={20} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>{t('myProfileTitle')}</Text>
+        <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('myProfileTitle')}</Text>
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
-            <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
+          <TouchableOpacity onPress={toggleLang} hitSlop={8} style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
+            <Text style={[styles.langText, { color: colors.userVerifiedText }]}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/view/Notifications/notifications')} hitSlop={8}>
-            <Ionicons name="notifications-outline" size={22} color="#555" />
+            <Ionicons name="notifications-outline" size={22} color={colors.dashboard.textSecondary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -80,29 +82,29 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.heroCard}>
+        <View style={[styles.heroCard, { backgroundColor: colors.deepGreen }]}>
           <View style={styles.heroTop}>
             <View style={styles.heroInfo}>
               <Text style={styles.farmerName}>{lang === 'bn' && profile.nameBn ? profile.nameBn : profile.nameEn}</Text>
               <Text style={styles.farmerId}>{t('farmerId')}: {profile.farmerId}</Text>
             </View>
-            <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
+            <View style={[styles.verifiedBadge, { backgroundColor: '#22C55E20' }]}>
+              <Ionicons name="checkmark-circle" size={14} color={colors.dashboard.greenUp} />
               <Text style={styles.verifiedText}>{t('verified')}</Text>
             </View>
           </View>
 
-          <View style={styles.heroStats}>
+          <View style={[styles.heroStats, { backgroundColor: colors.userVerifiedText }]}>
             <View style={styles.heroStat}>
               <Text style={styles.heroStatValue}>{profile.creditScore}</Text>
               <Text style={styles.heroStatLabel}>{t('creditScoreLabel')}</Text>
             </View>
-            <View style={styles.heroStatDivider} />
+            <View style={[styles.heroStatDivider, { backgroundColor: '#FFFFFF20' }]} />
             <View style={styles.heroStat}>
               <Text style={styles.heroStatValue}>{profile.farmSize} {t('ac')}</Text>
               <Text style={styles.heroStatLabel}>{t('farmSize')}</Text>
             </View>
-            <View style={styles.heroStatDivider} />
+            <View style={[styles.heroStatDivider, { backgroundColor: '#FFFFFF20' }]} />
             <View style={styles.heroStat}>
               <Text style={styles.heroStatValue}>{profile.experience} {t('yr')}</Text>
               <Text style={styles.heroStatLabel}>{t('experience')}</Text>
@@ -110,48 +112,48 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/view/Profile/edit-profile')}>
+        <TouchableOpacity style={[styles.editBtn, { backgroundColor: colors.deepGreen }]} onPress={() => router.push('/view/Profile/edit-profile')}>
           <Ionicons name="pencil" size={16} color="#fff" />
           <Text style={styles.editBtnText}>{t('editProfile')}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.sectionTitle}>{t('personalInfo')}</Text>
-        <View style={styles.infoCard}>
-          <ProfileRow label={t('fullName')} value={lang === 'bn' && profile.nameBn ? profile.nameBn : profile.nameEn} />
-          <ProfileRow label={t('nationalId')} value={profile.nid} />
-          <ProfileRow label={t('dateOfBirth')} value={profile.dob} />
-          <ProfileRow label={t('gender')} value={profile.gender} />
-          <ProfileRow label={t('phone')} value={profile.phone} />
-          <ProfileRow label={t('address')} value="" last />
-          <AddressLine label={t('village')} value={profile.village} />
-          <AddressLine label={t('union')} value={profile.union} />
-          <AddressLine label={t('upazila')} value={profile.upazila} />
-          <AddressLine label={t('district')} value={profile.district} last />
+        <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('personalInfo')}</Text>
+        <View style={[styles.infoCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
+          <ProfileRow label={t('fullName')} value={lang === 'bn' && profile.nameBn ? profile.nameBn : profile.nameEn} colors={colors} />
+          <ProfileRow label={t('nationalId')} value={profile.nid} colors={colors} />
+          <ProfileRow label={t('dateOfBirth')} value={profile.dob} colors={colors} />
+          <ProfileRow label={t('gender')} value={profile.gender} colors={colors} />
+          <ProfileRow label={t('phone')} value={profile.phone} colors={colors} />
+          <ProfileRow label={t('address')} value="" last colors={colors} />
+          <AddressLine label={t('village')} value={profile.village} colors={colors} />
+          <AddressLine label={t('union')} value={profile.union} colors={colors} />
+          <AddressLine label={t('upazila')} value={profile.upazila} colors={colors} />
+          <AddressLine label={t('district')} value={profile.district} last colors={colors} />
         </View>
 
-        <Text style={styles.sectionTitle}>{t('farmDetails')}</Text>
-        <View style={styles.infoCard}>
-          <ProfileRow label={t('landSize')} value={`${profile.farmSize} ${t('acres')}`} />
-          <ProfileRow label={t('ownership')} value={profile.ownership} />
-          <ProfileRow label={t('primaryCrop')} value={profile.primaryCrop} />
-          <ProfileRow label={t('secondaryCrop')} value={profile.secondaryCrop} />
-          <ProfileRow label={t('cropDiversity')} value={profile.cropDiversity} last />
+        <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('farmDetails')}</Text>
+        <View style={[styles.infoCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
+          <ProfileRow label={t('landSize')} value={`${profile.farmSize} ${t('acres')}`} colors={colors} />
+          <ProfileRow label={t('ownership')} value={profile.ownership} colors={colors} />
+          <ProfileRow label={t('primaryCrop')} value={profile.primaryCrop} colors={colors} />
+          <ProfileRow label={t('secondaryCrop')} value={profile.secondaryCrop} colors={colors} />
+          <ProfileRow label={t('cropDiversity')} value={profile.cropDiversity} last colors={colors} />
         </View>
 
-        <Text style={styles.sectionTitle}>{t('documentsTitle')}</Text>
-        <View style={styles.infoCard}>
-          <DocRow label={t('nidCard')} uploaded={!!profile.nidPhoto} />
-          <DocRow label={t('landRecords')} uploaded={!!profile.landPhoto} />
-          <DocRow label={t('farmPhotographs')} uploaded={false} last />
+        <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('documentsTitle')}</Text>
+        <View style={[styles.infoCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
+          <DocRow label={t('nidCard')} uploaded={!!profile.nidPhoto} colors={colors} />
+          <DocRow label={t('landRecords')} uploaded={!!profile.landPhoto} colors={colors} />
+          <DocRow label={t('farmPhotographs')} uploaded={false} last colors={colors} />
         </View>
 
-        <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
-          <Ionicons name="log-out-outline" size={20} color="#DC2626" />
-          <Text style={styles.signOutText}>{t('signOut')}</Text>
+        <TouchableOpacity style={[styles.signOutBtn, { backgroundColor: colors.userRejected, borderColor: '#FECACA' }]} onPress={handleSignOut} activeOpacity={0.8}>
+          <Ionicons name="log-out-outline" size={20} color={colors.dashboard.redDown} />
+          <Text style={[styles.signOutText, { color: colors.dashboard.redDown }]}>{t('signOut')}</Text>
         </TouchableOpacity>
       </ScrollView>
 
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }]}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           return (
@@ -161,14 +163,14 @@ export default function ProfileScreen() {
               onPress={() => handleTabPress(tab.key)}
               activeOpacity={0.6}
             >
-              <View style={[styles.navIconWrap, isActive && styles.navIconWrapActive]}>
+              <View style={[styles.navIconWrap, isActive && { backgroundColor: colors.deepGreen }]}>
                 <Ionicons
                   name={isActive ? tab.activeIcon : tab.inactiveIcon}
                   size={22}
-                  color={isActive ? '#fff' : '#9CA3AF'}
+                  color={isActive ? '#fff' : colors.dashboard.textSecondary}
                 />
               </View>
-              <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
+              <Text style={[styles.navLabel, { color: isActive ? colors.deepGreen : colors.dashboard.textSecondary }, isActive && { fontWeight: '700' }]}>
                 {t(tab.labelKey as any)}
               </Text>
             </TouchableOpacity>
@@ -179,33 +181,33 @@ export default function ProfileScreen() {
   );
 }
 
-function ProfileRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+function ProfileRow({ label, value, last, colors }: { label: string; value: string; last?: boolean; colors: any }) {
   return (
-    <View style={[styles.profileRow, last && styles.profileRowLast]}>
-      <Text style={styles.profileLabel}>{label}</Text>
-      <Text style={styles.profileValue}>{value}</Text>
+    <View style={[styles.profileRow, last && styles.profileRowLast, { borderBottomColor: colors.dashboard.border }]}>
+      <Text style={[styles.profileLabel, { color: colors.dashboard.textSecondary }]}>{label}</Text>
+      <Text style={[styles.profileValue, { color: colors.dashboard.textPrimary }]}>{value}</Text>
     </View>
   );
 }
 
-function AddressLine({ label, value, last }: { label: string; value: string; last?: boolean }) {
+function AddressLine({ label, value, last, colors }: { label: string; value: string; last?: boolean; colors: any }) {
   return (
-    <View style={[styles.addressRow, last && styles.profileRowLast]}>
-      <Text style={styles.addressLabel}>{label}</Text>
-      <Text style={styles.addressValue}>{value}</Text>
+    <View style={[styles.addressRow, last && styles.profileRowLast, { borderBottomColor: colors.dashboard.border }]}>
+      <Text style={[styles.addressLabel, { color: colors.dashboard.textSecondary }]}>{label}</Text>
+      <Text style={[styles.addressValue, { color: colors.dashboard.textPrimary }]}>{value}</Text>
     </View>
   );
 }
 
-function DocRow({ label, uploaded, last }: { label: string; uploaded: boolean; last?: boolean }) {
+function DocRow({ label, uploaded, last, colors }: { label: string; uploaded: boolean; last?: boolean; colors: any }) {
   return (
-    <View style={[styles.docRow, last && styles.profileRowLast]}>
-      <Text style={styles.docLabel}>{label}</Text>
-      <View style={[styles.docStatus, uploaded && styles.docStatusUploaded]}>
-        <Text style={[styles.docStatusText, uploaded && styles.docStatusTextUploaded]}>
+    <View style={[styles.docRow, last && styles.profileRowLast, { borderBottomColor: colors.dashboard.border }]}>
+      <Text style={[styles.docLabel, { color: colors.dashboard.textPrimary }]}>{label}</Text>
+      <View style={[styles.docStatus, { backgroundColor: colors.dashboard.border }, uploaded && { backgroundColor: colors.userVerified }]}>
+        <Text style={[styles.docStatusText, { color: colors.dashboard.textSecondary }, uploaded && { color: colors.dashboard.greenUp }]}>
           {uploaded ? 'Uploaded' : 'Upload'}
         </Text>
-        {uploaded && <Ionicons name="checkmark-circle" size={14} color="#16A34A" style={{ marginLeft: 4 }} />}
+        {uploaded && <Ionicons name="checkmark-circle" size={14} color={colors.dashboard.greenUp} style={{ marginLeft: 4 }} />}
       </View>
     </View>
   );
@@ -214,7 +216,6 @@ function DocRow({ label, uploaded, last }: { label: string; uploaded: boolean; l
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8F8',
   },
   scrollContent: {
     paddingHorizontal: 18,
@@ -227,9 +228,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 14,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   logoContainer: {
     flexDirection: 'row',
@@ -239,17 +238,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
-    backgroundColor: '#ECFDF5',
   },
   langText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#006847',
   },
   logo: {
     width: 32,
     height: 32,
-    backgroundColor: '#006847',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -257,7 +253,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
   },
   headerIcons: {
     flexDirection: 'row',
@@ -265,7 +260,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   heroCard: {
-    backgroundColor: '#006847',
     borderRadius: 20,
     padding: 22,
     marginTop: 18,
@@ -291,7 +285,6 @@ const styles = StyleSheet.create({
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#22C55E20',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
@@ -304,7 +297,6 @@ const styles = StyleSheet.create({
   },
   heroStats: {
     flexDirection: 'row',
-    backgroundColor: '#1B7A60',
     borderRadius: 16,
     marginTop: 18,
     paddingVertical: 16,
@@ -315,7 +307,6 @@ const styles = StyleSheet.create({
   },
   heroStatDivider: {
     width: 1,
-    backgroundColor: '#FFFFFF20',
   },
   heroStatValue: {
     color: '#fff',
@@ -334,7 +325,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 44,
     borderRadius: 14,
-    backgroundColor: '#006847',
     marginTop: 16,
     gap: 6,
   },
@@ -346,14 +336,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
     marginTop: 24,
     marginBottom: 10,
   },
   infoCard: {
-    backgroundColor: '#fff',
     borderRadius: 18,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
   },
   profileRow: {
     flexDirection: 'row',
@@ -362,19 +349,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   profileRowLast: {
     borderBottomWidth: 0,
   },
   profileLabel: {
     fontSize: 14,
-    color: '#6B7280',
     fontWeight: '500',
   },
   profileValue: {
     fontSize: 14,
-    color: '#1F2937',
     fontWeight: '600',
     textAlign: 'right',
     maxWidth: '55%',
@@ -387,16 +371,13 @@ const styles = StyleSheet.create({
     paddingRight: 18,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   addressLabel: {
     fontSize: 13,
-    color: '#9CA3AF',
     fontWeight: '500',
   },
   addressValue: {
     fontSize: 13,
-    color: '#1F2937',
     fontWeight: '600',
   },
   docRow: {
@@ -406,11 +387,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   docLabel: {
     fontSize: 14,
-    color: '#1F2937',
     fontWeight: '500',
   },
   docStatus: {
@@ -419,18 +398,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 12,
-    backgroundColor: '#F3F4F6',
-  },
-  docStatusUploaded: {
-    backgroundColor: '#ECFDF5',
   },
   docStatusText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
-  },
-  docStatusTextUploaded: {
-    color: '#16A34A',
   },
   signOutBtn: {
     flexDirection: 'row',
@@ -438,26 +409,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 50,
     borderRadius: 14,
-    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#FECACA',
     marginTop: 28,
     gap: 8,
   },
   signOutText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#DC2626',
   },
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: '#fff',
     paddingTop: 6,
     paddingBottom: 12,
     paddingHorizontal: 8,
-    boxShadow: '0 -2px 8px rgba(0,0,0,0.06)',
   },
   navItem: {
     alignItems: 'center',
@@ -471,17 +437,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  navIconWrapActive: {
-    backgroundColor: '#006847',
-  },
   navLabel: {
     fontSize: 11,
     marginTop: 4,
-    color: '#9CA3AF',
     fontWeight: '500',
-  },
-  navLabelActive: {
-    color: '#006847',
-    fontWeight: '700',
   },
 });

@@ -1,19 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BrandColors } from '@/features/officials/shared/constants/theme';
+import { useColors } from '@/features/officials/shared/constants/theme';
 
-const STATUS_CONFIG = {
-  verified: { bg: BrandColors.userVerified, text: 'Verified', color: BrandColors.userVerifiedText, icon: 'checkmark-circle' as const },
-  pending: { bg: BrandColors.userPending, text: 'Pending', color: BrandColors.userPendingText, icon: 'time' as const },
-  rejected: { bg: BrandColors.userRejected, text: 'Rejected', color: BrandColors.userRejectedText, icon: 'close-circle' as const },
-};
+export type StatusType = 'verified' | 'pending' | 'rejected' | 'approved' | 'active' | 'under_review';
 
 type StatusBadgeProps = {
-  status: keyof typeof STATUS_CONFIG;
+  status: StatusType;
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {
+  const colors = useColors();
+
+  const STATUS_CONFIG: Record<StatusType, { bg: string; text: string; color: string; icon: keyof typeof Ionicons.glyphMap }> = {
+
+    verified: { bg: colors.userVerified, text: 'Verified', color: colors.userVerifiedText, icon: 'checkmark-circle' },
+    pending: { bg: colors.userPending, text: 'Pending', color: colors.userPendingText, icon: 'time' },
+    rejected: { bg: colors.userRejected, text: 'Rejected', color: colors.userRejectedText, icon: 'close-circle' },
+    approved: { bg: colors.userVerified, text: 'Approved', color: colors.userVerifiedText, icon: 'checkmark-circle' },
+    active: { bg: '#EFF6FF', text: 'Active', color: '#1D4ED8', icon: 'checkmark-circle' },
+    under_review: { bg: colors.userPending, text: 'Under Review', color: colors.userPendingText, icon: 'time' },
+  };
+
   const cfg = STATUS_CONFIG[status];
   return (
     <View style={[styles.badge, { backgroundColor: cfg.bg }]}>

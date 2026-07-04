@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,17 +9,20 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../../hooks/use-translation';
+import { useColors } from '../../features/officials/shared/constants/theme';
 
 type Step = 1 | 2 | 3;
-const BRAND_GREEN = '#006847';
 
 export default function ResetPasswordScreen() {
+  const colors = useColors();
   const { t, lang, toggleLang } = useTranslation();
-  const [step] = useState<Step>(1);
+  const [step, setStep] = useState<Step>(1);
 
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -28,9 +31,83 @@ export default function ResetPasswordScreen() {
 
   const [showNewPwd, setShowNewPwd] = useState(false);
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [otpTimer, setOtpTimer] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (otpTimer > 0) {
+      timerRef.current = setInterval(() => {
+        setOtpTimer((prev) => {
+          if (prev <= 1) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [otpTimer]);
+
+  const isPhoneValid = (val: string) => /^01\d{9}$/.test(val);
+  const isEmailValid = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+
+  const handleSendOtp = async () => {
+    setError('');
+    if (!phone.trim()) {
+      setError(t('enterPhoneForReset'));
+      return;
+    }
+    if (!isPhoneValid(phone) && !isEmailValid(phone)) {
+      setError(t('invalidCredentials'));
+      return;
+    }
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 1000));
+    setLoading(false);
+    setOtpTimer(30);
+    setStep(2);
+  };
+
+  const handleVerifyOtp = () => {
+    setError('');
+    if (!otp.trim() || otp.length < 4) {
+      setError(t('enterOtp'));
+      return;
+    }
+    setStep(3);
+  };
+
+  const handleResendOtp = async () => {
+    setOtp('');
+    setError('');
+    setOtpTimer(30);
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 1000));
+    setLoading(false);
+  };
+
+  const handleResetPassword = () => {
+    setError('');
+    if (!newPwd.trim() || newPwd.length < 6) {
+      setError(t('passwordMinLength'));
+      return;
+    }
+    if (newPwd !== confirmPwd) {
+      setError('Passwords do not match');
+      return;
+    }
+    Alert.alert('Success', t('passwordResetSuccess'), [
+      { text: t('ok'), onPress: () => router.push('/view/login') },
+    ]);
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.deepGreen }]}>
       <KeyboardAvoidingView
         style={styles.root}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -38,26 +115,26 @@ export default function ResetPasswordScreen() {
         <View style={styles.root}>
           <View style={styles.langRow}>
             <View />
-            <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
+            <TouchableOpacity onPress={toggleLang} hitSlop={8} style={[styles.langBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
               <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.header}>
-            <View style={styles.logoBox}>
+            <View style={[styles.logoBox, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
               <Ionicons name="leaf" size={40} color="#fff" />
             </View>
             <Text style={styles.title}>SOFOL</Text>
             <Text style={styles.subtitle}>{t('resetPasswordTitle')}</Text>
           </View>
 
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: colors.dashboard.cardBg }]}>
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
             >
-              <Text style={styles.cardTitle}>{t('resetPasswordTitle')}</Text>
+              <Text style={[styles.cardTitle, { color: colors.dashboard.textPrimary }]}>{t('resetPasswordTitle')}</Text>
 
               <View style={styles.stepperRow}>
                 {([1, 2, 3] as const).map((s) => {
@@ -69,8 +146,9 @@ export default function ResetPasswordScreen() {
                       <View
                         style={[
                           styles.stepCircle,
-                          isDone && styles.stepCircleDone,
-                          isCurrent && styles.stepCircleCurrent,
+                          { backgroundColor: colors.dashboard.border },
+                          isDone && { backgroundColor: colors.dashboard.greenUp },
+                          isCurrent && { backgroundColor: colors.deepGreen },
                         ]}
                       >
                         {isDone ? (
@@ -79,7 +157,8 @@ export default function ResetPasswordScreen() {
                           <Text
                             style={[
                               styles.stepNum,
-                              isCurrent && styles.stepNumCurrent,
+                              { color: colors.dashboard.textSecondary },
+                              isCurrent && { color: '#fff' },
                             ]}
                           >
                             {s}
@@ -89,7 +168,8 @@ export default function ResetPasswordScreen() {
                       <Text
                         style={[
                           styles.stepLabel,
-                          isCurrent && styles.stepLabelCurrent,
+                          { color: colors.dashboard.textSecondary },
+                          isCurrent && { color: colors.deepGreen, fontWeight: '700' },
                         ]}
                       >
                         {label}
@@ -101,88 +181,118 @@ export default function ResetPasswordScreen() {
 
               {step === 1 && (
                 <View style={styles.stepContent}>
-                  <Text style={styles.instruction}>{t('enterPhoneForReset')}</Text>
+                  <Text style={[styles.instruction, { color: colors.dashboard.textSecondary }]}>{t('enterPhoneForReset')}</Text>
 
-                  <Text style={styles.label}>{t('phoneLabel')}</Text>
+                  <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('phoneLabel')}</Text>
                   <View style={styles.inputGroup}>
                     <Ionicons
                       name="phone-portrait-outline"
                       size={18}
-                      color="#9CA3AF"
+                      color={colors.dashboard.textSecondary}
                       style={styles.inputIcon}
                     />
                     <TextInput
-                      style={[styles.input]}
+                      style={[styles.input, { borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.bg }]}
                       placeholder={t('phonePlaceholder')}
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.dashboard.textSecondary}
                       keyboardType="phone-pad"
                       value={phone}
-                      onChangeText={setPhone}
+                      onChangeText={(v) => { setPhone(v); setError(''); }}
                     />
                   </View>
 
-                  <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.8}>
-                    <Text style={styles.primaryBtnText}>{t('sendOtp')}</Text>
-                    <Ionicons name="arrow-forward" size={18} color="#fff" />
+                  {error ? <Text style={[styles.errorText, { color: colors.dashboard.redDown }]}>{error}</Text> : null}
+
+                  <TouchableOpacity
+                    style={[styles.primaryBtn, { backgroundColor: colors.deepGreen }]}
+                    onPress={handleSendOtp}
+                    disabled={loading}
+                    activeOpacity={0.8}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <>
+                        <Text style={styles.primaryBtnText}>{t('sendOtp')}</Text>
+                        <Ionicons name="arrow-forward" size={18} color="#fff" />
+                      </>
+                    )}
                   </TouchableOpacity>
                 </View>
               )}
 
               {step === 2 && (
                 <View style={styles.stepContent}>
-                  <Text style={styles.instruction}>
+                  <Text style={[styles.instruction, { color: colors.dashboard.textSecondary }]}>
                     {t('otpSent')} {phone || '013XXXXXXXX'}
                   </Text>
 
-                  <Text style={styles.label}>{t('enterOtp')}</Text>
+                  <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('enterOtp')}</Text>
                   <View style={styles.inputGroup}>
                     <Ionicons
                       name="key-outline"
                       size={18}
-                      color="#9CA3AF"
+                      color={colors.dashboard.textSecondary}
                       style={styles.inputIcon}
                     />
                     <TextInput
-                      style={[styles.input]}
+                      style={[styles.input, { borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.bg }]}
                       placeholder={t('otpPlaceholder')}
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.dashboard.textSecondary}
                       keyboardType="number-pad"
                       maxLength={6}
                       value={otp}
-                      onChangeText={setOtp}
+                      onChangeText={(v) => { setOtp(v); setError(''); }}
                     />
                   </View>
 
-                  <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.8}>
+                  {error ? <Text style={[styles.errorText, { color: colors.dashboard.redDown }]}>{error}</Text> : null}
+
+                  <TouchableOpacity
+                    style={[styles.primaryBtn, { backgroundColor: colors.deepGreen }]}
+                    onPress={handleVerifyOtp}
+                    activeOpacity={0.8}
+                  >
                     <Text style={styles.primaryBtnText}>{t('verifyOtp')}</Text>
                     <Ionicons name="arrow-forward" size={18} color="#fff" />
                   </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.resendBtn} activeOpacity={0.7}>
-                    <Text style={styles.resendText}>{t('resendOtp')}</Text>
+                  <TouchableOpacity
+                    style={styles.resendBtn}
+                    onPress={handleResendOtp}
+                    disabled={otpTimer > 0 || loading}
+                    activeOpacity={0.7}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color={colors.deepGreen} size="small" />
+                    ) : (
+                      <Text style={[styles.resendText, { color: colors.deepGreen }]}>
+                        {otpTimer > 0 ? `${t('resendOtp')} (${otpTimer}s)` : t('resendOtp')}
+                      </Text>
+                    )}
                   </TouchableOpacity>
                 </View>
               )}
 
               {step === 3 && (
                 <View style={styles.stepContent}>
-                  <Text style={styles.instruction}>{t('enterPhoneForReset')}</Text>
+                  <Text style={[styles.instruction, { color: colors.dashboard.textSecondary }]}>{t('enterPhoneForReset')}</Text>
 
-                  <Text style={styles.label}>{t('newPassword')}</Text>
+                  <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('newPassword')}</Text>
                   <View style={styles.inputGroup}>
                     <Ionicons
                       name="lock-closed-outline"
                       size={18}
-                      color="#9CA3AF"
+                      color={colors.dashboard.textSecondary}
                       style={styles.inputIcon}
                     />
                     <TextInput
-                      style={[styles.input, styles.inputPassword]}
+                      style={[styles.input, styles.inputPassword, { borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.bg }]}
                       placeholder={t('passwordPlaceholder')}
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.dashboard.textSecondary}
                       secureTextEntry={!showNewPwd}
                       value={newPwd}
-                      onChangeText={setNewPwd}
+                      onChangeText={(v) => { setNewPwd(v); setError(''); }}
                     />
                     <TouchableOpacity
                       onPress={() => setShowNewPwd((p) => !p)}
@@ -192,26 +302,26 @@ export default function ResetPasswordScreen() {
                       <Ionicons
                         name={showNewPwd ? 'eye-off-outline' : 'eye-outline'}
                         size={20}
-                        color="#9CA3AF"
+                        color={colors.dashboard.textSecondary}
                       />
                     </TouchableOpacity>
                   </View>
 
-                  <Text style={styles.label}>{t('confirmPassword')}</Text>
+                  <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('confirmPassword')}</Text>
                   <View style={styles.inputGroup}>
                     <Ionicons
                       name="lock-closed-outline"
                       size={18}
-                      color="#9CA3AF"
+                      color={colors.dashboard.textSecondary}
                       style={styles.inputIcon}
                     />
                     <TextInput
-                      style={[styles.input, styles.inputPassword]}
+                      style={[styles.input, styles.inputPassword, { borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.bg }]}
                       placeholder={t('passwordPlaceholder')}
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={colors.dashboard.textSecondary}
                       secureTextEntry={!showConfirmPwd}
                       value={confirmPwd}
-                      onChangeText={setConfirmPwd}
+                      onChangeText={(v) => { setConfirmPwd(v); setError(''); }}
                     />
                     <TouchableOpacity
                       onPress={() => setShowConfirmPwd((p) => !p)}
@@ -221,24 +331,32 @@ export default function ResetPasswordScreen() {
                       <Ionicons
                         name={showConfirmPwd ? 'eye-off-outline' : 'eye-outline'}
                         size={20}
-                        color="#9CA3AF"
+                        color={colors.dashboard.textSecondary}
                       />
                     </TouchableOpacity>
                   </View>
 
-                  <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.8}>
+                  {error ? <Text style={[styles.errorText, { color: colors.dashboard.redDown }]}>{error}</Text> : null}
+
+                  <TouchableOpacity
+                    style={[styles.primaryBtn, { backgroundColor: colors.deepGreen }]}
+                    onPress={handleResetPassword}
+                    activeOpacity={0.8}
+                  >
                     <Ionicons name="checkmark-circle" size={18} color="#fff" style={{ marginRight: 6 }} />
                     <Text style={styles.primaryBtnText}>{t('resetPasswordBtn')}</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              <Link href="/view/login" asChild>
-                <TouchableOpacity style={styles.backLink} activeOpacity={0.7}>
-                  <Ionicons name="arrow-back" size={16} color={BRAND_GREEN} style={styles.backIcon} />
-                  <Text style={styles.backLinkText}>{t('backToLogin')}</Text>
-                </TouchableOpacity>
-              </Link>
+              <TouchableOpacity
+                style={styles.backLink}
+                onPress={() => router.push('/view/login')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="arrow-back" size={16} color={colors.deepGreen} style={styles.backIcon} />
+                <Text style={[styles.backLinkText, { color: colors.deepGreen }]}>{t('backToLogin')}</Text>
+              </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
@@ -250,7 +368,6 @@ export default function ResetPasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BRAND_GREEN,
   },
   root: {
     flex: 1,
@@ -265,7 +382,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -285,7 +401,6 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 14,
@@ -305,7 +420,6 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    backgroundColor: '#fff',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     paddingHorizontal: 24,
@@ -317,7 +431,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1F2937',
     marginBottom: 20,
     marginTop: 20,
   },
@@ -336,48 +449,30 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#E5E7EB',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  stepCircleDone: {
-    backgroundColor: '#16A34A',
-  },
-  stepCircleCurrent: {
-    backgroundColor: BRAND_GREEN,
   },
   stepNum: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#9CA3AF',
-  },
-  stepNumCurrent: {
-    color: '#fff',
   },
   stepLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#9CA3AF',
     marginLeft: 6,
     marginRight: 24,
-  },
-  stepLabelCurrent: {
-    color: BRAND_GREEN,
-    fontWeight: '700',
   },
   stepContent: {
     gap: 4,
   },
   instruction: {
     fontSize: 14,
-    color: '#6B7280',
     lineHeight: 20,
     marginBottom: 8,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#4B5563',
     marginBottom: 8,
     marginTop: 12,
   },
@@ -395,13 +490,10 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
     borderRadius: 14,
     paddingLeft: 44,
     paddingRight: 14,
     fontSize: 15,
-    color: '#1F2937',
-    backgroundColor: '#F9FAFB',
   },
   inputPassword: {
     paddingRight: 44,
@@ -415,7 +507,6 @@ const styles = StyleSheet.create({
   primaryBtn: {
     height: 54,
     borderRadius: 14,
-    backgroundColor: BRAND_GREEN,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
@@ -433,7 +524,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   resendText: {
-    color: BRAND_GREEN,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -448,8 +538,13 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   backLinkText: {
-    color: BRAND_GREEN,
     fontSize: 14,
+    fontWeight: '500',
+  },
+  errorText: {
+    fontSize: 12,
+    marginTop: 6,
+    marginLeft: 4,
     fontWeight: '500',
   },
 });

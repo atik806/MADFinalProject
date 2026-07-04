@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import { useLoans } from "../../../contexts/LoanContext";
 import { useNotifications } from "../../../contexts/NotificationContext";
 import { useTranslation } from "../../../hooks/use-translation";
+import { useColors } from '../../../features/officials/shared/constants/theme';
 
 type TabName = "home" | "transactions" | "loans" | "profile";
 
@@ -25,7 +26,14 @@ type TabDef = {
   labelKey: string;
 };
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
 export default function DashboardScreen() {
+  const colors = useColors();
   const { activeLoans } = useLoans();
   const { unreadCount } = useNotifications();
   const { t, lang, toggleLang } = useTranslation();
@@ -55,25 +63,27 @@ export default function DashboardScreen() {
     }
   };
 
+  const farmerInitials = getInitials(t('farmerName'));
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
+      <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
         <View style={styles.logoContainer}>
-          <View style={styles.logo}>
+          <View style={[styles.logo, { backgroundColor: colors.deepGreen }]}>
             <Ionicons name="leaf" size={20} color="#fff" />
           </View>
         </View>
 
-        <Text style={styles.headerTitle}>{t('dashboard')}</Text>
+        <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('dashboard')}</Text>
 
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
-            <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
+          <TouchableOpacity onPress={toggleLang} hitSlop={8} style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
+            <Text style={[styles.langText, { color: colors.userVerifiedText }]}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/view/Notifications/notifications')} hitSlop={8}>
-            <Ionicons name="notifications-outline" size={22} color="#555" />
+            <Ionicons name="notifications-outline" size={22} color={colors.dashboard.textSecondary} />
             {unreadCount > 0 && (
-              <View style={styles.badgeDot}>
+              <View style={[styles.badgeDot, { backgroundColor: colors.dashboard.redDown }]}>
                 <Text style={styles.badgeCount}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
               </View>
             )}
@@ -85,7 +95,7 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.heroCard}>
+        <View style={[styles.heroCard, { backgroundColor: colors.deepGreen }]}>
           <View style={styles.heroTop}>
             <View style={styles.heroInfo}>
               <Text style={styles.welcomeLabel}>{t('welcomeBack')}</Text>
@@ -95,15 +105,15 @@ export default function DashboardScreen() {
                 <Text style={styles.locationText}>Char Fasson, Bhola</Text>
               </View>
             </View>
-            <View style={styles.avatar}>
-              <Feather name="user" size={26} color="#fff" />
+            <View style={[styles.avatar, { backgroundColor: colors.userVerifiedText }]}>
+              <Text style={styles.avatarText}>{farmerInitials}</Text>
             </View>
           </View>
 
-          <View style={styles.scoreCard}>
+          <View style={[styles.scoreCard, { backgroundColor: colors.userVerifiedText }]}>
             <View style={styles.scoreHeader}>
               <Text style={styles.scoreLabel}>{t('creditScore')}</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/view/Profile/profile')}>
                 <Text style={styles.scoreDetails}>{t('details')} →</Text>
               </TouchableOpacity>
             </View>
@@ -113,7 +123,7 @@ export default function DashboardScreen() {
             </View>
             <View style={styles.scoreMeta}>
               <View style={styles.riskBadge}>
-                <View style={styles.riskDot} />
+                <View style={[styles.riskDot, { backgroundColor: colors.dashboard.greenUp }]} />
                 <Text style={styles.riskText}>{t('lowRisk')}</Text>
               </View>
             </View>
@@ -130,139 +140,141 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIconWrap, { backgroundColor: "#ECFDF5" }]}>
-              <Feather name="briefcase" size={18} color="#16A34A" />
+          <View style={[styles.statCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
+            <View style={[styles.statIconWrap, { backgroundColor: colors.userVerified }]}>
+              <Feather name="briefcase" size={18} color={colors.dashboard.greenUp} />
             </View>
-            <Text style={styles.statValue}>1</Text>
-            <Text style={styles.statLabel}>{t('activeLoans')}</Text>
+            <Text style={[styles.statValue, { color: colors.dashboard.textPrimary }]}>1</Text>
+            <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{t('activeLoans')}</Text>
           </View>
-          <View style={styles.statCard}>
-            <View style={[styles.statIconWrap, { backgroundColor: "#EFF6FF" }]}>
-              <Feather name="trending-up" size={18} color="#2563EB" />
+          <View style={[styles.statCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
+            <View style={[styles.statIconWrap, { backgroundColor: '#EFF6FF' }]}>
+              <Feather name="trending-up" size={18} color={colors.blueLight} />
             </View>
-            <Text style={[styles.statValue, { color: "#16A34A" }]}>৳60K</Text>
-            <Text style={styles.statLabel}>{t('income')} (Jun)</Text>
+            <Text style={[styles.statValue, { color: colors.dashboard.greenUp }]}>৳60K</Text>
+            <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{t('income')} (Jun)</Text>
           </View>
-          <View style={styles.statCard}>
-            <View style={[styles.statIconWrap, { backgroundColor: "#FEF2F2" }]}>
-              <Feather name="trending-down" size={18} color="#DC2626" />
+          <View style={[styles.statCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
+            <View style={[styles.statIconWrap, { backgroundColor: colors.userRejected }]}>
+              <Feather name="trending-down" size={18} color={colors.dashboard.redDown} />
             </View>
-            <Text style={[styles.statValue, { color: "#DC2626" }]}>৳19K</Text>
-            <Text style={styles.statLabel}>{t('expense')} (Jun)</Text>
+            <Text style={[styles.statValue, { color: colors.dashboard.redDown }]}>৳19K</Text>
+            <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{t('expense')} (Jun)</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
-        <View style={styles.quickCard}>
-          <ActionButton icon="trending-up" label={t('addIncome')} color="#16A34A" onPress={() => router.push('/view/Transactions/transactions')} />
-          <ActionButton icon="trending-down" label={t('addExpense')} color="#DC2626" onPress={() => router.push('/view/Transactions/transactions')} />
-          <ActionButton icon="credit-card" label={t('applyLoan')} color="#0F766E" onPress={() => router.push('/view/Loans/loans')} />
+        <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('quickActions')}</Text>
+        <View style={[styles.quickCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
+          <ActionButton icon="trending-up" label={t('addIncome')} color={colors.dashboard.greenUp} onPress={() => router.push('/view/Transactions/add-transaction')} />
+          <ActionButton icon="trending-down" label={t('addExpense')} color={colors.dashboard.redDown} onPress={() => router.push('/view/Transactions/add-transaction')} />
+          <ActionButton icon="credit-card" label={t('applyLoan')} color="#0F766E" onPress={() => router.push('/view/Loans/apply-loan')} />
           <ActionButton icon="user" label={t('myProfile')} color="#7C3AED" onPress={() => router.push('/view/Profile/profile')} />
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t('activeLoan')}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('activeLoan')}</Text>
           <TouchableOpacity onPress={() => router.push('/view/Loans/loans')}>
-            <Text style={styles.viewAll}>{t('viewAll')}</Text>
+            <Text style={[styles.viewAll, { color: colors.deepGreen }]}>{t('viewAll')}</Text>
           </TouchableOpacity>
         </View>
         {activeLoans.length > 0 ? (
-          <View style={styles.loanCard}>
+          <View style={[styles.loanCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
             <View style={styles.loanTop}>
               <View style={styles.loanTitleRow}>
-                <View style={styles.loanIcon}>
-                  <Feather name="droplet" size={18} color="#006847" />
+                <View style={[styles.loanIcon, { backgroundColor: colors.userVerified }]}>
+                  <Feather name="droplet" size={18} color={colors.deepGreen} />
                 </View>
                 <View>
-                  <Text style={styles.loanTitle}>{activeLoans[0].title}</Text>
-                  <Text style={styles.loanRef}>{activeLoans[0].id} · {t('approved')} {activeLoans[0].date}</Text>
+                  <Text style={[styles.loanTitle, { color: colors.dashboard.textPrimary }]}>{activeLoans[0].title}</Text>
+                  <Text style={[styles.loanRef, { color: colors.dashboard.textSecondary }]}>{activeLoans[0].id} · {t('approved')} {activeLoans[0].date}</Text>
                 </View>
               </View>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{t('active')}</Text>
+              <View style={[styles.badge, { backgroundColor: colors.userVerified }]}>
+                <Text style={[styles.badgeText, { color: colors.userVerifiedText }]}>{t('active')}</Text>
               </View>
             </View>
 
-            <View style={styles.loanDivider} />
+            <View style={[styles.loanDivider, { backgroundColor: colors.dashboard.border }]} />
 
             <View style={styles.loanDetails}>
-              <InfoItem title={t('loanAmount')} value={`৳${activeLoans[0].amount.toLocaleString('en-BD')}`} />
-              <InfoItem title={t('interest')} value={activeLoans[0].interest} />
-              <InfoItem title={t('duration')} value={activeLoans[0].duration} />
-              <InfoItem title={t('monthlyEMI')} value={`৳${activeLoans[0].emi.toLocaleString('en-BD')}`} />
+              <InfoItem title={t('loanAmount')} value={`৳${activeLoans[0].amount.toLocaleString('en-BD')}`} colors={colors} />
+              <InfoItem title={t('interest')} value={activeLoans[0].interest} colors={colors} />
+              <InfoItem title={t('duration')} value={activeLoans[0].duration} colors={colors} />
+              <InfoItem title={t('monthlyEMI')} value={`৳${activeLoans[0].emi.toLocaleString('en-BD')}`} colors={colors} />
             </View>
 
-            <View style={styles.loanDivider} />
+            <View style={[styles.loanDivider, { backgroundColor: colors.dashboard.border }]} />
 
             <View style={styles.nextPayment}>
               <View>
-                <Text style={styles.nextLabel}>{t('nextPaymentDue')}</Text>
-                <Text style={styles.nextDate}>{activeLoans[0].nextPaymentDate}</Text>
+                <Text style={[styles.nextLabel, { color: colors.dashboard.textSecondary }]}>{t('nextPaymentDue')}</Text>
+                <Text style={[styles.nextDate, { color: colors.dashboard.textPrimary }]}>{activeLoans[0].nextPaymentDate}</Text>
               </View>
               <View style={styles.nextAmountWrap}>
-                <Text style={styles.nextAmount}>৳{activeLoans[0].nextPaymentAmount.toLocaleString('en-BD')}</Text>
-                <Text style={styles.nextSub}>{t('emi')}</Text>
+                <Text style={[styles.nextAmount, { color: colors.deepGreen }]}>৳{activeLoans[0].nextPaymentAmount.toLocaleString('en-BD')}</Text>
+                <Text style={[styles.nextSub, { color: colors.dashboard.textSecondary }]}>{t('emi')}</Text>
               </View>
             </View>
 
-            <View style={styles.loanDivider} />
+            <View style={[styles.loanDivider, { backgroundColor: colors.dashboard.border }]} />
 
             <View style={styles.progressSection}>
               <View style={styles.progressHeader}>
-                <Text style={styles.progressLabel}>{t('repaymentProgress')}</Text>
-                <Text style={styles.progressPercent}>{activeLoans[0].progress}%</Text>
+                <Text style={[styles.progressLabel, { color: colors.dashboard.textSecondary }]}>{t('repaymentProgress')}</Text>
+                <Text style={[styles.progressPercent, { color: colors.deepGreen }]}>{activeLoans[0].progress}%</Text>
               </View>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${activeLoans[0].progress}%` }]} />
+              <View style={[styles.progressBar, { backgroundColor: colors.dashboard.border }]}>
+                <View style={[styles.progressFill, { backgroundColor: colors.dashboard.greenUp }, { width: `${activeLoans[0].progress}%` }]} />
               </View>
               <View style={styles.progressMeta}>
-                <Text style={styles.installments}>
+                <Text style={[styles.installments, { color: colors.dashboard.textSecondary }]}>
                   {activeLoans[0].installmentsPaid} of {activeLoans[0].installmentsTotal} {t('installmentsPaid')}
                 </Text>
-                <Text style={styles.remaining}>
+                <Text style={[styles.remaining, { color: colors.dashboard.textSecondary }]}>
                   {activeLoans[0].installmentsTotal - activeLoans[0].installmentsPaid} {t('remaining')}
                 </Text>
               </View>
             </View>
           </View>
         ) : (
-          <View style={styles.emptyLoan}>
-            <Feather name="briefcase" size={32} color="#D1D5DB" />
-            <Text style={styles.emptyLoanText}>{t('noActiveLoans')}</Text>
+          <View style={[styles.emptyLoan, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
+            <Feather name="briefcase" size={32} color={colors.dashboard.textSecondary} />
+            <Text style={[styles.emptyLoanText, { color: colors.dashboard.textSecondary }]}>{t('noActiveLoans')}</Text>
           </View>
         )}
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t('recentTransactions')}</Text>
-          <TouchableOpacity>
-            <Text style={styles.viewAll}>{t('seeAll')}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('recentTransactions')}</Text>
+          <TouchableOpacity onPress={() => router.push('/view/Transactions/transactions')}>
+            <Text style={[styles.viewAll, { color: colors.deepGreen }]}>{t('seeAll')}</Text>
           </TouchableOpacity>
         </View>
-        <TransactionRow title="Crop Sales" date="18 Jun 2024" amount="+৳45K" positive />
-        <TransactionRow title="Fertilizer" date="15 Jun 2024" amount="-৳9K" />
-        <TransactionRow title="Livestock" date="10 Jun 2024" amount="+৳12K" positive />
-        <TransactionRow title="Labor" date="8 Jun 2024" amount="-৳6K" />
+        <TransactionRow title="Crop Sales" date="18 Jun 2024" amount="+৳45K" positive colors={colors} />
+        <TransactionRow title="Fertilizer" date="15 Jun 2024" amount="-৳9K" colors={colors} />
+        <TransactionRow title="Livestock" date="10 Jun 2024" amount="+৳12K" positive colors={colors} />
+        <TransactionRow title="Labor" date="8 Jun 2024" amount="-৳6K" colors={colors} />
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{t('notifications')}</Text>
-          <TouchableOpacity>
-            <Text style={styles.viewAll}>{t('viewAll')}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('notifications')}</Text>
+          <TouchableOpacity onPress={() => router.push('/view/Notifications/notifications')}>
+            <Text style={[styles.viewAll, { color: colors.deepGreen }]}>{t('viewAll')}</Text>
           </TouchableOpacity>
         </View>
         <NotificationItem
           icon="checkmark-circle"
-          color="#16A34A"
+          color={colors.dashboard.greenUp}
           title="Loan Approved!"
           time="2h ago"
           description="Your application L-2024-004 for ৳60,000 has been approved by Sonali Bank."
+          colors={colors}
         />
         <NotificationItem
           icon="trending-up"
-          color="#2563EB"
+          color={colors.blueLight}
           title="Credit Score Updated"
           time="1d ago"
           description="Your score increased from 710 to 720. Great financial discipline!"
+          colors={colors}
         />
         <NotificationItem
           icon="shield-checkmark"
@@ -270,6 +282,7 @@ export default function DashboardScreen() {
           title="Profile Verified"
           time="3d ago"
           description="Your farm details have been verified by Field Officer Khorshed Alam."
+          colors={colors}
         />
         <NotificationItem
           icon="document-text"
@@ -277,10 +290,11 @@ export default function DashboardScreen() {
           title="Document Required"
           time="5d ago"
           description="Please upload your land deed to complete your loan application."
+          colors={colors}
         />
       </ScrollView>
 
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { backgroundColor: colors.dashboard.cardBg, borderTopColor: colors.dashboard.border, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }]}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           return (
@@ -290,14 +304,14 @@ export default function DashboardScreen() {
               onPress={() => handleTabPress(tab.key)}
               activeOpacity={0.6}
             >
-              <View style={[styles.navIconWrap, isActive && styles.navIconWrapActive]}>
+              <View style={[styles.navIconWrap, isActive && { backgroundColor: colors.deepGreen }]}>
                 <Ionicons
                   name={isActive ? tab.activeIcon : tab.inactiveIcon}
                   size={22}
-                  color={isActive ? "#fff" : "#9CA3AF"}
+                  color={isActive ? "#fff" : colors.dashboard.textSecondary}
                 />
               </View>
-              <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
+              <Text style={[styles.navLabel, { color: isActive ? colors.deepGreen : colors.dashboard.textSecondary }, isActive && { fontWeight: '700' }]}>
                 {t(tab.labelKey as any)}
               </Text>
             </TouchableOpacity>
@@ -309,21 +323,22 @@ export default function DashboardScreen() {
 }
 
 function ActionButton({ icon, label, color, onPress }: { icon: string; label: string; color: string; onPress?: () => void }) {
+  const c = useColors();
   return (
     <TouchableOpacity style={styles.actionItem} onPress={onPress}>
       <View style={[styles.actionIcon, { backgroundColor: `${color}12` }]}>
         <Feather name={icon as any} size={22} color={color} />
       </View>
-      <Text style={styles.actionLabel}>{label}</Text>
+      <Text style={[styles.actionLabel, { color: c.dashboard.textSecondary }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
-function InfoItem({ title, value }: { title: string; value: string }) {
+function InfoItem({ title, value, colors }: { title: string; value: string; colors: any }) {
   return (
     <View>
-      <Text style={styles.infoTitle}>{title}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+      <Text style={[styles.infoTitle, { color: colors.dashboard.textSecondary }]}>{title}</Text>
+      <Text style={[styles.infoValue, { color: colors.dashboard.textPrimary }]}>{value}</Text>
     </View>
   );
 }
@@ -333,36 +348,38 @@ function TransactionRow({
   date,
   amount,
   positive,
+  colors,
 }: {
   title: string;
   date: string;
   amount: string;
   positive?: boolean;
+  colors: any;
 }) {
   return (
-    <View style={styles.txRow}>
+    <View style={[styles.txRow, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }]}>
       <View style={styles.txLeft}>
         <View
           style={[
             styles.txIcon,
-            { backgroundColor: positive ? "#ECFDF5" : "#FEF2F2" },
+            { backgroundColor: positive ? colors.userVerified : colors.userRejected },
           ]}
         >
           <Feather
             name={positive ? "arrow-up-right" : "arrow-down-left"}
             size={16}
-            color={positive ? "#16A34A" : "#DC2626"}
+            color={positive ? colors.dashboard.greenUp : colors.dashboard.redDown}
           />
         </View>
         <View>
-          <Text style={styles.txTitle}>{title}</Text>
-          <Text style={styles.txDate}>{date}</Text>
+          <Text style={[styles.txTitle, { color: colors.dashboard.textPrimary }]}>{title}</Text>
+          <Text style={[styles.txDate, { color: colors.dashboard.textSecondary }]}>{date}</Text>
         </View>
       </View>
       <Text
         style={[
           styles.txAmount,
-          { color: positive ? "#16A34A" : "#DC2626" },
+          { color: positive ? colors.dashboard.greenUp : colors.dashboard.redDown },
         ]}
       >
         {amount}
@@ -377,24 +394,26 @@ function NotificationItem({
   title,
   time,
   description,
+  colors,
 }: {
   icon: string;
   color: string;
   title: string;
   time: string;
   description: string;
+  colors: any;
 }) {
   return (
-    <View style={styles.notifRow}>
+    <View style={[styles.notifRow, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }]}>
       <View style={[styles.notifIcon, { backgroundColor: `${color}18` }]}>
         <Ionicons name={icon as any} size={18} color={color} />
       </View>
       <View style={styles.notifContent}>
         <View style={styles.notifTop}>
-          <Text style={styles.notifTitle}>{title}</Text>
-          <Text style={styles.notifTime}>{time}</Text>
+          <Text style={[styles.notifTitle, { color: colors.dashboard.textPrimary }]}>{title}</Text>
+          <Text style={[styles.notifTime, { color: colors.dashboard.textSecondary }]}>{time}</Text>
         </View>
-        <Text style={styles.notifDesc}>{description}</Text>
+        <Text style={[styles.notifDesc, { color: colors.dashboard.textSecondary }]}>{description}</Text>
       </View>
     </View>
   );
@@ -403,7 +422,6 @@ function NotificationItem({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F7F8F8",
   },
   scrollContent: {
     paddingHorizontal: 18,
@@ -416,9 +434,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 14,
-    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
   },
   logoContainer: {
     flexDirection: "row",
@@ -428,17 +444,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
-    backgroundColor: '#ECFDF5',
   },
   langText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#006847',
   },
   logo: {
     width: 32,
     height: 32,
-    backgroundColor: "#006847",
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
@@ -446,7 +459,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1F2937",
   },
   headerIcons: {
     flexDirection: "row",
@@ -454,7 +466,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   heroCard: {
-    backgroundColor: "#006847",
     borderRadius: 20,
     padding: 20,
     marginTop: 18,
@@ -489,15 +500,18 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "#1B7A60",
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
   },
+  avatarText: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "700",
+  },
   scoreCard: {
-    backgroundColor: "#1B7A60",
     borderRadius: 16,
     padding: 16,
     marginTop: 20,
@@ -550,7 +564,6 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#22C55E",
     marginRight: 5,
   },
   riskText: {
@@ -592,11 +605,9 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 14,
     alignItems: "center",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
   },
   statIconWrap: {
     width: 36,
@@ -609,17 +620,14 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#1F2937",
   },
   statLabel: {
-    color: "#6B7280",
     fontSize: 11,
     marginTop: 2,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1F2937",
     marginBottom: 12,
   },
   sectionHeader: {
@@ -629,17 +637,14 @@ const styles = StyleSheet.create({
     marginTop: 22,
   },
   viewAll: {
-    color: "#006847",
     fontWeight: "600",
     fontSize: 13,
   },
   quickCard: {
-    backgroundColor: "#fff",
     borderRadius: 18,
     padding: 16,
     flexDirection: "row",
     justifyContent: "space-between",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
     marginBottom: 4,
   },
   actionItem: {
@@ -656,14 +661,11 @@ const styles = StyleSheet.create({
   actionLabel: {
     marginTop: 8,
     fontSize: 11,
-    color: "#4B5563",
     fontWeight: "500",
   },
   loanCard: {
-    backgroundColor: "#fff",
     borderRadius: 20,
     padding: 18,
-    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
   },
   loanTop: {
     flexDirection: "row",
@@ -678,7 +680,6 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: "#ECFDF5",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -686,21 +687,17 @@ const styles = StyleSheet.create({
   loanTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#1F2937",
   },
   loanRef: {
-    color: "#6B7280",
     fontSize: 11,
     marginTop: 2,
   },
   badge: {
-    backgroundColor: "#EFF6FF",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
   },
   badgeText: {
-    color: "#2563EB",
     fontWeight: "700",
     fontSize: 10,
     letterSpacing: 0.5,
@@ -709,7 +706,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -6,
     right: -8,
-    backgroundColor: "#DC2626",
     borderRadius: 10,
     minWidth: 18,
     height: 18,
@@ -724,7 +720,6 @@ const styles = StyleSheet.create({
   },
   loanDivider: {
     height: 1,
-    backgroundColor: "#F3F4F6",
     marginVertical: 14,
   },
   loanDetails: {
@@ -732,13 +727,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   infoTitle: {
-    color: "#6B7280",
     fontSize: 11,
     fontWeight: "500",
   },
   infoValue: {
     fontWeight: "700",
-    color: "#1F2937",
     marginTop: 4,
     fontSize: 14,
   },
@@ -748,12 +741,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   nextLabel: {
-    color: "#6B7280",
     fontSize: 12,
     fontWeight: "500",
   },
   nextDate: {
-    color: "#1F2937",
     fontSize: 15,
     fontWeight: "700",
     marginTop: 2,
@@ -762,12 +753,10 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   nextAmount: {
-    color: "#006847",
     fontSize: 18,
     fontWeight: "700",
   },
   nextSub: {
-    color: "#6B7280",
     fontSize: 11,
     marginTop: 1,
   },
@@ -781,22 +770,18 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#4B5563",
   },
   progressPercent: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#006847",
   },
   progressBar: {
     height: 10,
-    backgroundColor: "#E5E7EB",
     borderRadius: 10,
     overflow: "hidden",
   },
   progressFill: {
     height: 10,
-    backgroundColor: "#22C55E",
     borderRadius: 10,
   },
   progressMeta: {
@@ -805,22 +790,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   installments: {
-    color: "#6B7280",
     fontSize: 12,
   },
   remaining: {
-    color: "#9CA3AF",
     fontSize: 12,
   },
   txRow: {
-    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 14,
     marginBottom: 8,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
   },
   txLeft: {
     flexDirection: "row",
@@ -837,11 +818,9 @@ const styles = StyleSheet.create({
   },
   txTitle: {
     fontWeight: "600",
-    color: "#1F2937",
     fontSize: 14,
   },
   txDate: {
-    color: "#9CA3AF",
     fontSize: 12,
     marginTop: 2,
   },
@@ -850,13 +829,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   notifRow: {
-    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 14,
     marginBottom: 8,
     flexDirection: "row",
     alignItems: "flex-start",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
   },
   notifIcon: {
     width: 36,
@@ -877,43 +854,36 @@ const styles = StyleSheet.create({
   },
   notifTitle: {
     fontWeight: "700",
-    color: "#1F2937",
     fontSize: 14,
     flex: 1,
   },
   notifTime: {
-    color: "#9CA3AF",
     fontSize: 11,
     marginLeft: 8,
   },
   notifDesc: {
-    color: "#6B7280",
     fontSize: 12,
     lineHeight: 18,
     marginTop: 4,
   },
   emptyLoan: {
-    backgroundColor: '#fff',
     borderRadius: 20,
     padding: 40,
     alignItems: 'center',
     gap: 10,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
   },
   emptyLoanText: {
     fontSize: 14,
-    color: '#9CA3AF',
     fontWeight: '600',
   },
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    backgroundColor: "#fff",
     paddingTop: 6,
     paddingBottom: 12,
     paddingHorizontal: 8,
-    boxShadow: "0 -2px 8px rgba(0,0,0,0.06)",
+    borderTopWidth: 1,
   },
   navItem: {
     alignItems: "center",
@@ -927,17 +897,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  navIconWrapActive: {
-    backgroundColor: "#006847",
-  },
   navLabel: {
     fontSize: 11,
     marginTop: 4,
-    color: "#9CA3AF",
     fontWeight: "500",
-  },
-  navLabelActive: {
-    color: "#006847",
-    fontWeight: "700",
   },
 });

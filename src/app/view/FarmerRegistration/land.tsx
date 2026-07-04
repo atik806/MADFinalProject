@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useTranslation } from "../../../hooks/use-translation";
+import { useColors } from "../../../features/officials/shared/constants/theme";
 
 type FormErrors = {
   totalLand?: string;
@@ -20,6 +21,7 @@ type FormErrors = {
 };
 
 export default function LandScreen() {
+  const colors = useColors();
   const { t } = useTranslation();
   const [totalLand, setTotalLand] = useState("");
   const [ownLand, setOwnLand] = useState("");
@@ -72,129 +74,125 @@ export default function LandScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color="#1F2937" />
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={22} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
-          <View style={styles.headerLogo}>
+          <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
             <Ionicons name="leaf" size={18} color="#fff" />
           </View>
         </View>
 
         <View>
-          <Text style={styles.title}>{t('newFarmerRegistration')}</Text>
-          <Text style={styles.subtitle}>{t('step2of5')}</Text>
+          <Text style={[styles.title, { color: colors.dashboard.textPrimary }]}>{t('newFarmerRegistration')}</Text>
+          <Text style={[styles.subtitle, { color: colors.dashboard.textSecondary }]}>{t('step2of5')}</Text>
         </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.stepperContainer}>
           <View style={styles.stepItem}>
-            <View style={[styles.stepBar, styles.completedBar]}>
+            <View style={[styles.stepBar, styles.completedBar, { backgroundColor: colors.deepGreen }]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>{t('identity')}</Text>
+            <Text style={[styles.completedStepText, { color: colors.deepGreen }]}>{t('identity')}</Text>
           </View>
 
           <View style={styles.stepItem}>
-            <View style={[styles.stepBar, styles.activeBar]} />
-            <Text style={styles.activeStepText}>{t('land')}</Text>
+            <View style={[styles.stepBar, styles.activeBar, { backgroundColor: colors.deepGreen }]} />
+            <Text style={[styles.activeStepText, { color: colors.deepGreen }]}>{t('land')}</Text>
           </View>
 
           <View style={styles.stepItem}>
-            <View style={styles.stepBar} />
-            <Text style={styles.stepText}>{t('incomeStep')}</Text>
+            <View style={[styles.stepBar, { backgroundColor: colors.dashboard.border }]} />
+            <Text style={[styles.stepText, { color: colors.dashboard.textSecondary }]}>{t('incomeStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
-            <View style={styles.stepBar} />
-            <Text style={styles.stepText}>{t('loanStep')}</Text>
+            <View style={[styles.stepBar, { backgroundColor: colors.dashboard.border }]} />
+            <Text style={[styles.stepText, { color: colors.dashboard.textSecondary }]}>{t('loanStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
-            <View style={styles.stepBar} />
-            <Text style={styles.stepText}>{t('photoStep')}</Text>
+            <View style={[styles.stepBar, { backgroundColor: colors.dashboard.border }]} />
+            <Text style={[styles.stepText, { color: colors.dashboard.textSecondary }]}>{t('photoStep')}</Text>
           </View>
         </View>
 
-        <Text style={styles.label}>{t('totalLandLabel2')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="map-outline" size={22} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('totalLandLabel2')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="map-outline" size={22} color={colors.dashboard.textSecondary} />
           <TextInput
             placeholder={t('totalLandPlaceholder2')}
+            placeholderTextColor={colors.dashboard.textSecondary}
             keyboardType="decimal-pad"
-            style={styles.iconInput}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={totalLand}
             onChangeText={(t) => { setTotalLand(t); setErrors((p) => ({ ...p, totalLand: undefined })); }}
           />
         </View>
-        {errors.totalLand && <Text style={styles.error}>{errors.totalLand}</Text>}
+        {errors.totalLand && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.totalLand}</Text>}
 
-        <Text style={styles.label}>{t('ownLandLabel2')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="home-outline" size={22} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('ownLandLabel2')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="home-outline" size={22} color={colors.dashboard.textSecondary} />
           <TextInput
             placeholder={t('ownLandPlaceholder2')}
+            placeholderTextColor={colors.dashboard.textSecondary}
             keyboardType="decimal-pad"
-            style={styles.iconInput}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={ownLand}
             onChangeText={(t) => { setOwnLand(t); setErrors((p) => ({ ...p, ownLand: undefined })); }}
           />
         </View>
-        {errors.ownLand && <Text style={styles.error}>{errors.ownLand}</Text>}
+        {errors.ownLand && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.ownLand}</Text>}
 
-        <Text style={styles.label}>{t('leasedLandLabel2')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="document-outline" size={22} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('leasedLandLabel2')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="document-outline" size={22} color={colors.dashboard.textSecondary} />
           <TextInput
             placeholder={t('leasedLandPlaceholder2')}
+            placeholderTextColor={colors.dashboard.textSecondary}
             keyboardType="decimal-pad"
-            style={styles.iconInput}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={leasedLand}
             onChangeText={setLeasedLand}
           />
         </View>
 
-        <Text style={styles.label}>{t('selectCrops')}</Text>
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('selectCrops')}</Text>
         <View style={styles.cropContainer}>
           {crops.map((crop) => (
             <TouchableOpacity
               key={crop}
-              style={[
-                styles.cropBtn,
-                selectedCrops.includes(crop) && styles.cropBtnActive,
-              ]}
+              style={[styles.cropBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, selectedCrops.includes(crop) && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
               onPress={() => toggleCrop(crop)}
             >
-              <Text
-                style={[
-                  styles.cropText,
-                  selectedCrops.includes(crop) && styles.cropTextActive,
-                ]}
-              >
+              <Text style={[styles.cropText, { color: colors.dashboard.textSecondary }, selectedCrops.includes(crop) && { color: colors.deepGreen, fontWeight: '700' }]}>
                 {selectedCrops.includes(crop) ? "✓ " : ""}
                 {crop}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
-        {errors.crops && <Text style={styles.error}>{errors.crops}</Text>}
+        {errors.crops && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.crops}</Text>}
 
-        <Text style={styles.label}>{t('locationLabel2')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="location-outline" size={22} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('locationLabel2')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="location-outline" size={22} color={colors.dashboard.textSecondary} />
           <TextInput
             placeholder={t('locationPlaceholder2')}
-            style={styles.iconInput}
+            placeholderTextColor={colors.dashboard.textSecondary}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={location}
             onChangeText={(t) => { setLocation(t); setErrors((p) => ({ ...p, location: undefined })); }}
           />
         </View>
-        {errors.location && <Text style={styles.error}>{errors.location}</Text>}
+        {errors.location && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.location}</Text>}
 
-        <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
+        <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.deepGreen }]} onPress={handleNext}>
           <Text style={styles.nextBtnText}>{t('nextStep')}</Text>
           <Ionicons name="chevron-forward" size={20} color="#fff" />
         </TouchableOpacity>
@@ -206,7 +204,6 @@ export default function LandScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F3F5F4",
   },
   header: {
     flexDirection: "row",
@@ -219,7 +216,6 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -232,7 +228,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 7,
-    backgroundColor: "#006847",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 10,
@@ -240,10 +235,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#1F2937",
   },
   subtitle: {
-    color: "#7B8A8B",
     marginTop: 2,
   },
   stepperContainer: {
@@ -260,17 +253,14 @@ const styles = StyleSheet.create({
     width: "90%",
     height: 6,
     borderRadius: 20,
-    backgroundColor: "#D9E5E1",
     marginBottom: 6,
     justifyContent: "center",
     alignItems: "center",
   },
   activeBar: {
-    backgroundColor: "#157A5A",
     height: 6,
   },
   completedBar: {
-    backgroundColor: "#157A5A",
     height: 22,
     width: 22,
     borderRadius: 11,
@@ -279,18 +269,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   activeStepText: {
-    color: "#157A5A",
     fontWeight: "700",
     fontSize: 12,
   },
   completedStepText: {
-    color: "#157A5A",
     fontWeight: "700",
     fontSize: 12,
     marginTop: -2,
   },
   stepText: {
-    color: "#9AA5A8",
     fontSize: 12,
   },
   label: {
@@ -298,25 +285,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 14,
     fontWeight: "600",
-    color: "#425466",
-  },
-  input: {
-    backgroundColor: "#fff",
-    height: 60,
-    borderRadius: 18,
-    marginHorizontal: 18,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: "#E4ECE9",
   },
   inputIcon: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
     height: 60,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#E4ECE9",
     marginHorizontal: 18,
     paddingHorizontal: 16,
   },
@@ -334,23 +309,11 @@ const styles = StyleSheet.create({
   cropBtn: {
     paddingHorizontal: 18,
     paddingVertical: 12,
-    backgroundColor: "#fff",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#DDE5E2",
-  },
-  cropBtnActive: {
-    borderColor: "#157A5A",
-    borderWidth: 2,
-    backgroundColor: "#ECFDF5",
   },
   cropText: {
-    color: "#6B7280",
     fontWeight: "600",
-  },
-  cropTextActive: {
-    color: "#157A5A",
-    fontWeight: "700",
   },
   nextBtn: {
     marginHorizontal: 18,
@@ -358,7 +321,6 @@ const styles = StyleSheet.create({
     marginBottom: 25,
     height: 60,
     borderRadius: 18,
-    backgroundColor: "#157A5A",
     justifyContent: "center",
     alignItems: "center",
     flexDirection: "row",
@@ -370,7 +332,6 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   error: {
-    color: "#DC2626",
     fontSize: 13,
     marginHorizontal: 22,
     marginTop: 4,

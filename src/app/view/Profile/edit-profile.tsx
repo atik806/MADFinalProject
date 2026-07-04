@@ -13,12 +13,14 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useProfile } from '../../../contexts/ProfileContext';
 import { useTranslation } from '../../../hooks/use-translation';
+import { useColors } from '../../../features/officials/shared/constants/theme';
 
 const CROPS = ['ধান', 'পাট', 'গম', 'আলু', 'পেঁয়াজ', 'সবজি', 'চা', 'আম'];
 const INCOME_SOURCES = ['কৃষি শ্রমিক', 'ছোট ব্যবসা', 'চাকরি', 'অন্যান্য'];
 const GENDERS = ['পুরুষ', 'মহিলা', 'অন্যান্য'];
 
 export default function EditProfileScreen() {
+  const colors = useColors();
   const { profile, updateProfile } = useProfile();
   const { t } = useTranslation();
 
@@ -84,17 +86,17 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
+      <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color="#1F2937" />
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.border }]} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={22} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
-          <View style={styles.headerLogo}>
+          <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
             <Ionicons name="leaf" size={18} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>{t('editProfile')}</Text>
+        <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('editProfile')}</Text>
         <View style={styles.headerRight} />
       </View>
 
@@ -102,233 +104,246 @@ export default function EditProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <Text style={styles.sectionLabel}>{t('personalInfoSection')}</Text>
+        <Text style={[styles.sectionLabel, { color: colors.deepGreen }]}>{t('personalInfoSection')}</Text>
 
-        <Text style={styles.label}>{t('nameBnLabel')}</Text>
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('nameBnLabel')}</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary }]}
           value={nameBn}
           onChangeText={setNameBn}
           placeholder={t('nameBnPlaceholder')}
+          placeholderTextColor={colors.dashboard.textSecondary}
         />
 
-        <Text style={styles.label}>{t('nameEnLabel')}</Text>
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('nameEnLabel')}</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary }]}
           value={nameEn}
           onChangeText={setNameEn}
           placeholder={t('nameEnPlaceholder')}
+          placeholderTextColor={colors.dashboard.textSecondary}
         />
 
-        <Text style={styles.label}>{t('nidLabel')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="document-text-outline" size={20} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('nidLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="document-text-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
-            style={styles.iconInput}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={nid}
             onChangeText={setNid}
             keyboardType="number-pad"
             placeholder={t('nidPlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
 
-        <Text style={styles.label}>{t('phoneLabel2')}</Text>
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('phoneLabel2')}</Text>
         <View style={styles.phoneContainer}>
-          <View style={styles.countryCode}>
-            <Text style={styles.countryCodeText}>+880</Text>
+          <View style={[styles.countryCode, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+            <Text style={[styles.countryCodeText, { color: colors.dashboard.textPrimary }]}>+880</Text>
           </View>
           <TextInput
-            style={styles.phoneInput}
+            style={[styles.phoneInput, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary }]}
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
             placeholder={t('phonePlaceholder2')}
+            placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
 
-        <Text style={styles.label}>{t('dobLabel')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="calendar-outline" size={20} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('dobLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="calendar-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
-            style={styles.iconInput}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={dob}
             onChangeText={setDob}
             placeholder={t('dobPlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
 
-        <Text style={styles.label}>{t('genderLabel')}</Text>
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('genderLabel')}</Text>
         <View style={styles.genderRow}>
           {GENDERS.map((item) => (
             <TouchableOpacity
               key={item}
-              style={[styles.genderBtn, gender === item && styles.genderBtnActive]}
+              style={[styles.genderBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, gender === item && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
               onPress={() => setGender(item)}
             >
-              <Text style={[styles.genderText, gender === item && styles.genderTextActive]}>
+              <Text style={[styles.genderText, { color: colors.dashboard.textSecondary }, gender === item && { color: colors.deepGreen, fontWeight: '700' }]}>
                 {gender === item ? '✓ ' : ''}{item}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <View style={styles.divider} />
-        <Text style={styles.sectionLabel}>{t('landCropsSection')}</Text>
+        <View style={[styles.divider, { backgroundColor: colors.dashboard.border }]} />
+        <Text style={[styles.sectionLabel, { color: colors.deepGreen }]}>{t('landCropsSection')}</Text>
 
-        <Text style={styles.label}>{t('totalLandLabel')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="map-outline" size={20} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('totalLandLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="map-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
-            style={styles.iconInput}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={totalLand}
             onChangeText={setTotalLand}
             keyboardType="decimal-pad"
             placeholder={t('totalLandPlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
 
-        <Text style={styles.label}>{t('ownLandLabel')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="home-outline" size={20} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('ownLandLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="home-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
-            style={styles.iconInput}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={ownLand}
             onChangeText={setOwnLand}
             keyboardType="decimal-pad"
             placeholder={t('ownLandPlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
 
-        <Text style={styles.label}>{t('leasedLandLabel')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="document-outline" size={20} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('leasedLandLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="document-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
-            style={styles.iconInput}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={leasedLand}
             onChangeText={setLeasedLand}
             keyboardType="decimal-pad"
             placeholder={t('leasedLandPlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
 
-        <Text style={styles.label}>{t('mainCropsLabel')}</Text>
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('mainCropsLabel')}</Text>
         <View style={styles.chipContainer}>
           {CROPS.map((crop) => (
             <TouchableOpacity
               key={crop}
-              style={[styles.chip, selectedCrops.includes(crop) && styles.chipActive]}
+              style={[styles.chip, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, selectedCrops.includes(crop) && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
               onPress={() => toggleCrop(crop)}
             >
-              <Text style={[styles.chipText, selectedCrops.includes(crop) && styles.chipTextActive]}>
+              <Text style={[styles.chipText, { color: colors.dashboard.textSecondary }, selectedCrops.includes(crop) && { color: colors.deepGreen, fontWeight: '700' }]}>
                 {selectedCrops.includes(crop) ? '✓ ' : ''}{crop}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={styles.label}>{t('locationLabel')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="location-outline" size={20} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('locationLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="location-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
-            style={styles.iconInput}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={location}
             onChangeText={setLocation}
             placeholder={t('locationPlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
 
-        <View style={styles.divider} />
-        <Text style={styles.sectionLabel}>{t('incomeSection')}</Text>
+        <View style={[styles.divider, { backgroundColor: colors.dashboard.border }]} />
+        <Text style={[styles.sectionLabel, { color: colors.deepGreen }]}>{t('incomeSection')}</Text>
 
-        <Text style={styles.label}>{t('annualFarmingLabel')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="cash-outline" size={20} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('annualFarmingLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="cash-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
-            style={styles.iconInput}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={farmingIncome}
             onChangeText={setFarmingIncome}
             keyboardType="decimal-pad"
             placeholder={t('annualFarmingPlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
 
-        <Text style={styles.label}>{t('otherSourcesLabel')}</Text>
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('otherSourcesLabel')}</Text>
         <View style={styles.chipContainer}>
           {INCOME_SOURCES.map((source) => (
             <TouchableOpacity
               key={source}
-              style={[styles.chip, selectedSources.includes(source) && styles.chipActive]}
+              style={[styles.chip, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, selectedSources.includes(source) && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
               onPress={() => toggleSource(source)}
             >
-              <Text style={[styles.chipText, selectedSources.includes(source) && styles.chipTextActive]}>
+              <Text style={[styles.chipText, { color: colors.dashboard.textSecondary }, selectedSources.includes(source) && { color: colors.deepGreen, fontWeight: '700' }]}>
                 {selectedSources.includes(source) ? '✓ ' : ''}{source}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={styles.label}>{t('otherIncomeLabel')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="wallet-outline" size={20} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('otherIncomeLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="wallet-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
-            style={styles.iconInput}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={otherIncome}
             onChangeText={setOtherIncome}
             keyboardType="decimal-pad"
             placeholder={t('otherIncomePlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
 
-        <Text style={styles.label}>{t('familyLabel')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="people-outline" size={20} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('familyLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="people-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
-            style={styles.iconInput}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={familyMembers}
             onChangeText={setFamilyMembers}
             keyboardType="number-pad"
             placeholder={t('familyPlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
 
-        <Text style={styles.label}>{t('occupationLabel')}</Text>
-        <View style={styles.inputIcon}>
-          <Ionicons name="briefcase-outline" size={20} color="#7B8A8B" />
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('occupationLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="briefcase-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
-            style={styles.iconInput}
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={occupation}
             onChangeText={setOccupation}
             placeholder={t('occupationPlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
 
-        <View style={styles.divider} />
-        <Text style={styles.sectionLabel}>{t('loanInfoSection')}</Text>
+        <View style={[styles.divider, { backgroundColor: colors.dashboard.border }]} />
+        <Text style={[styles.sectionLabel, { color: colors.deepGreen }]}>{t('loanInfoSection')}</Text>
 
         <View style={styles.radioRow}>
           <TouchableOpacity
-            style={[styles.radioBtn, hasLoan === true && styles.radioBtnActive]}
+            style={[styles.radioBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, hasLoan === true && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
             onPress={() => setHasLoan(true)}
           >
             <Ionicons
               name={hasLoan === true ? 'radio-button-on' : 'radio-button-off'}
               size={20}
-              color={hasLoan === true ? '#157A5A' : '#7B8A8B'}
+              color={hasLoan === true ? colors.deepGreen : colors.dashboard.textSecondary}
             />
-            <Text style={[styles.radioText, hasLoan === true && styles.radioTextActive]}>
+            <Text style={[styles.radioText, { color: colors.dashboard.textSecondary }, hasLoan === true && { color: colors.deepGreen, fontWeight: '700' }]}>
               {t('yes')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.radioBtn, hasLoan === false && styles.radioBtnActive]}
+            style={[styles.radioBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, hasLoan === false && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
             onPress={() => setHasLoan(false)}
           >
             <Ionicons
               name={hasLoan === false ? 'radio-button-on' : 'radio-button-off'}
               size={20}
-              color={hasLoan === false ? '#157A5A' : '#7B8A8B'}
+              color={hasLoan === false ? colors.deepGreen : colors.dashboard.textSecondary}
             />
-            <Text style={[styles.radioText, hasLoan === false && styles.radioTextActive]}>
+            <Text style={[styles.radioText, { color: colors.dashboard.textSecondary }, hasLoan === false && { color: colors.deepGreen, fontWeight: '700' }]}>
               {t('no')}
             </Text>
           </TouchableOpacity>
@@ -336,53 +351,56 @@ export default function EditProfileScreen() {
 
         {hasLoan && (
           <>
-            <Text style={styles.label}>{t('loanAmountLabel2')}</Text>
-            <View style={styles.inputIcon}>
-              <Ionicons name="trending-down-outline" size={20} color="#7B8A8B" />
+            <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('loanAmountLabel2')}</Text>
+            <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+              <Ionicons name="trending-down-outline" size={20} color={colors.dashboard.textSecondary} />
               <TextInput
-                style={styles.iconInput}
+                style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
                 value={loanAmount}
                 onChangeText={setLoanAmount}
                 keyboardType="decimal-pad"
                 placeholder={t('loanAmountPlaceholder')}
+                placeholderTextColor={colors.dashboard.textSecondary}
               />
             </View>
 
-            <Text style={styles.label}>{t('purposeLabel')}</Text>
-            <View style={styles.inputIcon}>
-              <Ionicons name="flag-outline" size={20} color="#7B8A8B" />
+            <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('purposeLabel')}</Text>
+            <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+              <Ionicons name="flag-outline" size={20} color={colors.dashboard.textSecondary} />
               <TextInput
-                style={styles.iconInput}
+                style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
                 value={loanPurpose}
                 onChangeText={setLoanPurpose}
                 placeholder={t('purposePlaceholder')}
+                placeholderTextColor={colors.dashboard.textSecondary}
               />
             </View>
 
-            <Text style={styles.label}>{t('sourceLabel')}</Text>
-            <View style={styles.inputIcon}>
-              <Ionicons name="business-outline" size={20} color="#7B8A8B" />
+            <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('sourceLabel')}</Text>
+            <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+              <Ionicons name="business-outline" size={20} color={colors.dashboard.textSecondary} />
               <TextInput
-                style={styles.iconInput}
+                style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
                 value={loanSource}
                 onChangeText={setLoanSource}
                 placeholder={t('sourcePlaceholder')}
+                placeholderTextColor={colors.dashboard.textSecondary}
               />
             </View>
           </>
         )}
 
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} activeOpacity={0.8}>
+        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.deepGreen }]} onPress={handleSave} activeOpacity={0.8}>
           <Ionicons name="checkmark-circle" size={22} color="#fff" />
           <Text style={styles.saveBtnText}>{t('saveChanges')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.cancelBtn}
+          style={[styles.cancelBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}
           onPress={() => router.back()}
           activeOpacity={0.8}
         >
-          <Text style={styles.cancelBtnText}>{t('cancel')}</Text>
+          <Text style={[styles.cancelBtnText, { color: colors.dashboard.textSecondary }]}>{t('cancel')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -392,7 +410,6 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F5F4',
   },
   header: {
     flexDirection: 'row',
@@ -401,22 +418,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 14,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   backBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -426,7 +439,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 7,
-    backgroundColor: '#006847',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 10,
@@ -442,7 +454,6 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#006847',
     marginTop: 10,
     marginBottom: 6,
   },
@@ -450,26 +461,21 @@ const styles = StyleSheet.create({
     marginTop: 14,
     marginBottom: 6,
     fontWeight: '600',
-    color: '#425466',
     fontSize: 13,
   },
   input: {
-    backgroundColor: '#fff',
     height: 54,
     borderRadius: 16,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#E4ECE9',
     fontSize: 15,
   },
   inputIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     height: 54,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E4ECE9',
     paddingHorizontal: 14,
   },
   iconInput: {
@@ -483,9 +489,7 @@ const styles = StyleSheet.create({
   countryCode: {
     width: 70,
     height: 54,
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#E4ECE9',
     justifyContent: 'center',
     alignItems: 'center',
     borderTopLeftRadius: 16,
@@ -497,9 +501,7 @@ const styles = StyleSheet.create({
   },
   phoneInput: {
     flex: 1,
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#E4ECE9',
     borderLeftWidth: 0,
     borderTopRightRadius: 16,
     borderBottomRightRadius: 16,
@@ -513,30 +515,17 @@ const styles = StyleSheet.create({
   genderBtn: {
     flex: 1,
     height: 48,
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#DDE5E2',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  genderBtnActive: {
-    borderColor: '#157A5A',
-    borderWidth: 2,
-    backgroundColor: '#ECFDF5',
-  },
   genderText: {
-    color: '#6B7280',
     fontWeight: '600',
     fontSize: 14,
   },
-  genderTextActive: {
-    color: '#157A5A',
-    fontWeight: '700',
-  },
   divider: {
     height: 1,
-    backgroundColor: '#E5E7EB',
     marginVertical: 18,
   },
   chipContainer: {
@@ -547,24 +536,12 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#DDE5E2',
-  },
-  chipActive: {
-    borderColor: '#157A5A',
-    borderWidth: 2,
-    backgroundColor: '#ECFDF5',
   },
   chipText: {
-    color: '#6B7280',
     fontWeight: '600',
     fontSize: 13,
-  },
-  chipTextActive: {
-    color: '#157A5A',
-    fontWeight: '700',
   },
   radioRow: {
     flexDirection: 'row',
@@ -574,33 +551,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    backgroundColor: '#fff',
     height: 52,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#DDE5E2',
     justifyContent: 'center',
     gap: 8,
   },
-  radioBtnActive: {
-    borderColor: '#157A5A',
-    borderWidth: 2,
-    backgroundColor: '#ECFDF5',
-  },
   radioText: {
-    color: '#6B7280',
     fontWeight: '600',
     fontSize: 15,
-  },
-  radioTextActive: {
-    color: '#157A5A',
-    fontWeight: '700',
   },
   saveBtn: {
     flexDirection: 'row',
     height: 56,
     borderRadius: 16,
-    backgroundColor: '#006847',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 28,
@@ -614,15 +578,12 @@ const styles = StyleSheet.create({
   cancelBtn: {
     height: 48,
     borderRadius: 16,
-    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   cancelBtnText: {
-    color: '#6B7280',
     fontSize: 16,
     fontWeight: '600',
   },

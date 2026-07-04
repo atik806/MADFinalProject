@@ -11,47 +11,49 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useNotifications } from "../../../contexts/NotificationContext";
 import { useTranslation } from "../../../hooks/use-translation";
+import { useColors } from "../../../features/officials/shared/constants/theme";
 
 export default function NotificationsScreen() {
+  const colors = useColors();
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications } =
     useNotifications();
   const { t } = useTranslation();
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
+      <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            <Ionicons name="arrow-back" size={24} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
-          <View style={styles.headerLogo}>
+          <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
             <Ionicons name="leaf" size={18} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>{t('notifications')}</Text>
+        <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('notifications')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
       {notifications.length > 0 && (
-        <View style={styles.actions}>
+        <View style={[styles.actions, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
           {unreadCount > 0 && (
             <TouchableOpacity style={styles.actionBtn} onPress={markAllAsRead}>
-              <Ionicons name="checkmark-done" size={16} color="#006847" />
-              <Text style={styles.actionText}>{t('markAllRead')}</Text>
+              <Ionicons name="checkmark-done" size={16} color={colors.deepGreen} />
+              <Text style={[styles.actionText, { color: colors.deepGreen }]}>{t('markAllRead')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.actionBtn} onPress={clearNotifications}>
-            <Ionicons name="trash-outline" size={16} color="#DC2626" />
-            <Text style={[styles.actionText, { color: "#DC2626" }]}>{t('clearAll')}</Text>
+            <Ionicons name="trash-outline" size={16} color={colors.dashboard.redDown} />
+            <Text style={[styles.actionText, { color: colors.dashboard.redDown }]}>{t('clearAll')}</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {notifications.length === 0 ? (
         <View style={styles.empty}>
-          <Ionicons name="notifications-off-outline" size={48} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>{t('noNotifications')}</Text>
-          <Text style={styles.emptyDesc}>{t('allCaughtUp')}</Text>
+          <Ionicons name="notifications-off-outline" size={48} color={colors.dashboard.border} />
+          <Text style={[styles.emptyTitle, { color: colors.dashboard.textSecondary }]}>{t('noNotifications')}</Text>
+          <Text style={[styles.emptyDesc, { color: colors.dashboard.textSecondary }]}>{t('allCaughtUp')}</Text>
         </View>
       ) : (
         <ScrollView
@@ -61,22 +63,22 @@ export default function NotificationsScreen() {
           {notifications.map((notif) => (
             <TouchableOpacity
               key={notif.id}
-              style={[styles.notifRow, !notif.read && styles.notifUnread]}
+              style={[styles.notifRow, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }, !notif.read && { backgroundColor: colors.userVerified }]}
               onPress={() => markAsRead(notif.id)}
               activeOpacity={0.7}
             >
-              {!notif.read && <View style={styles.unreadDot} />}
+              {!notif.read && <View style={[styles.unreadDot, { backgroundColor: colors.deepGreen }]} />}
               <View style={[styles.notifIcon, { backgroundColor: `${notif.color}18` }]}>
                 <Ionicons name={notif.icon as any} size={18} color={notif.color} />
               </View>
               <View style={styles.notifContent}>
                 <View style={styles.notifTop}>
-                  <Text style={[styles.notifTitle, !notif.read && styles.notifTitleUnread]}>
+                  <Text style={[styles.notifTitle, { color: colors.dashboard.textSecondary }, !notif.read && { color: colors.dashboard.textPrimary, fontWeight: '700' }]}>
                     {notif.title}
                   </Text>
-                  <Text style={styles.notifTime}>{notif.time}</Text>
+                  <Text style={[styles.notifTime, { color: colors.dashboard.textSecondary }]}>{notif.time}</Text>
                 </View>
-                <Text style={styles.notifDesc}>{notif.description}</Text>
+                <Text style={[styles.notifDesc, { color: colors.dashboard.textSecondary }]}>{notif.description}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -89,7 +91,6 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F7F8F8",
   },
   header: {
     flexDirection: "row",
@@ -98,14 +99,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 14,
-    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#1F2937",
   },
   headerLeft: {
     flexDirection: "row",
@@ -115,7 +113,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 7,
-    backgroundColor: "#006847",
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 10,
@@ -126,9 +123,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 18,
     paddingVertical: 10,
-    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
   },
   actionBtn: {
     flexDirection: "row",
@@ -136,7 +131,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   actionText: {
-    color: "#006847",
     fontSize: 13,
     fontWeight: "600",
   },
@@ -146,13 +140,11 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   notifRow: {
-    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 14,
     marginBottom: 8,
     flexDirection: "row",
     alignItems: "flex-start",
-    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
     position: "relative",
   },
   notifUnread: {
@@ -162,7 +154,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#006847",
     position: "absolute",
     top: 14,
     left: 14,
@@ -186,21 +177,14 @@ const styles = StyleSheet.create({
   },
   notifTitle: {
     fontWeight: "600",
-    color: "#4B5563",
     fontSize: 14,
     flex: 1,
   },
-  notifTitleUnread: {
-    fontWeight: "700",
-    color: "#1F2937",
-  },
   notifTime: {
-    color: "#9CA3AF",
     fontSize: 11,
     marginLeft: 8,
   },
   notifDesc: {
-    color: "#6B7280",
     fontSize: 12,
     lineHeight: 18,
     marginTop: 4,
@@ -214,11 +198,9 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#6B7280",
     marginTop: 12,
   },
   emptyDesc: {
     fontSize: 13,
-    color: "#9CA3AF",
   },
 });

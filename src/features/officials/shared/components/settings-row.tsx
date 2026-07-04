@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Switch, Text, View } from 'react-native';
 
-import { BrandColors } from '@/features/officials/shared/constants/theme';
+import { useColors } from '@/features/officials/shared/constants/theme';
 
 type SettingsRowProps = {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -13,21 +13,23 @@ type SettingsRowProps = {
 };
 
 export function SettingsRow({ icon, label, value, showSwitch, switchValue, onSwitchChange }: SettingsRowProps) {
+  const colors = useColors();
+
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, { borderBottomColor: colors.dashboard.border }]}>
       <View style={styles.left}>
-        {icon && <Ionicons name={icon} size={20} color={BrandColors.dashboard.textPrimary} />}
-        <Text style={styles.label}>{label}</Text>
+        {icon && <Ionicons name={icon} size={20} color={colors.dashboard.textPrimary} />}
+        <Text style={[styles.label, { color: colors.dashboard.textPrimary }]}>{label}</Text>
       </View>
       {showSwitch ? (
         <Switch
-          trackColor={{ false: '#E5E7EB', true: BrandColors.greenLight + '60' }}
-          thumbColor={BrandColors.greenLight}
+          trackColor={{ false: colors.dashboard.border, true: colors.greenLight + '60' }}
+          thumbColor={colors.greenLight}
           value={switchValue}
           onValueChange={onSwitchChange}
         />
       ) : value ? (
-        <Text style={styles.value}>{value}</Text>
+        <Text style={[styles.value, { color: colors.dashboard.textSecondary }]}>{value}</Text>
       ) : null}
     </View>
   );
@@ -35,7 +37,6 @@ export function SettingsRow({ icon, label, value, showSwitch, switchValue, onSwi
 
 export const settingsCardStyles = StyleSheet.create({
   card: {
-    backgroundColor: BrandColors.dashboard.cardBg,
     borderRadius: 20,
     padding: 4,
     shadowColor: '#000',
@@ -44,11 +45,9 @@ export const settingsCardStyles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
     borderWidth: 1,
-    borderColor: BrandColors.dashboard.border,
   },
   divider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
     marginHorizontal: 16,
   },
 });
@@ -69,11 +68,9 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '500',
-    color: BrandColors.dashboard.textPrimary,
   },
   value: {
     fontSize: 14,
-    color: BrandColors.dashboard.textSecondary,
     fontWeight: '500',
   },
 });

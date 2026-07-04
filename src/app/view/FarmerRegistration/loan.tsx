@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useTranslation } from "../../../hooks/use-translation";
+import { useColors } from "../../../features/officials/shared/constants/theme";
 
 type FormErrors = {
   hasLoan?: string;
@@ -29,6 +30,7 @@ const loanSources = [
 ];
 
 export default function LoanScreen() {
+  const colors = useColors();
   const { t } = useTranslation();
   const [hasLoan, setHasLoan] = useState<boolean | null>(null);
   const [loanAmount, setLoanAmount] = useState("");
@@ -79,114 +81,99 @@ export default function LoanScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color="#1F2937" />
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={22} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
-          <View style={styles.headerLogo}>
+          <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
             <Ionicons name="leaf" size={18} color="#fff" />
           </View>
         </View>
 
         <View>
-          <Text style={styles.title}>{t('newFarmerRegistration')}</Text>
-          <Text style={styles.subtitle}>{t('step4of5')}</Text>
+          <Text style={[styles.title, { color: colors.dashboard.textPrimary }]}>{t('newFarmerRegistration')}</Text>
+          <Text style={[styles.subtitle, { color: colors.dashboard.textSecondary }]}>{t('step4of5')}</Text>
         </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.stepperContainer}>
           <View style={styles.stepItem}>
-            <View style={[styles.stepBar, styles.completedBar]}>
+            <View style={[styles.stepBar, styles.completedBar, { backgroundColor: colors.deepGreen }]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>{t('identity')}</Text>
+            <Text style={[styles.completedStepText, { color: colors.deepGreen }]}>{t('identity')}</Text>
           </View>
 
           <View style={styles.stepItem}>
-            <View style={[styles.stepBar, styles.completedBar]}>
+            <View style={[styles.stepBar, styles.completedBar, { backgroundColor: colors.deepGreen }]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>{t('land')}</Text>
+            <Text style={[styles.completedStepText, { color: colors.deepGreen }]}>{t('land')}</Text>
           </View>
 
           <View style={styles.stepItem}>
-            <View style={[styles.stepBar, styles.completedBar]}>
+            <View style={[styles.stepBar, styles.completedBar, { backgroundColor: colors.deepGreen }]}>
               <Ionicons name="checkmark" size={14} color="#fff" />
             </View>
-            <Text style={styles.completedStepText}>{t('incomeStep')}</Text>
+            <Text style={[styles.completedStepText, { color: colors.deepGreen }]}>{t('incomeStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
-            <View style={[styles.stepBar, styles.activeBar]} />
-            <Text style={styles.activeStepText}>{t('loanStep')}</Text>
+            <View style={[styles.stepBar, styles.activeBar, { backgroundColor: colors.deepGreen }]} />
+            <Text style={[styles.activeStepText, { color: colors.deepGreen }]}>{t('loanStep')}</Text>
           </View>
 
           <View style={styles.stepItem}>
-            <View style={styles.stepBar} />
-            <Text style={styles.stepText}>{t('photoStep')}</Text>
+            <View style={[styles.stepBar, { backgroundColor: colors.dashboard.border }]} />
+            <Text style={[styles.stepText, { color: colors.dashboard.textSecondary }]}>{t('photoStep')}</Text>
           </View>
         </View>
 
-        <Text style={styles.label}>{t('haveLoan')}</Text>
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('haveLoan')}</Text>
         <View style={styles.radioRow}>
           <TouchableOpacity
-            style={[
-              styles.radioBtn,
-              hasLoan === true && styles.radioBtnActive,
-            ]}
+            style={[styles.radioBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, hasLoan === true && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
             onPress={() => { setHasLoan(true); setErrors((p) => ({ ...p, hasLoan: undefined })); }}
           >
             <Ionicons
               name={hasLoan === true ? "radio-button-on" : "radio-button-off"}
               size={22}
-              color={hasLoan === true ? "#157A5A" : "#7B8A8B"}
+              color={hasLoan === true ? colors.deepGreen : colors.dashboard.textSecondary}
             />
-            <Text
-              style={[
-                styles.radioText,
-                hasLoan === true && styles.radioTextActive,
-              ]}
-            >
+            <Text style={[styles.radioText, { color: colors.dashboard.textSecondary }, hasLoan === true && { color: colors.deepGreen, fontWeight: '700' }]}>
               {t('yes')}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.radioBtn,
-              hasLoan === false && styles.radioBtnActive,
-            ]}
+            style={[styles.radioBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, hasLoan === false && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
             onPress={() => { setHasLoan(false); setErrors((p) => ({ ...p, hasLoan: undefined })); }}
           >
             <Ionicons
               name={hasLoan === false ? "radio-button-on" : "radio-button-off"}
               size={22}
-              color={hasLoan === false ? "#157A5A" : "#7B8A8B"}
+              color={hasLoan === false ? colors.deepGreen : colors.dashboard.textSecondary}
             />
-            <Text
-              style={[
-                styles.radioText,
-                hasLoan === false && styles.radioTextActive,
-              ]}
-            >
+            <Text style={[styles.radioText, { color: colors.dashboard.textSecondary }, hasLoan === false && { color: colors.deepGreen, fontWeight: '700' }]}>
               {t('no')}
             </Text>
           </TouchableOpacity>
         </View>
-        {errors.hasLoan && <Text style={styles.error}>{errors.hasLoan}</Text>}
+        {errors.hasLoan && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.hasLoan}</Text>}
 
         {hasLoan === true && (
           <>
-            <Text style={styles.label}>{t('loanAmountLabel3')}</Text>
-            <View style={styles.inputIcon}>
-              <Ionicons name="trending-down-outline" size={22} color="#7B8A8B" />
+            <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('loanAmountLabel3')}</Text>
+            <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+              <Ionicons name="trending-down-outline" size={22} color={colors.dashboard.textSecondary} />
               <TextInput
                 placeholder={t('loanAmountPlaceholder2')}
+                placeholderTextColor={colors.dashboard.textSecondary}
                 keyboardType="decimal-pad"
-                style={styles.iconInput}
+                style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
                 value={formatWithCommas(loanAmount)}
                 onChangeText={(t) => {
                   setLoanAmount(t.replace(/,/g, ""));
@@ -195,15 +182,16 @@ export default function LoanScreen() {
               />
             </View>
             {errors.loanAmount && (
-              <Text style={styles.error}>{errors.loanAmount}</Text>
+              <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.loanAmount}</Text>
             )}
 
-            <Text style={styles.label}>{t('loanPurposeLabel')}</Text>
-            <View style={styles.inputIcon}>
-              <Ionicons name="flag-outline" size={22} color="#7B8A8B" />
+            <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('loanPurposeLabel')}</Text>
+            <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+              <Ionicons name="flag-outline" size={22} color={colors.dashboard.textSecondary} />
               <TextInput
                 placeholder={t('loanPurposePlaceholder')}
-                style={styles.iconInput}
+                placeholderTextColor={colors.dashboard.textSecondary}
+                style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
                 value={loanPurpose}
                 onChangeText={(t) => {
                   setLoanPurpose(t);
@@ -212,26 +200,18 @@ export default function LoanScreen() {
               />
             </View>
             {errors.loanPurpose && (
-              <Text style={styles.error}>{errors.loanPurpose}</Text>
+              <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.loanPurpose}</Text>
             )}
 
-            <Text style={styles.label}>{t('loanSourceLabel')}</Text>
+            <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('loanSourceLabel')}</Text>
             <View style={styles.sourceContainer}>
               {loanSources.map((source) => (
                 <TouchableOpacity
                   key={source}
-                  style={[
-                    styles.sourceBtn,
-                    selectedSource === source && styles.sourceBtnActive,
-                  ]}
+                  style={[styles.sourceBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, selectedSource === source && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
                   onPress={() => { setSelectedSource(source); setErrors((p) => ({ ...p, loanSource: undefined })); }}
                 >
-                  <Text
-                    style={[
-                      styles.sourceText,
-                      selectedSource === source && styles.sourceTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.sourceText, { color: colors.dashboard.textSecondary }, selectedSource === source && { color: colors.deepGreen, fontWeight: '700' }]}>
                     {selectedSource === source ? "✓ " : ""}
                     {source}
                   </Text>
@@ -239,21 +219,21 @@ export default function LoanScreen() {
               ))}
             </View>
             {errors.loanSource && (
-              <Text style={styles.error}>{errors.loanSource}</Text>
+              <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.loanSource}</Text>
             )}
           </>
         )}
 
         {hasLoan === false && (
-          <View style={styles.noLoanBanner}>
-            <Ionicons name="checkmark-circle" size={48} color="#157A5A" />
-            <Text style={styles.noLoanText}>
+          <View style={[styles.noLoanBanner, { backgroundColor: colors.userVerified, borderColor: '#A7F3D0' }]}>
+            <Ionicons name="checkmark-circle" size={48} color={colors.deepGreen} />
+            <Text style={[styles.noLoanText, { color: colors.deepGreen }]}>
               {t('noLoanMessage')}
             </Text>
           </View>
         )}
 
-        <TouchableOpacity style={styles.nextBtn} onPress={handleNext}>
+        <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.deepGreen }]} onPress={handleNext}>
           <Text style={styles.nextBtnText}>{t('nextStep')}</Text>
           <Ionicons name="chevron-forward" size={20} color="#fff" />
         </TouchableOpacity>
@@ -265,7 +245,6 @@ export default function LoanScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F3F5F4",
   },
   header: {
     flexDirection: "row",
@@ -278,7 +257,6 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "#fff",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -291,7 +269,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 7,
-    backgroundColor: "#006847",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 10,
@@ -299,10 +276,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#1F2937",
   },
   subtitle: {
-    color: "#7B8A8B",
     marginTop: 2,
   },
   stepperContainer: {
@@ -319,17 +294,14 @@ const styles = StyleSheet.create({
     width: "90%",
     height: 6,
     borderRadius: 20,
-    backgroundColor: "#D9E5E1",
     marginBottom: 6,
     justifyContent: "center",
     alignItems: "center",
   },
   activeBar: {
-    backgroundColor: "#157A5A",
     height: 6,
   },
   completedBar: {
-    backgroundColor: "#157A5A",
     height: 22,
     width: 22,
     borderRadius: 11,
@@ -338,18 +310,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   activeStepText: {
-    color: "#157A5A",
     fontWeight: "700",
     fontSize: 12,
   },
   completedStepText: {
-    color: "#157A5A",
     fontWeight: "700",
     fontSize: 12,
     marginTop: -2,
   },
   stepText: {
-    color: "#9AA5A8",
     fontSize: 12,
   },
   label: {
@@ -357,16 +326,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 14,
     fontWeight: "600",
-    color: "#425466",
   },
   inputIcon: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
     height: 60,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#E4ECE9",
     marginHorizontal: 18,
     paddingHorizontal: 16,
   },
@@ -384,27 +350,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
-    backgroundColor: "#fff",
     height: 60,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#DDE5E2",
     justifyContent: "center",
     gap: 8,
   },
-  radioBtnActive: {
-    borderColor: "#157A5A",
-    borderWidth: 2,
-    backgroundColor: "#ECFDF5",
-  },
   radioText: {
-    color: "#6B7280",
     fontWeight: "600",
     fontSize: 16,
-  },
-  radioTextActive: {
-    color: "#157A5A",
-    fontWeight: "700",
   },
   sourceContainer: {
     flexDirection: "row",
@@ -416,36 +370,21 @@ const styles = StyleSheet.create({
   sourceBtn: {
     paddingHorizontal: 18,
     paddingVertical: 12,
-    backgroundColor: "#fff",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#DDE5E2",
-  },
-  sourceBtnActive: {
-    borderColor: "#157A5A",
-    borderWidth: 2,
-    backgroundColor: "#ECFDF5",
   },
   sourceText: {
-    color: "#6B7280",
     fontWeight: "600",
-  },
-  sourceTextActive: {
-    color: "#157A5A",
-    fontWeight: "700",
   },
   noLoanBanner: {
     alignItems: "center",
     marginTop: 30,
     padding: 24,
-    backgroundColor: "#ECFDF5",
     marginHorizontal: 18,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#A7F3D0",
   },
   noLoanText: {
-    color: "#157A5A",
     fontSize: 16,
     fontWeight: "600",
     marginTop: 8,
@@ -456,7 +395,6 @@ const styles = StyleSheet.create({
     marginBottom: 25,
     height: 60,
     borderRadius: 18,
-    backgroundColor: "#157A5A",
     justifyContent: "center",
     alignItems: "center",
     flexDirection: "row",
@@ -468,7 +406,6 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   error: {
-    color: "#DC2626",
     fontSize: 13,
     marginHorizontal: 22,
     marginTop: 4,

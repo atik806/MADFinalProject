@@ -15,6 +15,7 @@ import {
   type Transaction,
 } from '../../../contexts/TransactionContext';
 import { useTranslation } from '../../../hooks/use-translation';
+import { useColors } from '../../../features/officials/shared/constants/theme';
 
 type TabName = 'home' | 'transactions' | 'loans' | 'profile';
 
@@ -28,6 +29,7 @@ type TabDef = {
 type FilterType = 'all' | 'income' | 'expense';
 
 export default function TransactionsScreen() {
+  const colors = useColors();
   const { transactions, removeTransaction } = useTransactions();
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('transactions');
@@ -80,20 +82,20 @@ export default function TransactionsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
+      <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
         <View style={styles.logoContainer}>
-          <View style={styles.logo}>
+          <View style={[styles.logo, { backgroundColor: colors.deepGreen }]}>
             <Ionicons name="leaf" size={20} color="#fff" />
           </View>
         </View>
-        <Text style={styles.headerTitle}>{t('transactions')}</Text>
+        <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('transactions')}</Text>
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
-            <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
+          <TouchableOpacity onPress={toggleLang} hitSlop={8} style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
+            <Text style={[styles.langText, { color: colors.userVerifiedText }]}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/view/Notifications/notifications')} hitSlop={8}>
-            <Ionicons name="notifications-outline" size={22} color="#555" />
+            <Ionicons name="notifications-outline" size={22} color={colors.dashboard.textSecondary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -102,29 +104,29 @@ export default function TransactionsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.summaryHero}>
+        <View style={[styles.summaryHero, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>{t('totalIncome')}</Text>
-              <Text style={[styles.summaryValue, { color: '#16A34A' }]}>
+              <Text style={[styles.summaryLabel, { color: colors.dashboard.textSecondary }]}>{t('totalIncome')}</Text>
+              <Text style={[styles.summaryValue, { color: colors.dashboard.greenUp }]}>
                 ৳{totalIncome.toLocaleString('en-BD')}
               </Text>
             </View>
-            <View style={styles.summaryDivider} />
+            <View style={[styles.summaryDivider, { backgroundColor: colors.dashboard.border }]} />
             <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>{t('totalExpense')}</Text>
-              <Text style={[styles.summaryValue, { color: '#DC2626' }]}>
+              <Text style={[styles.summaryLabel, { color: colors.dashboard.textSecondary }]}>{t('totalExpense')}</Text>
+              <Text style={[styles.summaryValue, { color: colors.dashboard.redDown }]}>
                 ৳{totalExpense.toLocaleString('en-BD')}
               </Text>
             </View>
           </View>
-          <View style={styles.netRow}>
-            <Feather name="bar-chart-2" size={18} color={netSavings >= 0 ? '#16A34A' : '#DC2626'} />
-            <Text style={styles.netLabel}>{t('netSavings')} (June 2024)</Text>
+          <View style={[styles.netRow, { borderTopColor: colors.dashboard.border }]}>
+            <Feather name="bar-chart-2" size={18} color={netSavings >= 0 ? colors.dashboard.greenUp : colors.dashboard.redDown} />
+            <Text style={[styles.netLabel, { color: colors.dashboard.textSecondary }]}>{t('netSavings')} (June 2024)</Text>
             <Text
               style={[
                 styles.netValue,
-                { color: netSavings >= 0 ? '#16A34A' : '#DC2626' },
+                { color: netSavings >= 0 ? colors.dashboard.greenUp : colors.dashboard.redDown },
               ]}
             >
               ৳{netSavings.toLocaleString('en-BD')}
@@ -133,7 +135,7 @@ export default function TransactionsScreen() {
         </View>
 
         <TouchableOpacity
-          style={styles.addBtn}
+          style={[styles.addBtn, { backgroundColor: colors.deepGreen }]}
           onPress={() => router.push('/view/Transactions/add-transaction')}
           activeOpacity={0.8}
         >
@@ -145,7 +147,7 @@ export default function TransactionsScreen() {
           {(['all', 'income', 'expense'] as const).map((f) => (
             <TouchableOpacity
               key={f}
-              style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
+              style={[styles.filterBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, filter === f && { backgroundColor: colors.userVerified, borderColor: colors.deepGreen }]}
               onPress={() => setFilter(f)}
               activeOpacity={0.7}
             >
@@ -153,8 +155,7 @@ export default function TransactionsScreen() {
                 style={[
                   styles.filterDot,
                   {
-                    backgroundColor:
-                      f === 'all' ? '#006847' : f === 'income' ? '#16A34A' : '#DC2626',
+                    backgroundColor: f === 'all' ? colors.deepGreen : f === 'income' ? colors.dashboard.greenUp : colors.dashboard.redDown,
                     opacity: filter === f ? 1 : 0.3,
                   },
                 ]}
@@ -162,7 +163,8 @@ export default function TransactionsScreen() {
               <Text
                 style={[
                   styles.filterText,
-                  filter === f && styles.filterTextActive,
+                  { color: colors.dashboard.textSecondary },
+                  filter === f && { color: colors.deepGreen },
                 ]}
               >
                 {f === 'all' ? t('all') : f === 'income' ? t('income') : t('expense')}
@@ -173,15 +175,15 @@ export default function TransactionsScreen() {
 
         {filtered.length === 0 ? (
           <View style={styles.empty}>
-            <Feather name="inbox" size={40} color="#D1D5DB" />
-            <Text style={styles.emptyText}>{t('noTransactions')}</Text>
-            <Text style={styles.emptySub}>{t('tapToAdd')}</Text>
+            <Feather name="inbox" size={40} color={colors.dashboard.border} />
+            <Text style={[styles.emptyText, { color: colors.dashboard.textSecondary }]}>{t('noTransactions')}</Text>
+            <Text style={[styles.emptySub, { color: colors.dashboard.border }]}>{t('tapToAdd')}</Text>
           </View>
         ) : (
           filtered.map((tx) => (
             <TouchableOpacity
               key={tx.id}
-              style={styles.txRow}
+              style={[styles.txRow, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }]}
               onLongPress={() => {
                 Alert.alert(t('deleteTransaction'), `Remove "${tx.title}"?`, [
                   { text: t('cancel'), style: 'cancel' },
@@ -194,18 +196,18 @@ export default function TransactionsScreen() {
                 <View
                   style={[
                     styles.txIcon,
-                    { backgroundColor: tx.amount > 0 ? '#ECFDF5' : '#FEF2F2' },
+                    { backgroundColor: tx.amount > 0 ? colors.userVerified : colors.userRejected },
                   ]}
                 >
                   <Feather
                     name={tx.amount > 0 ? 'arrow-up-right' : 'arrow-down-left'}
                     size={16}
-                    color={tx.amount > 0 ? '#16A34A' : '#DC2626'}
+                    color={tx.amount > 0 ? colors.dashboard.greenUp : colors.dashboard.redDown}
                   />
                 </View>
                 <View style={styles.txInfo}>
-                  <Text style={styles.txTitle}>{tx.title}</Text>
-                  <Text style={styles.txDesc}>
+                  <Text style={[styles.txTitle, { color: colors.dashboard.textPrimary }]}>{tx.title}</Text>
+                  <Text style={[styles.txDesc, { color: colors.dashboard.textSecondary }]}>
                     {tx.description} · {tx.date}
                   </Text>
                 </View>
@@ -213,13 +215,13 @@ export default function TransactionsScreen() {
               <View
                 style={[
                   styles.txAmountBadge,
-                  { backgroundColor: tx.amount > 0 ? '#ECFDF5' : '#FEF2F2' },
+                  { backgroundColor: tx.amount > 0 ? colors.userVerified : colors.userRejected },
                 ]}
               >
                 <Text
                   style={[
                     styles.txAmount,
-                    { color: tx.amount > 0 ? '#16A34A' : '#DC2626' },
+                    { color: tx.amount > 0 ? colors.dashboard.greenUp : colors.dashboard.redDown },
                   ]}
                 >
                   {formatAmount(tx.amount)}
@@ -230,7 +232,7 @@ export default function TransactionsScreen() {
         )}
       </ScrollView>
 
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }]}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
           return (
@@ -240,14 +242,14 @@ export default function TransactionsScreen() {
               onPress={() => handleTabPress(tab.key)}
               activeOpacity={0.6}
             >
-              <View style={[styles.navIconWrap, isActive && styles.navIconWrapActive]}>
+              <View style={[styles.navIconWrap, isActive && { backgroundColor: colors.deepGreen }]}>
                 <Ionicons
                   name={isActive ? tab.activeIcon : tab.inactiveIcon}
                   size={22}
-                  color={isActive ? '#fff' : '#9CA3AF'}
+                  color={isActive ? '#fff' : colors.dashboard.textSecondary}
                 />
               </View>
-              <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
+              <Text style={[styles.navLabel, { color: isActive ? colors.deepGreen : colors.dashboard.textSecondary }, isActive && { fontWeight: '700' }]}>
                 {t(tab.labelKey as any)}
               </Text>
             </TouchableOpacity>
@@ -261,7 +263,6 @@ export default function TransactionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8F8',
   },
   scrollContent: {
     paddingHorizontal: 18,
@@ -274,9 +275,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 14,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   logoContainer: {
     flexDirection: 'row',
@@ -286,17 +285,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
-    backgroundColor: '#ECFDF5',
   },
   langText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#006847',
   },
   logo: {
     width: 32,
     height: 32,
-    backgroundColor: '#006847',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -304,7 +300,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
   },
   headerIcons: {
     flexDirection: 'row',
@@ -312,10 +307,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   summaryHero: {
-    backgroundColor: '#fff',
     borderRadius: 18,
     marginTop: 18,
-    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
     overflow: 'hidden',
   },
   summaryRow: {
@@ -329,12 +322,10 @@ const styles = StyleSheet.create({
   },
   summaryDivider: {
     width: 1,
-    backgroundColor: '#F0F0F0',
     marginVertical: -18,
   },
   summaryLabel: {
     fontSize: 12,
-    color: '#9CA3AF',
     fontWeight: '500',
   },
   summaryValue: {
@@ -348,13 +339,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
     paddingVertical: 12,
     paddingHorizontal: 20,
   },
   netLabel: {
     fontSize: 12,
-    color: '#6B7280',
     fontWeight: '500',
   },
   netValue: {
@@ -365,7 +354,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     height: 50,
     borderRadius: 14,
-    backgroundColor: '#006847',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 18,
@@ -389,13 +377,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: 20,
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  filterBtnActive: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#006847',
   },
   filterDot: {
     width: 7,
@@ -405,10 +387,6 @@ const styles = StyleSheet.create({
   filterText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
-  },
-  filterTextActive: {
-    color: '#006847',
   },
   empty: {
     alignItems: 'center',
@@ -417,23 +395,19 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#9CA3AF',
     marginTop: 12,
   },
   emptySub: {
     fontSize: 13,
-    color: '#D1D5DB',
     marginTop: 4,
   },
   txRow: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 14,
     marginBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
   },
   txLeft: {
     flexDirection: 'row',
@@ -453,11 +427,9 @@ const styles = StyleSheet.create({
   },
   txTitle: {
     fontWeight: '600',
-    color: '#1F2937',
     fontSize: 14,
   },
   txDesc: {
-    color: '#9CA3AF',
     fontSize: 12,
     marginTop: 2,
   },
@@ -474,11 +446,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: '#fff',
     paddingTop: 6,
     paddingBottom: 12,
     paddingHorizontal: 8,
-    boxShadow: '0 -2px 8px rgba(0,0,0,0.06)',
   },
   navItem: {
     alignItems: 'center',
@@ -492,17 +462,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  navIconWrapActive: {
-    backgroundColor: '#006847',
-  },
   navLabel: {
     fontSize: 11,
     marginTop: 4,
-    color: '#9CA3AF',
     fontWeight: '500',
-  },
-  navLabelActive: {
-    color: '#006847',
-    fontWeight: '700',
   },
 });
