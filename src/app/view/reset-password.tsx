@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../../hooks/use-translation';
 
@@ -19,7 +19,7 @@ const BRAND_GREEN = '#006847';
 
 export default function ResetPasswordScreen() {
   const { t, lang, toggleLang } = useTranslation();
-  const [step, setStep] = useState<Step>(1);
+  const [step] = useState<Step>(1);
 
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
