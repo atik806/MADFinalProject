@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth, getRouteForRole } from '../../contexts/AuthContext';
 import { useTranslation } from '../../hooks/use-translation';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useColors } from '../../features/officials/shared/constants/theme';
 
 const isPhone = (value: string) => /^01\d{9}$/.test(value);
 const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -36,9 +37,8 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-const BRAND_GREEN = '#006847';
-
 export default function LoginScreen() {
+  const colors = useColors();
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [shouldRedirect, setShouldRedirect] = useState(false);
@@ -88,7 +88,7 @@ export default function LoginScreen() {
     : 'phone-portrait-outline';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.deepGreen }]}>
       <KeyboardAvoidingView
         style={styles.root}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -96,12 +96,12 @@ export default function LoginScreen() {
         <View style={styles.root}>
           <View style={styles.langRow}>
             <View />
-            <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
+            <TouchableOpacity onPress={toggleLang} hitSlop={8} style={[styles.langBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
               <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.header}>
-            <View style={styles.logoBox}>
+            <View style={[styles.logoBox, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
               <Ionicons name="leaf" size={40} color="#fff" />
             </View>
             <Text style={styles.title}>SOFOL</Text>
@@ -110,16 +110,16 @@ export default function LoginScreen() {
 
           <Animated.View
             entering={FadeInDown.duration(400).springify()}
-            style={styles.card}
+            style={[styles.card, { backgroundColor: colors.dashboard.cardBg }]}
           >
-            <Text style={styles.loginTitle}>{t('loginTitle')}</Text>
+            <Text style={[styles.loginTitle, { color: colors.dashboard.textPrimary }]}>{t('loginTitle')}</Text>
 
-            <Text style={styles.label}>{t('identifierLabel')}</Text>
+            <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('identifierLabel')}</Text>
             <View style={styles.inputGroup}>
               <Ionicons
                 name={identifierIcon}
                 size={18}
-                color={focusedField === 'identifier' ? BRAND_GREEN : '#9CA3AF'}
+                color={focusedField === 'identifier' ? colors.deepGreen : colors.dashboard.textSecondary}
                 style={styles.inputIcon}
               />
               <Controller
@@ -130,11 +130,12 @@ export default function LoginScreen() {
                     ref={identifierRef}
                     style={[
                       styles.input,
-                      focusedField === 'identifier' && styles.inputFocused,
-                      errors.identifier && styles.inputError,
+                      { borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.bg },
+                      focusedField === 'identifier' && { borderColor: colors.deepGreen, backgroundColor: colors.dashboard.cardBg },
+                      errors.identifier && { borderColor: colors.dashboard.redDown, backgroundColor: colors.userRejected },
                     ]}
                     placeholder={t('identifierPlaceholder')}
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.dashboard.textSecondary}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -152,15 +153,15 @@ export default function LoginScreen() {
               />
             </View>
             {errors.identifier && errors.identifier.message ? (
-              <Text style={styles.errorText}>{errors.identifier.message}</Text>
+              <Text style={[styles.errorText, { color: colors.dashboard.redDown }]}>{errors.identifier.message}</Text>
             ) : null}
 
-            <Text style={styles.label}>{t('passwordLabel')}</Text>
+            <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('passwordLabel')}</Text>
             <View style={styles.inputGroup}>
               <Ionicons
                 name="lock-closed-outline"
                 size={18}
-                color={focusedField === 'password' ? BRAND_GREEN : '#9CA3AF'}
+                color={focusedField === 'password' ? colors.deepGreen : colors.dashboard.textSecondary}
                 style={styles.inputIcon}
               />
               <Controller
@@ -172,11 +173,12 @@ export default function LoginScreen() {
                     style={[
                       styles.input,
                       styles.inputPassword,
-                      focusedField === 'password' && styles.inputFocused,
-                      errors.password && styles.inputError,
+                      { borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.bg },
+                      focusedField === 'password' && { borderColor: colors.deepGreen, backgroundColor: colors.dashboard.cardBg },
+                      errors.password && { borderColor: colors.dashboard.redDown, backgroundColor: colors.userRejected },
                     ]}
                     placeholder={t('passwordPlaceholder')}
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.dashboard.textSecondary}
                     secureTextEntry={!showPassword}
                     value={value}
                     onChangeText={onChange}
@@ -198,20 +200,20 @@ export default function LoginScreen() {
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                   size={20}
-                  color="#9CA3AF"
+                  color={colors.dashboard.textSecondary}
                 />
               </Pressable>
             </View>
             {errors.password && errors.password.message ? (
-              <Text style={styles.errorText}>{errors.password.message}</Text>
+              <Text style={[styles.errorText, { color: colors.dashboard.redDown }]}>{errors.password.message}</Text>
             ) : null}
 
             <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotButton}>
-              <Text style={styles.forgotText}>{t('forgotPassword')}</Text>
+              <Text style={[styles.forgotText, { color: colors.deepGreen }]}>{t('forgotPassword')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.loginButton, isSubmitting && styles.loginButtonDisabled]}
+              style={[styles.loginButton, { backgroundColor: colors.deepGreen }, isSubmitting && { opacity: 0.7 }]}
               onPress={handleSubmit(onSubmit)}
               disabled={isSubmitting}
               activeOpacity={0.8}
@@ -224,8 +226,8 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             <Link href="/view/FarmerRegistration/farmer-registration" asChild>
-              <Pressable style={styles.signupButton}>
-                <Text style={styles.signupText}>{t('signUp')}</Text>
+              <Pressable style={[styles.signupButton, { borderColor: colors.deepGreen }]}>
+                <Text style={[styles.signupText, { color: colors.deepGreen }]}>{t('signUp')}</Text>
               </Pressable>
             </Link>
 
@@ -234,10 +236,10 @@ export default function LoginScreen() {
                 <Ionicons
                   name="arrow-back"
                   size={16}
-                  color={BRAND_GREEN}
+                  color={colors.deepGreen}
                   style={styles.backIcon}
                 />
-                <Text style={styles.backText}>{t('backToHome')}</Text>
+                <Text style={[styles.backText, { color: colors.deepGreen }]}>{t('backToHome')}</Text>
               </Pressable>
             </Link>
           </Animated.View>
@@ -250,7 +252,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: BRAND_GREEN,
   },
   root: {
     flex: 1,
@@ -266,7 +267,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -294,7 +294,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -305,7 +304,6 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    backgroundColor: '#fff',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     paddingHorizontal: 24,
@@ -314,13 +312,11 @@ const styles = StyleSheet.create({
   loginTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1F2937',
     marginBottom: 24,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#4B5563',
     marginBottom: 8,
   },
   inputGroup: {
@@ -338,27 +334,15 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
     borderRadius: 14,
     paddingLeft: 44,
     paddingRight: 14,
     fontSize: 15,
-    color: '#1F2937',
-    backgroundColor: '#F9FAFB',
   },
   inputPassword: {
     paddingRight: 44,
   },
-  inputFocused: {
-    borderColor: BRAND_GREEN,
-    backgroundColor: '#fff',
-  },
-  inputError: {
-    borderColor: '#EF4444',
-    backgroundColor: '#FEF2F2',
-  },
   errorText: {
-    color: '#EF4444',
     fontSize: 12,
     marginBottom: 14,
     marginLeft: 4,
@@ -375,20 +359,19 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   forgotText: {
-    color: BRAND_GREEN,
     fontSize: 13,
     fontWeight: '600',
   },
   loginButton: {
-    backgroundColor: BRAND_GREEN,
     height: 54,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    boxShadow: '0 4px 8px rgba(0,104,71,0.2)',
-  },
-  loginButtonDisabled: {
-    opacity: 0.7,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
   },
   loginButtonText: {
     color: '#fff',
@@ -401,11 +384,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: BRAND_GREEN,
     marginTop: 14,
   },
   signupText: {
-    color: BRAND_GREEN,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -421,7 +402,6 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   backText: {
-    color: BRAND_GREEN,
     fontSize: 14,
     fontWeight: '500',
   },

@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { BrandColors } from '@/features/officials/shared/constants/theme';
-import { shadows, borderRadius } from '@/features/officials/shared/constants/layout';
+import { useColors } from '@/features/officials/shared/constants/theme';
+import { borderRadius } from '@/features/officials/shared/constants/layout';
 
 type ProfileCardProps = {
   name: string;
@@ -11,16 +11,18 @@ type ProfileCardProps = {
 };
 
 export function ProfileCard({ name, email, roleLabel }: ProfileCardProps) {
+  const colors = useColors();
+
   return (
-    <View style={styles.card}>
-      <View style={styles.avatar}>
+    <View style={[styles.card, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+      <View style={[styles.avatar, { backgroundColor: colors.greenLight }]}>
         <Ionicons name="person" size={28} color="#FFFFFF" />
       </View>
       <View style={styles.info}>
-        <Text style={styles.name}>{name}</Text>
-        <Text style={styles.email}>{email}</Text>
-        <View style={styles.rolePill}>
-          <Text style={styles.rolePillText}>{roleLabel}</Text>
+        <Text style={[styles.name, { color: colors.dashboard.textPrimary }]}>{name}</Text>
+        <Text style={[styles.email, { color: colors.dashboard.textSecondary }]}>{email}</Text>
+        <View style={[styles.rolePill, { backgroundColor: colors.greenLight + '15' }]}>
+          <Text style={[styles.rolePillText, { color: colors.greenLight }]}>{roleLabel}</Text>
         </View>
       </View>
     </View>
@@ -29,21 +31,17 @@ export function ProfileCard({ name, email, roleLabel }: ProfileCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: BrandColors.dashboard.cardBg,
     borderRadius: borderRadius.xl,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
-    ...shadows.cardSubtle,
     borderWidth: 1,
-    borderColor: BrandColors.dashboard.border,
   },
   avatar: {
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: BrandColors.greenLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -53,15 +51,12 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '700',
-    color: BrandColors.dashboard.textPrimary,
   },
   email: {
     fontSize: 13,
-    color: BrandColors.dashboard.textSecondary,
     marginTop: 2,
   },
   rolePill: {
-    backgroundColor: BrandColors.greenLight + '15',
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 6,
@@ -71,6 +66,5 @@ const styles = StyleSheet.create({
   rolePillText: {
     fontSize: 11,
     fontWeight: '600',
-    color: BrandColors.greenLight,
   },
 });

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 
-import { BrandColors } from '@/features/officials/shared/constants/theme';
+import { useColors } from '@/features/officials/shared/constants/theme';
 
 export type TabRoute = {
   name: string;
@@ -15,18 +15,19 @@ type RoleTabLayoutProps = {
 };
 
 export function RoleTabLayout({ routes }: RoleTabLayoutProps) {
+  const colors = useColors();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: BrandColors.greenLight,
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: colors.greenLight,
+        tabBarInactiveTintColor: colors.dashboard.textSecondary,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: colors.dashboard.cardBg,
           borderTopWidth: 1,
-          borderTopColor: '#F3F4F6',
+          borderTopColor: colors.dashboard.border,
           elevation: 8,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
@@ -42,8 +43,8 @@ export function RoleTabLayout({ routes }: RoleTabLayoutProps) {
             title: route.title,
             headerShown: route.showHeader ?? false,
             headerTitleAlign: 'center',
-            headerStyle: { backgroundColor: '#FFFFFF' },
-            headerTitleStyle: { fontSize: 17, fontWeight: '700', color: '#1F2937' },
+            headerStyle: { backgroundColor: colors.dashboard.cardBg },
+            headerTitleStyle: { fontSize: 17, fontWeight: '700', color: colors.dashboard.textPrimary },
             headerShadowVisible: false,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name={route.icon} size={size} color={color} />

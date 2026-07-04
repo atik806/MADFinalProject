@@ -1,4 +1,4 @@
-import '@/global.css';
+import { useThemeContext } from '@/contexts/ThemeContext';
 
 export const BrandColors = {
   greenLight: '#1A8F5C',
@@ -35,3 +35,44 @@ export const BrandColors = {
     border: '#E5E7EB',
   },
 } as const;
+
+export const DarkColors = {
+  greenLight: '#22C55E',
+  greenDark: '#065735',
+  blueLight: '#60A5FA',
+  deepGreen: '#059669',
+  inputBorder: '#374151',
+  cardBackground: '#1F2937',
+  purpleGradient: ['#4C1D95', '#6D28D9'] as const,
+  userBg: '#111827',
+  userBorder: '#374151',
+  userVerified: '#064E3B',
+  userVerifiedText: '#6EE7B7',
+  userPending: '#78350F',
+  userPendingText: '#FCD34D',
+  userRejected: '#7F1D1D',
+  userRejectedText: '#FCA5A5',
+  userView: '#064E3B',
+  userViewText: '#6EE7B7',
+  userEdit: '#064E3B',
+  userEditText: '#6EE7B7',
+  userDeactivate: '#7F1D1D',
+  userDeactivateText: '#FCA5A5',
+  dashboard: {
+    bg: '#0F172A',
+    cardBg: '#1E293B',
+    textPrimary: '#F1F5F9',
+    textSecondary: '#94A3B8',
+    greenUp: '#22C55E',
+    redDown: '#EF4444',
+    riskLow: '#22C55E',
+    riskMed: '#F59E0B',
+    riskHigh: '#EF4444',
+    border: '#334155',
+  },
+} as const;
+
+export function useColors() {
+  const { isDark } = useThemeContext();
+  return isDark ? DarkColors : BrandColors;
+}

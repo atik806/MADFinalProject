@@ -1,59 +1,61 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BrandColors } from '@/features/officials/shared/constants/theme';
+import { useColors } from '@/features/officials/shared/constants/theme';
 
 type ActionCardProps = {
   icon: keyof typeof Ionicons.glyphMap;
   iconBg: string;
   title: string;
-  onPress: () => void;
+  onPress?: () => void;
 };
 
 export function ActionCard({ icon, iconBg, title, onPress }: ActionCardProps) {
+  const colors = useColors();
+
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
-      <View style={[styles.iconCircle, { backgroundColor: iconBg + '18' }]}>
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: colors.dashboard.cardBg },
+        pressed && styles.cardPressed,
+      ]}>
+      <View style={[styles.iconWrap, { backgroundColor: iconBg + '20' }]}>
         <Ionicons name={icon} size={22} color={iconBg} />
       </View>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.title, { color: colors.dashboard.textPrimary }]}>{title}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: BrandColors.dashboard.cardBg,
+    flex: 1,
     borderRadius: 16,
     padding: 16,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
-    flex: 1,
-    minWidth: 140,
   },
   cardPressed: {
-    opacity: 0.85,
-    shadowOpacity: 0.02,
+    opacity: 0.8,
   },
-  iconCircle: {
-    width: 44,
-    height: 44,
+  iconWrap: {
+    width: 48,
+    height: 48,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 10,
   },
   title: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    color: BrandColors.dashboard.textPrimary,
-    flex: 1,
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });

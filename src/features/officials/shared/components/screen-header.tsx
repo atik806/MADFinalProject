@@ -1,94 +1,98 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { BrandColors } from '@/features/officials/shared/constants/theme';
+import { useColors } from '@/features/officials/shared/constants/theme';
 
-type HeaderAction = {
+type ScreenHeaderAction = {
   icon: keyof typeof Ionicons.glyphMap;
+  accessibilityLabel: string;
   onPress?: () => void;
-  accessibilityLabel?: string;
 };
 
 type ScreenHeaderProps = {
   title: string;
-  actions?: HeaderAction[];
+  subtitle?: string;
+  actions?: ScreenHeaderAction[];
 };
 
-export function ScreenHeader({ title, actions }: ScreenHeaderProps) {
+export function ScreenHeader({ title, subtitle, actions }: ScreenHeaderProps) {
+  const colors = useColors();
+
   return (
-    <View style={headerStyles.header}>
-      <View style={headerStyles.headerLeft}>
-        <View style={headerStyles.logoIcon}>
-          <Ionicons name="leaf" size={18} color="#FFFFFF" />
+    <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
+      <View style={styles.leftSection}>
+        <Text style={[styles.title, { color: colors.dashboard.textPrimary }]}>{title}</Text>
+        {subtitle && <Text style={[styles.subtitle, { color: colors.dashboard.textSecondary }]}>{subtitle}</Text>}
+      </View>
+      {actions && actions.length > 0 && (
+        <View style={styles.actions}>
+          {actions.map((action, i) => (
+            <Pressable key={i} onPress={action.onPress} accessibilityLabel={action.accessibilityLabel} style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}>
+              <Ionicons name={action.icon} size={20} color={colors.dashboard.textPrimary} />
+            </Pressable>
+          ))}
         </View>
-        <Text style={headerStyles.logoText}>SOFOL</Text>
-      </View>
-      <Text style={headerStyles.headerTitle}>{title}</Text>
-      <View style={headerStyles.headerRight}>
-        {actions?.map((action, i) => (
-          <Pressable
-            key={i}
-            style={headerStyles.headerIconBtn}
-            onPress={action.onPress}
-            accessibilityLabel={action.accessibilityLabel}
-            accessibilityRole="button">
-            <Ionicons name={action.icon} size={20} color={BrandColors.dashboard.textPrimary} />
-          </Pressable>
-        ))}
-      </View>
+      )}
     </View>
   );
 }
 
-export const headerStyles = StyleSheet.create({
+export function RoleHeader({ title }: { title: string }) {
+  const colors = useColors();
+  return (
+    <View style={[styles.roleHeader, { backgroundColor: colors.deepGreen }]}>
+      <Text style={styles.roleIcon}>ⴽ</Text>
+      <Text style={styles.roleTitle}>{title}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: BrandColors.dashboard.cardBg,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: BrandColors.dashboard.border,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    width: 90,
+  leftSection: {
+    flex: 1,
   },
-  logoIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: BrandColors.deepGreen,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: BrandColors.deepGreen,
-    letterSpacing: 1,
-  },
-  headerTitle: {
-    fontSize: 16,
+  title: {
+    fontSize: 18,
     fontWeight: '700',
-    color: BrandColors.dashboard.textPrimary,
   },
-  headerRight: {
+  subtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  actions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    width: 90,
-    justifyContent: 'flex-end',
+    gap: 8,
   },
-  headerIconBtn: {
+  actionBtn: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: BrandColors.dashboard.bg,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionPressed: {
+    opacity: 0.6,
+  },
+  roleHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  roleIcon: {
+    fontSize: 18,
+    color: '#FFFFFF',
+  },
+  roleTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
