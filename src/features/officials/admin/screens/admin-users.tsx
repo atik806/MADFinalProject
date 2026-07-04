@@ -13,7 +13,7 @@ import {
 
 import { UserCard } from '@/features/officials/admin/components/user-card';
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
-import { BrandColors } from '@/features/officials/shared/constants/theme';
+import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidth } from '@/features/officials/shared/constants/layout';
 
 type User = {
@@ -51,6 +51,7 @@ const ROLE_MAP: Record<Tab, User['role']> = {
 
 const SKELETON_OPACITY = 0.3;
 function SkeletonCard() {
+  const colors = useColors();
   const opacity = useMemo(() => new Animated.Value(SKELETON_OPACITY), []);
 
   useEffect(() => {
@@ -64,67 +65,39 @@ function SkeletonCard() {
     return () => anim.stop();
   }, [opacity]);
 
+  const cardStyle = {
+    backgroundColor: colors.dashboard.cardBg,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.userBorder,
+  };
+
+  const avatarStyle = { width: 44, height: 44, borderRadius: 14, backgroundColor: colors.userBorder };
+  const lineStyle = { height: 14, borderRadius: 7, backgroundColor: colors.userBorder };
+  const actionStyle = { flex: 1, height: 36, borderRadius: 12, backgroundColor: colors.userBorder };
+
   return (
-    <View style={skeletonStyles.card}>
-      <View style={skeletonStyles.top}>
-        <Animated.View style={[skeletonStyles.avatar, { opacity }]} />
-        <View style={skeletonStyles.lines}>
-          <Animated.View style={[skeletonStyles.line, { width: '60%', opacity }]} />
-          <Animated.View style={[skeletonStyles.line, { width: '40%', opacity }]} />
+    <View style={cardStyle}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+        <Animated.View style={[avatarStyle, { opacity }]} />
+        <View style={{ flex: 1, gap: 8 }}>
+          <Animated.View style={[{ width: '60%' }, lineStyle, { opacity }]} />
+          <Animated.View style={[{ width: '40%' }, lineStyle, { opacity }]} />
         </View>
       </View>
-      <View style={skeletonStyles.actions}>
-        <Animated.View style={[skeletonStyles.action, { opacity }]} />
-        <Animated.View style={[skeletonStyles.action, { opacity }]} />
-        <Animated.View style={[skeletonStyles.action, { opacity }]} />
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Animated.View style={[actionStyle, { opacity }]} />
+        <Animated.View style={[actionStyle, { opacity }]} />
+        <Animated.View style={[actionStyle, { opacity }]} />
       </View>
     </View>
   );
 }
 
-const skeletonStyles = StyleSheet.create({
-  card: {
-    backgroundColor: BrandColors.dashboard.cardBg,
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: BrandColors.userBorder,
-  },
-  top: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 14,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: BrandColors.userBorder,
-  },
-  lines: {
-    flex: 1,
-    gap: 8,
-  },
-  line: {
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: BrandColors.userBorder,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  action: {
-    flex: 1,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: BrandColors.userBorder,
-  },
-});
-
 export default function AdminUsersScreen() {
+  const colors = useColors();
   const [activeTab, setActiveTab] = useState<Tab>('Farmers');
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -153,7 +126,7 @@ export default function AdminUsersScreen() {
   const totalByTab = (tab: Tab) => MOCK_USERS.filter((u) => u.role === ROLE_MAP[tab]).length;
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: colors.userBg }]}>
       <ScreenHeader
         title="User Management"
         actions={[
@@ -165,18 +138,18 @@ export default function AdminUsersScreen() {
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BrandColors.deepGreen} colors={[BrandColors.deepGreen]} />}>
-        <View style={styles.tabRow}>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.deepGreen} colors={[colors.deepGreen]} />}>
+        <View style={[styles.tabRow, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.userBorder }]}>
           {TABS.map((tab) => (
             <Pressable
               key={tab}
               onPress={() => setActiveTab(tab)}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}>
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+              style={[styles.tab, activeTab === tab && { backgroundColor: colors.deepGreen }]}>
+              <Text style={[styles.tabText, { color: colors.dashboard.textSecondary }, activeTab === tab && { color: '#FFFFFF' }]}>
                 {tab}
               </Text>
-              <View style={[styles.tabCount, activeTab === tab && styles.tabCountActive]}>
-                <Text style={[styles.tabCountText, activeTab === tab && styles.tabCountTextActive]}>
+              <View style={[styles.tabCount, { backgroundColor: colors.userBg }, activeTab === tab && styles.tabCountActive]}>
+                <Text style={[styles.tabCountText, { color: colors.dashboard.textSecondary }, activeTab === tab && { color: '#FFFFFF' }]}>
                   {totalByTab(tab)}
                 </Text>
               </View>
@@ -184,18 +157,18 @@ export default function AdminUsersScreen() {
           ))}
         </View>
 
-        <View style={styles.searchRow}>
-          <Ionicons name="search-outline" size={18} color={BrandColors.dashboard.textSecondary} />
+        <View style={[styles.searchRow, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.userBorder }]}>
+          <Ionicons name="search-outline" size={18} color={colors.dashboard.textSecondary} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.dashboard.textPrimary }]}
             placeholder="Search by name, location or crop..."
-            placeholderTextColor={BrandColors.dashboard.textSecondary}
+            placeholderTextColor={colors.dashboard.textSecondary}
             value={search}
             onChangeText={setSearch}
           />
           {search.length > 0 && (
             <Pressable onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={18} color={BrandColors.dashboard.textSecondary} />
+              <Ionicons name="close-circle" size={18} color={colors.dashboard.textSecondary} />
             </Pressable>
           )}
         </View>
@@ -208,11 +181,11 @@ export default function AdminUsersScreen() {
           </>
         ) : filtered.length === 0 ? (
           <View style={styles.emptyState}>
-            <View style={styles.emptyIconWrap}>
-              <Ionicons name="people-outline" size={48} color={BrandColors.userBorder} />
+            <View style={[styles.emptyIconWrap, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.userBorder }]}>
+              <Ionicons name="people-outline" size={48} color={colors.userBorder} />
             </View>
-            <Text style={styles.emptyTitle}>No users found</Text>
-            <Text style={styles.emptySubtitle}>
+            <Text style={[styles.emptyTitle, { color: colors.dashboard.textPrimary }]}>No users found</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.dashboard.textSecondary }]}>
               {search ? 'Try adjusting your search query' : `No ${activeTab.toLowerCase()} registered yet`}
             </Text>
           </View>
@@ -225,7 +198,7 @@ export default function AdminUsersScreen() {
         <View style={{ height: 80 }} />
       </ScrollView>
 
-      <Pressable style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}>
+      <Pressable style={({ pressed }) => [{ backgroundColor: colors.deepGreen, ...styles.fabBase }, pressed && styles.fabPressed]}>
         <Ionicons name="add" size={22} color="#FFFFFF" />
         <Text style={styles.fabText}>Add New User</Text>
       </Pressable>
@@ -236,7 +209,6 @@ export default function AdminUsersScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: BrandColors.userBg,
   },
   container: {
     flex: 1,
@@ -249,7 +221,6 @@ const styles = StyleSheet.create({
   },
   tabRow: {
     flexDirection: 'row',
-    backgroundColor: BrandColors.dashboard.cardBg,
     borderRadius: 14,
     padding: 4,
     marginBottom: 16,
@@ -259,7 +230,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
     borderWidth: 1,
-    borderColor: BrandColors.userBorder,
   },
   tab: {
     flex: 1,
@@ -270,22 +240,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 11,
   },
-  tabActive: {
-    backgroundColor: BrandColors.deepGreen,
-  },
   tabText: {
     fontSize: 13,
     fontWeight: '600',
-    color: BrandColors.dashboard.textSecondary,
-  },
-  tabTextActive: {
-    color: '#FFFFFF',
   },
   tabCount: {
     minWidth: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: BrandColors.userBg,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
@@ -296,27 +258,20 @@ const styles = StyleSheet.create({
   tabCountText: {
     fontSize: 11,
     fontWeight: '700',
-    color: BrandColors.dashboard.textSecondary,
-  },
-  tabCountTextActive: {
-    color: '#FFFFFF',
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: BrandColors.dashboard.cardBg,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 10,
     marginBottom: 16,
     gap: 8,
     borderWidth: 1,
-    borderColor: BrandColors.userBorder,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: BrandColors.dashboard.textPrimary,
     padding: 0,
   },
   emptyState: {
@@ -327,25 +282,21 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: BrandColors.dashboard.cardBg,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: BrandColors.userBorder,
   },
   emptyTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: BrandColors.dashboard.textPrimary,
     marginBottom: 6,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: BrandColors.dashboard.textSecondary,
     textAlign: 'center',
   },
-  fab: {
+  fabBase: {
     position: 'absolute',
     bottom: 20,
     left: 16,
@@ -356,10 +307,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: BrandColors.deepGreen,
     paddingVertical: 15,
     borderRadius: 16,
-    shadowColor: BrandColors.deepGreen,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
