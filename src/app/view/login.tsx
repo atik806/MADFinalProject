@@ -14,7 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, getRouteForRole } from '../../contexts/AuthContext';
 import { useTranslation } from '../../hooks/use-translation';
@@ -225,23 +225,22 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            <Link href="/view/FarmerRegistration/farmer-registration" asChild>
-              <Pressable style={[styles.signupButton, { borderColor: colors.deepGreen }]}>
-                <Text style={[styles.signupText, { color: colors.deepGreen }]}>{t('signUp')}</Text>
-              </Pressable>
-            </Link>
+            <Pressable
+              style={StyleSheet.flatten([styles.signupButton, { borderColor: colors.deepGreen }])}
+              onPress={() => router.push('/view/FarmerRegistration/farmer-registration')}
+            >
+              <Text style={StyleSheet.flatten([styles.signupText, { color: colors.deepGreen }])}>{t('signUp')}</Text>
+            </Pressable>
 
-            <Link href="/" asChild>
-              <Pressable style={styles.backButton}>
-                <Ionicons
-                  name="arrow-back"
-                  size={16}
-                  color={colors.deepGreen}
-                  style={styles.backIcon}
-                />
-                <Text style={[styles.backText, { color: colors.deepGreen }]}>{t('backToHome')}</Text>
-              </Pressable>
-            </Link>
+            <Pressable style={styles.backButton} onPress={() => router.push('/')}>
+              <Ionicons
+                name="arrow-back"
+                size={16}
+                color={colors.deepGreen}
+                style={styles.backIcon}
+              />
+              <Text style={StyleSheet.flatten([styles.backText, { color: colors.deepGreen }])}>{t('backToHome')}</Text>
+            </Pressable>
           </Animated.View>
         </View>
       </KeyboardAvoidingView>
