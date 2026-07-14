@@ -1,10 +1,11 @@
 import { Text, View, StyleSheet, SafeAreaView, ScrollView, Pressable, TouchableOpacity } from 'react-native';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../hooks/use-translation';
 
 export default function LandingPage() {
   const { t, lang, toggleLang } = useTranslation();
+  const router = useRouter();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -50,17 +51,13 @@ export default function LandingPage() {
           </View>
         </View>
 
-        <Link href="/view/login" asChild>
-          <Pressable style={styles.getStartedBtn}>
-            <Text style={styles.getStartedText}>{t('getStarted')}</Text>
-          </Pressable>
-        </Link>
+        <Pressable style={styles.getStartedBtn} onPress={() => router.push('/view/login')}>
+          <Text style={styles.getStartedText}>{t('getStarted')}</Text>
+        </Pressable>
 
-        <Link href="/view/login" asChild>
-          <Pressable style={styles.signInBtn}>
-            <Text style={styles.signInText}>{t('alreadyRegistered')}</Text>
-          </Pressable>
-        </Link>
+        <Pressable style={styles.signInBtn} onPress={() => router.push('/view/login')}>
+          <Text style={styles.signInText}>{t('alreadyRegistered')}</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );

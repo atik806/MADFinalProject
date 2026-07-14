@@ -1,11 +1,12 @@
 import { Text, View, StyleSheet, SafeAreaView, Pressable, Dimensions } from 'react-native';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useTranslation } from '../hooks/use-translation';
 
 const { width } = Dimensions.get('window');
 
 export default function NotFoundScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -30,14 +31,12 @@ export default function NotFoundScreen() {
           {t('notFoundDesc')}
         </Text>
 
-        <Link href="/" asChild>
-          <Pressable style={({ pressed }) => [
-            styles.homeBtn,
-            pressed && styles.homeBtnPressed,
-          ]}>
-            <Text style={styles.homeBtnText}>{t('backToHomeBtn')}</Text>
-          </Pressable>
-        </Link>
+        <Pressable
+          style={({ pressed }) => StyleSheet.flatten([styles.homeBtn, pressed && styles.homeBtnPressed])}
+          onPress={() => router.push('/')}
+        >
+          <Text style={styles.homeBtnText}>{t('backToHomeBtn')}</Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
