@@ -2,11 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useColors } from '@/features/officials/shared/constants/theme';
-
-const AVATAR_COLORS = [
-  '#047857', '#1D4ED8', '#7C3AED', '#B45309', '#BE185D',
-  '#0D9488', '#4F46E5', '#C026D3', '#CA8A04', '#DC2626',
-];
+import { USER_CARD_AVATAR_COLORS } from '@/data';
 
 type User = {
   id: string;
@@ -35,7 +31,7 @@ function getInitials(name: string): string {
 function getAvatarColor(id: string): string {
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+  return USER_CARD_AVATAR_COLORS[Math.abs(hash) % USER_CARD_AVATAR_COLORS.length];
 }
 
 export function UserCard({ user, onView, onEdit, onDeactivate }: UserCardProps) {

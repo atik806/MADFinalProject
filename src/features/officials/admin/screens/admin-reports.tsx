@@ -3,27 +3,8 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidthWide } from '@/features/officials/shared/constants/layout';
-
-type Report = {
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
-  accent: string;
-};
-
-const REPORTS: Report[] = [
-  { icon: 'people', title: 'Farmer Report', description: 'All registered farmers, profiles, and credit scores', accent: '#1A8F5C' },
-  { icon: 'cash', title: 'Loan Report', description: 'Application stats, approvals, rejections, disbursements', accent: '#3A9BD5' },
-  { icon: 'location', title: 'Regional Report', description: 'District-wise farmer and loan distribution', accent: '#8B5CF6' },
-  { icon: 'analytics', title: 'Credit Score Report', description: 'Score distribution and risk assessment summary', accent: '#F59E0B' },
-];
-
-const STATS = [
-  { icon: 'leaf' as const, value: '510', label: 'Total Farmers', color: '#22C55E' },
-  { icon: 'wallet' as const, value: '234', label: 'Total Loans', color: '#3B82F6' },
-  { icon: 'checkmark-circle' as const, value: '72%', label: 'Approval Rate', color: '#A78BFA' },
-  { icon: 'people' as const, value: '89', label: 'Active Users', color: '#F472B6' },
-];
+import { REPORTS, STATS } from '@/data';
+import type { Report } from '@/data';
 
 export default function AdminReportsScreen() {
   const colors = useColors();

@@ -4,48 +4,10 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidthWide } from '@/features/officials/shared/constants/layout';
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
+import { MOCK_LOGS, MODULE_FILTERS, MODULE_COLORS, STATUS_CONFIG, AVATAR_COLORS } from '@/data';
+import type { LogEntry, LogStatus, LogModule } from '@/data';
 
-type LogStatus = 'success' | 'pending' | 'failed';
-type LogModule = 'User' | 'Loan' | 'System';
-
-type LogEntry = {
-  id: string;
-  user: string;
-  action: string;
-  module: LogModule;
-  time: string;
-  status: LogStatus;
-};
-
-const MOCK_LOGS: LogEntry[] = [
-  { id: 'L001', user: 'Mohammad Rahim', action: 'Created new farmer profile', module: 'User', time: '2 mins ago', status: 'success' },
-  { id: 'L002', user: 'Ayesha Khatun', action: 'Approved loan application L-2024-0089', module: 'Loan', time: '15 mins ago', status: 'success' },
-  { id: 'L003', user: 'Shamim Reza', action: 'Updated system configuration', module: 'System', time: '1 hour ago', status: 'pending' },
-  { id: 'L004', user: 'Karim Ali', action: 'Uploaded document verification', module: 'User', time: '2 hours ago', status: 'success' },
-  { id: 'L005', user: 'Nasima Khatun', action: 'Loan disbursement failed', module: 'Loan', time: '3 hours ago', status: 'failed' },
-  { id: 'L006', user: 'Rafiq Hasan', action: 'Field visit report submitted', module: 'System', time: '5 hours ago', status: 'success' },
-  { id: 'L007', user: 'Jamal Uddin', action: 'Password change request', module: 'User', time: '1 day ago', status: 'pending' },
-  { id: 'L008', user: 'System Admin', action: 'Database backup completed', module: 'System', time: '1 day ago', status: 'success' },
-  { id: 'L009', user: 'Farida Begum', action: 'Applied for seasonal loan', module: 'Loan', time: '2 days ago', status: 'pending' },
-  { id: 'L010', user: 'Delwar Hossain', action: 'Profile deactivated', module: 'User', time: '3 days ago', status: 'failed' },
-];
-
-const MODULE_FILTERS = ['All', 'User', 'Loan', 'System'] as const;
 type ModuleFilter = (typeof MODULE_FILTERS)[number];
-
-const MODULE_COLORS: Record<LogModule, string> = {
-  User: '#3B82F6',
-  Loan: '#22C55E',
-  System: '#A78BFA',
-};
-
-const STATUS_CONFIG: Record<LogStatus, { color: string; bg: string; icon: keyof typeof Ionicons.glyphMap; label: string }> = {
-  success: { color: '#22C55E', bg: '#22C55E20', icon: 'checkmark-circle', label: 'Success' },
-  pending: { color: '#F59E0B', bg: '#F59E0B20', icon: 'time', label: 'Pending' },
-  failed: { color: '#EF4444', bg: '#EF444420', icon: 'close-circle', label: 'Failed' },
-};
-
-const AVATAR_COLORS = ['#047857', '#1D4ED8', '#7C3AED', '#B45309', '#BE185D', '#0D9488', '#4F46E5', '#C026D3'];
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
