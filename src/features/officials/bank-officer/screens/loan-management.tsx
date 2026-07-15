@@ -7,6 +7,7 @@ import { StatusBadge } from '@/features/officials/shared/components/status-badge
 import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/shared/constants/layout';
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { useLoans, type LoanApplication } from '@/contexts/LoanContext';
+import { LOAN_MANAGEMENT_FILTERS } from '@/data';
 
 type FilterTab = 'all' | 'pending' | 'approved' | 'rejected' | 'active';
 
@@ -26,14 +27,6 @@ type DisplayItem = Record<string, unknown> & {
   installmentsPaid?: number;
   installmentsTotal?: number;
 };
-
-const FILTERS: { key: FilterTab; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'pending', label: 'Pending' },
-  { key: 'approved', label: 'Approved' },
-  { key: 'rejected', label: 'Rejected' },
-  { key: 'active', label: 'Active' },
-];
 
 export default function LoanManagementScreen() {
   const colors = useColors();
@@ -78,7 +71,7 @@ export default function LoanManagementScreen() {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <View style={[styles.filterRow, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
-          {FILTERS.map((f) => {
+          {LOAN_MANAGEMENT_FILTERS.map((f) => {
             const active = activeFilter === f.key;
             return (
               <Pressable

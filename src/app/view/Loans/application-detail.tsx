@@ -12,20 +12,7 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLoans, type TimelineEntry } from '../../../contexts/LoanContext';
 import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
-
-const labelMap: Record<string, string> = {
-  pending: 'Pending',
-  under_review: 'Under Review',
-  approved: 'Approved',
-  rejected: 'Rejected',
-};
-
-const statusColors: Record<string, { color: string; bg: string }> = {
-  pending: { color: '#D97706', bg: '#FFFBEB' },
-  under_review: { color: '#2563EB', bg: '#EFF6FF' },
-  approved: { color: '#16A34A', bg: '#ECFDF5' },
-  rejected: { color: '#DC2626', bg: '#FEF2F2' },
-};
+import { labelMap, statusColors } from '@/data';
 
 export default function ApplicationDetailScreen() {
   const colors = useColors();

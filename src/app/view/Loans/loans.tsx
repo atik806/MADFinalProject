@@ -12,6 +12,7 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLoans, type LoanApplication, type ActiveLoan } from '../../../contexts/LoanContext';
 import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
+import { statusConfig } from '@/data';
 
 type TabName = 'home' | 'transactions' | 'loans' | 'profile';
 type LoansTab = 'active' | 'applications';
@@ -21,13 +22,6 @@ type TabDef = {
   activeIcon: keyof typeof Ionicons.glyphMap;
   inactiveIcon: keyof typeof Ionicons.glyphMap;
   labelKey: string;
-};
-
-const statusConfig: Record<string, { labelKey: string; color: string; bg: string }> = {
-  pending: { labelKey: 'pending', color: '#D97706', bg: '#FFFBEB' },
-  under_review: { labelKey: 'underReview', color: '#2563EB', bg: '#EFF6FF' },
-  approved: { labelKey: 'approved', color: '#16A34A', bg: '#ECFDF5' },
-  rejected: { labelKey: 'rejected', color: '#DC2626', bg: '#FEF2F2' },
 };
 
 export default function LoansScreen() {

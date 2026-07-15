@@ -15,8 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTransactions } from '../../../contexts/TransactionContext';
 import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
-
-const categories = ['Income', 'Expense'] as const;
+import { categories } from '@/data';
 
 export default function AddTransactionScreen() {
   const colors = useColors();
