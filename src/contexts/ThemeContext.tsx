@@ -12,10 +12,10 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function getInitialTheme(systemScheme: ColorSchemeName): Theme {
-  if (typeof window !== 'undefined') {
-    const stored = window.localStorage.getItem('sofrol-theme');
+  try {
+    const stored = localStorage.getItem('sofrol-theme');
     if (stored === 'light' || stored === 'dark') return stored;
-  }
+  } catch {}
   return systemScheme === 'dark' ? 'dark' : 'light';
 }
 
@@ -24,10 +24,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => getInitialTheme(systemScheme));
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('sofrol-theme', theme);
-    }
-    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem('sofrol-theme', theme);
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch {}
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
