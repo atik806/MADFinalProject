@@ -78,11 +78,40 @@ export default function BankOfficerDashboardScreen() {
         </LinearGradient>
 
         <Text style={[styles.sectionLabel, { color: colors.dashboard.textSecondary }]}>Overview</Text>
-        <View style={styles.statsGrid}>
-          <StatCard icon="document-text-outline" iconBg="#3A9BD5" value={String(applications.length)} label="Total Applications" sub="All time" />
-          <StatCard icon="checkmark-circle-outline" iconBg="#22C55E" value={String(approvedApps.length)} label="Approved This Month" />
-          <StatCard icon="cash-outline" iconBg="#8B5CF6" value={String(activeLoans.length)} label="Active Loans" />
-          <StatCard icon="wallet-outline" iconBg="#F59E0B" value={`৳${(totalDisbursed / 100000).toFixed(1)}L`} label="Disbursed Amount" />
+        <View style={[styles.card, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <View style={styles.overviewRow}>
+            <View style={styles.overviewItem}>
+              <View style={[styles.overviewIcon, { backgroundColor: '#3A9BD520' }]}>
+                <Ionicons name="document-text-outline" size={22} color="#3A9BD5" />
+              </View>
+              <Text style={[styles.overviewValue, { color: colors.dashboard.textPrimary }]}>{applications.length}</Text>
+              <Text style={[styles.overviewLabel, { color: colors.dashboard.textSecondary }]}>Total Applications</Text>
+            </View>
+            <View style={styles.overviewItem}>
+              <View style={[styles.overviewIcon, { backgroundColor: '#22C55E20' }]}>
+                <Ionicons name="checkmark-circle-outline" size={22} color="#22C55E" />
+              </View>
+              <Text style={[styles.overviewValue, { color: colors.dashboard.textPrimary }]}>{approvedApps.length}</Text>
+              <Text style={[styles.overviewLabel, { color: colors.dashboard.textSecondary }]}>Approved This Month</Text>
+            </View>
+          </View>
+          <View style={[styles.overviewDivider, { backgroundColor: colors.dashboard.border }]} />
+          <View style={styles.overviewRow}>
+            <View style={styles.overviewItem}>
+              <View style={[styles.overviewIcon, { backgroundColor: '#8B5CF620' }]}>
+                <Ionicons name="cash-outline" size={22} color="#8B5CF6" />
+              </View>
+              <Text style={[styles.overviewValue, { color: colors.dashboard.textPrimary }]}>{activeLoans.length}</Text>
+              <Text style={[styles.overviewLabel, { color: colors.dashboard.textSecondary }]}>Active Loans</Text>
+            </View>
+            <View style={styles.overviewItem}>
+              <View style={[styles.overviewIcon, { backgroundColor: '#F59E0B20' }]}>
+                <Ionicons name="wallet-outline" size={22} color="#F59E0B" />
+              </View>
+              <Text style={[styles.overviewValue, { color: colors.dashboard.textPrimary }]}>{`৳${(totalDisbursed / 100000).toFixed(1)}L`}</Text>
+              <Text style={[styles.overviewLabel, { color: colors.dashboard.textSecondary }]}>Disbursed Amount</Text>
+            </View>
+          </View>
         </View>
 
         {pendingApps.length > 0 && (
@@ -180,4 +209,10 @@ const styles = StyleSheet.create({
   progressFillSmall: { height: 4, borderRadius: 2 },
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   pressed: { opacity: 0.7 },
+  overviewRow: { flexDirection: 'row' },
+  overviewItem: { flex: 1, alignItems: 'center', padding: 16 },
+  overviewIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  overviewValue: { fontSize: 24, fontWeight: '800', marginBottom: 2 },
+  overviewLabel: { fontSize: 12, fontWeight: '500', textAlign: 'center', lineHeight: 16 },
+  overviewDivider: { height: 1, marginHorizontal: 14 },
 });

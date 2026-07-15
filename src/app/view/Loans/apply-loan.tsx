@@ -13,22 +13,10 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLoans } from '../../../contexts/LoanContext';
 import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
+import { amountPresets, purposes, durationPresets } from '@/data';
 
 type Step = 1 | 2 | 3;
 type InstallmentType = 'monthly' | 'seasonal';
-
-const amountPresets = [25000, 50000, 75000, 100000];
-const purposes = [
-  'Boro Rice Cultivation',
-  'Aus/Aman Cultivation',
-  'Vegetable Farming',
-  'Fish/Shrimp Farming',
-  'Livestock Purchase',
-  'Irrigation System',
-  'Farm Equipment',
-  'Other',
-];
-const durationPresets = [3, 6, 9, 12];
 
 function calculateEMI(principal: number, months: number, annualRate: number): number {
   if (months === 0) return 0;
