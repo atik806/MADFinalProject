@@ -1,18 +1,18 @@
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { ActionCard } from '@/features/officials/shared/components/action-card';
 import { BarChart } from '@/features/officials/shared/components/charts/bar-chart';
-import { DonutChart } from '@/features/officials/shared/components/charts/donut-chart';
 import { LineChart } from '@/features/officials/shared/components/charts/line-chart';
 import { StatCard } from '@/features/officials/shared/components/stat-card';
 import { ChartLegend } from '@/features/officials/shared/components/chart-legend';
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
 import { useColors } from '@/features/officials/shared/constants/theme';
-import { contentMaxWidthWide } from '@/features/officials/shared/constants/layout';
+import { borderRadius, contentMaxWidthWide, shadows } from '@/features/officials/shared/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { heroStats, registrationData, adminActions } from '@/data';
 
 export default function AdminDashboardScreen() {
   const router = useRouter();
@@ -21,7 +21,6 @@ export default function AdminDashboardScreen() {
   const { width } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const isCompact = width < 480;
   const isTablet = width >= 768;
 
   useEffect(() => {
@@ -34,32 +33,10 @@ export default function AdminDashboardScreen() {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  const heroStats = [
-    { icon: 'leaf' as const, iconBg: '#A78BFA', value: '510', label: 'Total Farmers', trend: '+48', trendLabel: 'this month' },
-    { icon: 'wallet' as const, iconBg: '#60A5FA', value: '234', label: 'Total Loans', sub: '৳4.2 Crore total' },
-    { icon: 'checkmark-circle' as const, iconBg: '#34D399', value: '72%', label: 'Approval Rate', trend: '+5%', trendLabel: 'vs last month' },
-    { icon: 'people' as const, iconBg: '#F472B6', value: '89', label: 'Active Users', sub: 'Field + Bank Officers' },
-  ];
-
-  const registrationData = [
-    { label: 'Jan', value: 120 },
-    { label: 'Feb', value: 250 },
-    { label: 'Mar', value: 380 },
-    { label: 'Apr', value: 520 },
-    { label: 'May', value: 480 },
-    { label: 'Jun', value: 560 },
-  ];
-
   const loanData = [
     { label: 'Apr', values: [{ key: 'approved' as const, value: 45, color: colors.greenLight }, { key: 'pending' as const, value: 20, color: '#F59E0B' }] },
     { label: 'May', values: [{ key: 'approved' as const, value: 62, color: colors.greenLight }, { key: 'pending' as const, value: 15, color: '#F59E0B' }] },
     { label: 'Jun', values: [{ key: 'approved' as const, value: 78, color: colors.greenLight }, { key: 'pending' as const, value: 12, color: '#F59E0B' }] },
-  ];
-
-  const creditData = [
-    { label: 'Low Risk', value: 42, color: '#22C55E' },
-    { label: 'Medium', value: 35, color: '#F59E0B' },
-    { label: 'High Risk', value: 23, color: '#EF4444' },
   ];
 
   const actions = [
@@ -133,24 +110,37 @@ export default function AdminDashboardScreen() {
           <BarChart data={loanData} />
         </View>
 
-        <View style={[styles.chartCard, { backgroundColor: colors.dashboard.cardBg }]}>
-          <Text style={[styles.chartTitle, { color: colors.dashboard.textPrimary }]}>Credit Distribution</Text>
-          <DonutChart data={creditData} />
-        </View>
-
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>System Actions</Text>
-        </View>
-        <View style={[styles.actionsGrid, isCompact && styles.actionsGridCompact]}>
-          {actions.map((action, i) => (
-            <ActionCard
-              key={i}
-              icon={action.icon}
-              iconBg={action.iconBg}
-              title={action.title}
-              onPress={() => router.push(action.route as unknown as any)}
-            />
-          ))}
+        <Text style={[styles.sectionLabel, { color: colors.dashboard.textSecondary }]}>System Actions</Text>
+        <View style={[styles.card, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <View style={styles.overviewRow}>
+            {actions.slice(0, 2).map((action, i) => (
+              <Pressable
+                key={i}
+                style={({ pressed }) => [styles.overviewItem, pressed && styles.pressed]}
+                onPress={() => router.push(action.route as unknown as any)}
+              >
+                <View style={[styles.overviewIcon, { backgroundColor: action.iconBg + '20' }]}>
+                  <Ionicons name={action.icon} size={22} color={action.iconBg} />
+                </View>
+                <Text style={[styles.overviewLabel, { color: colors.dashboard.textPrimary }]}>{action.title}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={[styles.overviewDivider, { backgroundColor: colors.dashboard.border }]} />
+          <View style={styles.overviewRow}>
+            {actions.slice(2, 4).map((action, i) => (
+              <Pressable
+                key={i + 2}
+                style={({ pressed }) => [styles.overviewItem, pressed && styles.pressed]}
+                onPress={() => router.push(action.route as unknown as any)}
+              >
+                <View style={[styles.overviewIcon, { backgroundColor: action.iconBg + '20' }]}>
+                  <Ionicons name={action.icon} size={22} color={action.iconBg} />
+                </View>
+                <Text style={[styles.overviewLabel, { color: colors.dashboard.textPrimary }]}>{action.title}</Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         <View style={{ height: 32 }} />
@@ -177,8 +167,12 @@ const styles = StyleSheet.create({
   heroStatsRow: { flexDirection: 'row', gap: 12 },
   chartCard: { borderRadius: 16, padding: 20, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   chartTitle: { fontSize: 15, fontWeight: '700', marginBottom: 12 },
-  sectionHeader: { marginTop: 12, marginBottom: 12 },
-  sectionTitle: { fontSize: 15, fontWeight: '700' },
-  actionsGrid: { flexDirection: 'row', gap: 12 },
-  actionsGridCompact: { flexWrap: 'wrap' },
+  sectionLabel: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10, marginTop: 8 },
+  card: { borderRadius: borderRadius.md, borderWidth: 1, ...shadows.cardSubtle, marginBottom: 4 },
+  overviewRow: { flexDirection: 'row' },
+  overviewItem: { flex: 1, alignItems: 'center', padding: 16 },
+  overviewIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  overviewLabel: { fontSize: 12, fontWeight: '500', textAlign: 'center', lineHeight: 16 },
+  overviewDivider: { height: 1, marginHorizontal: 14 },
+  pressed: { opacity: 0.7 },
 });
