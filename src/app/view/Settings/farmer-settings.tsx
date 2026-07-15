@@ -14,12 +14,13 @@ import { router } from 'expo-router';
 import { useColors } from '../../../features/officials/shared/constants/theme';
 import { useThemeContext } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
+import { FARMER_SETTINGS } from '@/data';
 
 type SettingItem = {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   type?: 'toggle' | 'navigate' | 'action';
-  value?: boolean;
+  value?: boolean | string;
   onPress?: () => void;
   onToggle?: (val: boolean) => void;
   subtitle?: string;
@@ -43,76 +44,36 @@ export default function FarmerSettingsScreen() {
     ]);
   };
 
-  const sections: SettingSection[] = [
-    {
-      title: 'Account',
-      items: [
-        {
-          icon: 'person-outline',
-          label: 'Profile',
-          type: 'navigate',
-          onPress: () => router.push('/view/Profile/profile'),
-          subtitle: 'View and edit your profile',
-        },
-        {
-          icon: 'lock-closed-outline',
-          label: 'Change Password',
-          type: 'action',
-          onPress: () => Alert.alert('Coming Soon', 'Change password feature will be available soon.'),
-        },
-      ],
-    },
-    {
-      title: 'Preferences',
-      items: [
-        {
-          icon: 'moon-outline',
-          label: 'Dark Mode',
-          type: 'toggle',
-          value: isDark,
-          onToggle: toggleTheme,
-        },
-        {
-          icon: 'globe-outline',
-          label: 'Language',
-          type: 'navigate',
-          onPress: () => Alert.alert('Coming Soon', 'Language selection coming soon.'),
-          subtitle: 'English',
-        },
-        {
-          icon: 'notifications-outline',
-          label: 'Notifications',
-          type: 'toggle',
-          value: notifications,
-          onToggle: setNotifications,
-        },
-      ],
-    },
-    {
-      title: 'About',
-      items: [
-        {
-          icon: 'information-circle-outline',
-          label: 'Version',
-          type: 'navigate',
-          onPress: () => {},
-          subtitle: '1.0.0',
-        },
-        {
-          icon: 'shield-checkmark-outline',
-          label: 'Privacy Policy',
-          type: 'action',
-          onPress: () => Alert.alert('Privacy Policy', 'Coming soon.'),
-        },
-        {
-          icon: 'document-text-outline',
-          label: 'Terms of Service',
-          type: 'action',
-          onPress: () => Alert.alert('Terms of Service', 'Coming soon.'),
-        },
-      ],
-    },
-  ];
+  const sections: SettingSection[] = FARMER_SETTINGS.map((section) => ({
+    ...section,
+    items: section.items.map((item) => {
+      if (item.label === 'Edit Profile') {
+        return { ...item, type: 'navigate' as const, onPress: () => router.push('/view/Profile/profile') };
+      }
+      if (item.label === 'Change Password') {
+        return { ...item, type: 'action' as const, onPress: () => Alert.alert('Coming Soon', 'Change password feature will be available soon.') };
+      }
+      if (item.label === 'Dark Mode') {
+        return { ...item, type: 'toggle' as const, value: isDark, onToggle: toggleTheme };
+      }
+      if (item.label === 'Notifications') {
+        return { ...item, type: 'toggle' as const, value: notifications, onToggle: setNotifications };
+      }
+      if (item.label === 'Language') {
+        return { ...item, type: 'navigate' as const, onPress: () => Alert.alert('Coming Soon', 'Language selection coming soon.') };
+      }
+      if (item.label === 'Version') {
+        return { ...item, type: 'navigate' as const, onPress: () => {} };
+      }
+      if (item.label === 'Privacy Policy') {
+        return { ...item, type: 'action' as const, onPress: () => Alert.alert('Privacy Policy', 'Coming soon.') };
+      }
+      if (item.label === 'Terms of Service') {
+        return { ...item, type: 'action' as const, onPress: () => Alert.alert('Terms of Service', 'Coming soon.') };
+      }
+      return { ...item, type: 'action' as const, onPress: () => {} };
+    }),
+  }));
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
@@ -150,7 +111,7 @@ export default function FarmerSettingsScreen() {
                   </View>
                   {item.type === 'toggle' ? (
                     <Switch
-                      value={item.value}
+                      value={item.value as boolean}
                       onValueChange={item.onToggle}
                       trackColor={{ false: colors.dashboard.border, true: colors.greenLight }}
                       thumbColor="#FFFFFF"

@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
+import { REGISTRATION_CROPS } from '@/data';
 
 type FormErrors = {
   totalLand?: string;
@@ -29,8 +30,6 @@ export default function LandScreen() {
   const [selectedCrops, setSelectedCrops] = useState<string[]>([]);
   const [location, setLocation] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
-
-  const crops = ["ধান", "পাট", "গম", "আলু", "পেঁয়াজ", "সবজি", "চা", "আম"];
 
   const toggleCrop = (crop: string) => {
     setSelectedCrops((prev) =>
@@ -164,7 +163,7 @@ export default function LandScreen() {
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('selectCrops')}</Text>
         <View style={styles.cropContainer}>
-          {crops.map((crop) => (
+          {REGISTRATION_CROPS.map((crop) => (
             <TouchableOpacity
               key={crop}
               style={[styles.cropBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, selectedCrops.includes(crop) && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}

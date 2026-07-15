@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
+import { otherSources as defaultOtherSources } from '@/data';
 
 type IncomeSource = {
   label: string;
@@ -32,12 +33,7 @@ export default function IncomeScreen() {
   const [otherIncome, setOtherIncome] = useState("");
   const [familyMembers, setFamilyMembers] = useState("");
   const [occupation, setOccupation] = useState("");
-  const [otherSources, setOtherSources] = useState<IncomeSource[]>([
-    { label: "কৃষি শ্রমিক", selected: false },
-    { label: "ছোট ব্যবসা", selected: false },
-    { label: "চাকরি", selected: false },
-    { label: "অন্যান্য", selected: false },
-  ]);
+  const [otherSources, setOtherSources] = useState<IncomeSource[]>(defaultOtherSources);
   const [errors, setErrors] = useState<FormErrors>({});
 
   const toggleSource = (index: number) => {
