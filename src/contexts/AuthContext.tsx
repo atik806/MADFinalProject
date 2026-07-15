@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useReducer } from 'react';
 import type { Href } from 'expo-router';
+import { DEMO_USERS } from '@/data/auth';
 
 export type UserRole = 'farmer' | 'admin' | 'bank-officer' | 'field-officer';
 
@@ -27,29 +28,6 @@ type AuthContextValue = AuthState & {
   login: (identifier: string, password: string) => Promise<User>;
   logout: () => void;
 };
-
-const DEMO_USERS: { identifier: string; password: string; user: User }[] = [
-  {
-    identifier: '01302228993',
-    password: '123456',
-    user: { id: 'f1', name: 'Mohammad Rahim', phone: '01302228993', role: 'farmer' },
-  },
-  {
-    identifier: 'admin@gmail.com',
-    password: '123456',
-    user: { id: '1', name: 'System Administrator', email: 'admin@gmail.com', role: 'admin' },
-  },
-  {
-    identifier: 'bank@gmail.com',
-    password: '123456',
-    user: { id: '2', name: 'Ayesha Khatun', email: 'bank@gmail.com', role: 'bank-officer' },
-  },
-  {
-    identifier: 'field@gmail.com',
-    password: '123456',
-    user: { id: '3', name: 'Shamim Reza', email: 'field@gmail.com', role: 'field-officer' },
-  },
-];
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
