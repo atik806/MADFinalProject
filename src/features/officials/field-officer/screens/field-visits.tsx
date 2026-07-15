@@ -15,6 +15,8 @@ import {
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
 import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/shared/constants/layout';
 import { useColors } from '@/features/officials/shared/constants/theme';
+import { UPCOMING_VISITS, COMPLETED_VISITS, FARMER_OPTIONS } from '@/data';
+import { getVisitStatusConfig } from '@/data';
 
 type VisitStatus = 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
 
@@ -27,72 +29,6 @@ type FieldVisit = {
   status: VisitStatus;
   notes: string;
 };
-
-const UPCOMING_VISITS: FieldVisit[] = [
-  {
-    id: 'VIS-001',
-    farmerName: 'Abdul Karim',
-    location: 'Char Fasson',
-    date: '05 Jul 2026',
-    purpose: 'Boro Rice Inspection',
-    status: 'scheduled',
-    notes: 'Check irrigation system and crop health. Farmer reported pest issues.',
-  },
-  {
-    id: 'VIS-002',
-    farmerName: 'Rafiqul Islam',
-    location: 'Osmanganj',
-    date: '06 Jul 2026',
-    purpose: 'Land Verification',
-    status: 'scheduled',
-    notes: 'Verify land documents for new loan application. Measure total cultivated area.',
-  },
-  {
-    id: 'VIS-003',
-    farmerName: 'Jahangir Alam',
-    location: 'Khaser Hat',
-    date: '07 Jul 2026',
-    purpose: 'Shrimp Farm Assessment',
-    status: 'scheduled',
-    notes: 'Assess shrimp pond condition and production capacity for loan eligibility.',
-  },
-];
-
-const COMPLETED_VISITS: FieldVisit[] = [
-  {
-    id: 'VIS-004',
-    farmerName: 'Shahinur Begum',
-    location: 'Dular Hat',
-    date: '28 Jun 2026',
-    purpose: 'Jute Field Inspection',
-    status: 'completed',
-    notes: 'Jute crop in good condition. Yield expected to be above average.',
-  },
-  {
-    id: 'VIS-005',
-    farmerName: 'Mizanur Rahman',
-    location: 'Char Kukri',
-    date: '25 Jun 2026',
-    purpose: 'Maize Crop Assessment',
-    status: 'completed',
-    notes: 'Maize ready for harvest. Farmer advised on market prices.',
-  },
-];
-
-const FARMER_OPTIONS = ['Abdul Karim', 'Rafiqul Islam', 'Jahangir Alam', 'Shahinur Begum', 'Mizanur Rahman'];
-
-function getStatusConfig(status: VisitStatus) {
-  switch (status) {
-    case 'scheduled':
-      return { bg: '#DBEAFE', color: '#1E40AF', icon: 'calendar' as const, label: 'Scheduled' };
-    case 'in-progress':
-      return { bg: '#FEF3C7', color: '#92400E', icon: 'time' as const, label: 'In Progress' };
-    case 'completed':
-      return { bg: '#D1FAE5', color: '#065F46', icon: 'checkmark-circle' as const, label: 'Completed' };
-    case 'cancelled':
-      return { bg: '#FEE2E2', color: '#991B1B', icon: 'close-circle' as const, label: 'Cancelled' };
-  }
-}
 
 export default function FieldVisitsScreen() {
   const colors = useColors();
@@ -186,7 +122,7 @@ export default function FieldVisitsScreen() {
         ) : (
           visits.map((visit) => {
             const expanded = expandedId === visit.id;
-            const statusCfg = getStatusConfig(visit.status);
+            const statusCfg = getVisitStatusConfig(visit.status);
 
             return (
               <View key={visit.id} style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
