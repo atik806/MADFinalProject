@@ -3,12 +3,12 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { ActionCard } from '@/features/officials/shared/components/action-card';
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
 import { StatCard } from '@/features/officials/shared/components/stat-card';
 import { StatusBadge } from '@/features/officials/shared/components/status-badge';
 import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/shared/constants/layout';
 import { useColors } from '@/features/officials/shared/constants/theme';
+import { MOCK_FARMERS, QUICK_ACTIONS, SCHEDULED_TASKS } from '@/data';
 
 type Farmer = {
   id: string;
@@ -17,28 +17,6 @@ type Farmer = {
   crop: string;
   status: 'verified' | 'pending' | 'rejected';
 };
-
-const MOCK_FARMERS: Farmer[] = [
-  { id: 'FAR-001', name: 'Abdul Karim', location: 'Char Fasson', crop: 'Boro Rice', status: 'verified' },
-  { id: 'FAR-002', name: 'Rafiqul Islam', location: 'Osmanganj', crop: 'Vegetables', status: 'pending' },
-  { id: 'FAR-003', name: 'Jahangir Alam', location: 'Khaser Hat', crop: 'Shrimp', status: 'verified' },
-  { id: 'FAR-004', name: 'Shahinur Begum', location: 'Dular Hat', crop: 'Jute', status: 'pending' },
-  { id: 'FAR-005', name: 'Mizanur Rahman', location: 'Char Kukri', crop: 'Maize', status: 'rejected' },
-];
-
-const QUICK_ACTIONS = [
-  { icon: 'person-add-outline' as const, iconBg: '#3A9BD5', title: 'New Farmer\nOnboarding' },
-  { icon: 'location-outline' as const, iconBg: '#1A8F5C', title: 'Record Visit' },
-  { icon: 'document-text-outline' as const, iconBg: '#7C3AED', title: 'Submit\nApplication' },
-  { icon: 'cloud-upload-outline' as const, iconBg: '#F59E0B', title: 'Upload\nDocuments' },
-];
-
-const SCHEDULED_TASKS = [
-  { time: '09:00 AM', title: 'Field Visit - Abdul Karim', location: 'Char Fasson', type: 'Visit' },
-  { time: '11:30 AM', title: 'Document Verification', location: 'Office', type: 'Paperwork' },
-  { time: '02:00 PM', title: 'Follow-up - Rafiqul Islam', location: 'Osmanganj', type: 'Visit' },
-  { time: '04:00 PM', title: 'Report Submission', location: 'Office', type: 'Report' },
-];
 
 export default function FieldOfficerDashboardScreen() {
   const router = useRouter();
@@ -102,33 +80,82 @@ export default function FieldOfficerDashboardScreen() {
             <StatCard hero icon="checkmark-circle" iconBg="#FFFFFF" value="5" label="Pending Verifications" />
           </View>
         </View>
-
-        {/* Overview Stats */}
+        {/* Overview Card */}
         <Text style={[styles.sectionLabel, { color: textSecondary }]}>Overview</Text>
-        <View style={styles.statsGrid}>
-          <StatCard icon="people-outline" iconBg="#3A9BD5" value="12" label="Assigned Farmers" sub="5 new this month" />
-          <StatCard icon="time-outline" iconBg="#F59E0B" value="5" label="Pending Verifications" sub="3 overdue" />
-          <StatCard icon="location-outline" iconBg="#1A8F5C" value="3" label="Field Visits Today" />
-          <StatCard icon="document-text-outline" iconBg="#7C3AED" value="8" label="Applications Forwarded" />
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
+          <View style={styles.overviewRow}>
+            <View style={styles.overviewItem}>
+              <View style={[styles.overviewIcon, { backgroundColor: '#3A9BD520' }]}>
+                <Ionicons name="people-outline" size={22} color="#3A9BD5" />
+              </View>
+              <Text style={[styles.overviewValue, { color: textPrimary }]}>12</Text>
+              <Text style={[styles.overviewLabel, { color: textSecondary }]}>Assigned Farmers</Text>
+            </View>
+            <View style={styles.overviewItem}>
+              <View style={[styles.overviewIcon, { backgroundColor: '#F59E0B20' }]}>
+                <Ionicons name="time-outline" size={22} color="#F59E0B" />
+              </View>
+              <Text style={[styles.overviewValue, { color: textPrimary }]}>5</Text>
+              <Text style={[styles.overviewLabel, { color: textSecondary }]}>Pending Verifications</Text>
+            </View>
+          </View>
+          <View style={[styles.overviewDivider, { backgroundColor: border }]} />
+          <View style={styles.overviewRow}>
+            <View style={styles.overviewItem}>
+              <View style={[styles.overviewIcon, { backgroundColor: '#1A8F5C20' }]}>
+                <Ionicons name="location-outline" size={22} color="#1A8F5C" />
+              </View>
+              <Text style={[styles.overviewValue, { color: textPrimary }]}>3</Text>
+              <Text style={[styles.overviewLabel, { color: textSecondary }]}>Field Visits Today</Text>
+            </View>
+            <View style={styles.overviewItem}>
+              <View style={[styles.overviewIcon, { backgroundColor: '#7C3AED20' }]}>
+                <Ionicons name="document-text-outline" size={22} color="#7C3AED" />
+              </View>
+              <Text style={[styles.overviewValue, { color: textPrimary }]}>8</Text>
+              <Text style={[styles.overviewLabel, { color: textSecondary }]}>Applications Forwarded</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Quick Actions */}
+        {/* Quick Actions Card */}
         <Text style={[styles.sectionLabel, { color: textSecondary }]}>Quick Actions</Text>
-        <View style={styles.quickActionsGrid}>
-          {QUICK_ACTIONS.map((action, i) => (
-            <ActionCard
-              key={i}
-              icon={action.icon}
-              iconBg={action.iconBg}
-              title={action.title}
-              onPress={() => {
-                if (i === 0) router.push('/officials/users');
-                else if (i === 1) router.push('/officials/visits');
-                else if (i === 2) router.push('/officials/applications');
-                else if (i === 3) Alert.alert('Success', 'Documents uploaded successfully');
-              }}
-            />
-          ))}
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
+          <View style={styles.overviewRow}>
+            {QUICK_ACTIONS.slice(0, 2).map((action, i) => (
+              <Pressable
+                key={i}
+                style={({ pressed }) => [styles.quickActionItem, pressed && styles.pressed]}
+                onPress={() => {
+                  if (i === 0) router.push('/officials/users');
+                  else if (i === 1) router.push('/officials/visits');
+                }}
+              >
+                <View style={[styles.overviewIcon, { backgroundColor: action.iconBg + '20' }]}>
+                  <Ionicons name={action.icon} size={22} color={action.iconBg} />
+                </View>
+                <Text style={[styles.overviewLabel, { color: textPrimary }]}>{action.title}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={[styles.overviewDivider, { backgroundColor: border }]} />
+          <View style={styles.overviewRow}>
+            {QUICK_ACTIONS.slice(2, 4).map((action, i) => (
+              <Pressable
+                key={i + 2}
+                style={({ pressed }) => [styles.quickActionItem, pressed && styles.pressed]}
+                onPress={() => {
+                  if (i === 0) router.push('/officials/applications');
+                  else if (i === 1) Alert.alert('Success', 'Documents uploaded successfully');
+                }}
+              >
+                <View style={[styles.overviewIcon, { backgroundColor: action.iconBg + '20' }]}>
+                  <Ionicons name={action.icon} size={22} color={action.iconBg} />
+                </View>
+                <Text style={[styles.overviewLabel, { color: textPrimary }]}>{action.title}</Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
         {/* Today&apos;s Schedule */}
@@ -382,5 +409,41 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  overviewRow: {
+    flexDirection: 'row',
+  },
+  overviewItem: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+  },
+  overviewIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  overviewValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  overviewLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  overviewDivider: {
+    height: 1,
+    marginHorizontal: 14,
+  },
+  quickActionItem: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
   },
 });

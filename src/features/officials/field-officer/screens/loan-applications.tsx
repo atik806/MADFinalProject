@@ -6,35 +6,10 @@ import { ScreenHeader } from '@/features/officials/shared/components/screen-head
 import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/shared/constants/layout';
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { useLoans, type LoanApplication } from '@/contexts/LoanContext';
+import { LOAN_APP_TABS, FARMER_NAMES } from '@/data';
+import { getLoanStatusInfo } from '@/data';
 
 type Tab = 'all' | 'pending' | 'verified' | 'forwarded';
-
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'pending', label: 'Pending Verification' },
-  { key: 'verified', label: 'Verified' },
-  { key: 'forwarded', label: 'Forwarded to Bank' },
-];
-
-const FARMER_NAMES: Record<string, string> = {
-  'L-2024-001': 'Abdul Karim',
-  'L-2024-002': 'Rafiqul Islam',
-  'L-2024-003': 'Shahinur Begum',
-  'L-2024-004': 'Jahangir Alam',
-};
-
-function getLoanStatusInfo(status: LoanApplication['status']) {
-  switch (status) {
-    case 'pending':
-      return { label: 'Pending Verification', bg: '#FEF3C7', color: '#92400E', icon: 'time' as const };
-    case 'under_review':
-      return { label: 'Verified', bg: '#D1FAE5', color: '#065F46', icon: 'checkmark-circle' as const };
-    case 'approved':
-      return { label: 'Forwarded to Bank', bg: '#DBEAFE', color: '#1E40AF', icon: 'arrow-forward-circle' as const };
-    case 'rejected':
-      return { label: 'Rejected', bg: '#FEE2E2', color: '#991B1B', icon: 'close-circle' as const };
-  }
-}
 
 function filterApplications(apps: LoanApplication[], tab: Tab): LoanApplication[] {
   switch (tab) {
@@ -76,7 +51,7 @@ export default function LoanApplicationsScreen() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         {/* Tabs */}
         <View style={[styles.tabRow, { backgroundColor: cardBg, borderColor: border }]}>
-          {TABS.map((tab) => {
+          {LOAN_APP_TABS.map((tab) => {
             const active = activeTab === tab.key;
             return (
               <Pressable
@@ -100,7 +75,7 @@ export default function LoanApplicationsScreen() {
               <Text style={[styles.emptySubtitle, { color: textSecondary }]}>
                 {activeTab === 'all'
                   ? 'Loan applications will appear here'
-                  : `No applications in "${TABS.find((t) => t.key === activeTab)?.label}"`}
+                  : `No applications in "${LOAN_APP_TABS.find((t) => t.key === activeTab)?.label}"`}
               </Text>
             </View>
           </View>
