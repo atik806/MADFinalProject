@@ -14,10 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useProfile } from '../../../contexts/ProfileContext';
 import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
-
-const CROPS = ['ধান', 'পাট', 'গম', 'আলু', 'পেঁয়াজ', 'সবজি', 'চা', 'আম'];
-const INCOME_SOURCES = ['কৃষি শ্রমিক', 'ছোট ব্যবসা', 'চাকরি', 'অন্যান্য'];
-const GENDERS = ['পুরুষ', 'মহিলা', 'অন্যান্য'];
+import { CROPS, INCOME_SOURCES, GENDERS } from '@/data';
 
 export default function EditProfileScreen() {
   const colors = useColors();

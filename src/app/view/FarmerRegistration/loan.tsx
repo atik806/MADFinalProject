@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
+import { loanSources } from '@/data';
 
 type FormErrors = {
   hasLoan?: string;
@@ -19,15 +20,6 @@ type FormErrors = {
   loanPurpose?: string;
   loanSource?: string;
 };
-
-const loanSources = [
-  "ব্যাংক",
-  "এনজিও",
-  "মাইক্রোফাইন্যান্স",
-  "সহযোগী সমিতি",
-  "ব্যক্তিগত ঋণ",
-  "অন্যান্য",
-];
 
 export default function LoanScreen() {
   const colors = useColors();
