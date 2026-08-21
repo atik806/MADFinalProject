@@ -1,0 +1,10 @@
+#!/bin/sh
+# Block commits authored with an unregistered email so GitHub
+# contributions are always attributed to the atik806 account.
+ALLOWED="atikrj220@gmail.com"
+AUTHOR_EMAIL=$(git var GIT_AUTHOR_IDENT | sed -n 's/.*<\(.*\)>.*/\1/p')
+if [ "$AUTHOR_EMAIL" != "$ALLOWED" ]; then
+  echo "ERROR: commit author email '$AUTHOR_EMAIL' does not match the GitHub-registered email '$ALLOWED'."
+  echo "Set it with: git config user.email \"$ALLOWED\""
+  exit 1
+fi
