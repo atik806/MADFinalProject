@@ -1,0 +1,17 @@
+import { Router } from 'express';
+import { applyForLoan, getLoanById, getLoans } from '../controllers/loan.controller';
+import { authenticateUser } from '../middleware/auth.middleware';
+import { farmerOnly } from '../middleware/role.middleware';
+
+const router = Router();
+
+router.use(authenticateUser);
+router.use(farmerOnly);
+
+    
+router.get("/", getLoans);
+router.get("/:id", getLoanById);
+router.post("/", applyForLoan);
+
+
+export default router;
