@@ -122,3 +122,71 @@ export const createTransaction = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Failed to create transaction' });
     }
 }
+
+//update a transaction
+
+export const updateTransaction = async (req: Request, res: Response) => {
+    try{
+        const farmerId = req.user?.id;
+        const transactionId = req.params.id;
+        const { title, description, date, amount, category } = req.body;
+        const { data: transaction, error: fetchError } = await supabase
+            .from('transactions')
+            .update({
+                title,
+                description,
+                date,   
+                amount,
+                category,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', transactionId)
+            .eq('farmer_id', farmerId)
+            .select()
+            .single();
+        if(fetchError || !transaction) {
+            return res.status(404).json({ message: 'Transaction not found', error: fetchError?.message });
+        }
+        return res.status(200).json({
+            success: true,
+            message: 'Transaction updated successfully',
+            data: transaction
+        });
+
+    }catch(error) {
+        console.error('Error updating transaction:', error);
+        return res.status(500).json({ message: 'Failed to update transaction' });
+    }
+}
+
+//delete a transaction
+
+
+export const deleteTransaction = async (req: Request, res: Response) => {
+    try{
+        const farmerId = req.user?.id;
+        const transactionId = req.params.id;
+
+        const { data: transaction, error: fetchError } = await supabase
+            .from('transactions')
+            .delete()
+            .eq('id', transactionId)
+            .eq('farmer_id', farmerId)
+            .select()
+            .single();
+        if(fetchError || !transaction) {
+            return res.status(404).json({ message: 'Transaction not found', error: fetchError?.message });
+        }
+        return res.status(200).json({
+            success: true,
+            message: 'Transaction deleted successfully',
+            data: transaction
+        });
+    }catch(error) {
+        console.error('Error deleting transaction:', error);
+        return res.status(500).json({ message: 'Failed to delete transaction' });
+    }
+};
+
+
+
