@@ -266,6 +266,14 @@ export const translations = {
 
   // Farmer Registration
   newFarmerRegistration: { en: 'New Farmer Registration', bn: 'নতুন কৃষক নিবন্ধন' },
+  errPasswordRequired: { en: 'Password is required', bn: 'পাসওয়ার্ড প্রয়োজন' },
+  errPasswordLength: { en: 'Password must be at least 6 characters', bn: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে' },
+  errPasswordMatch: { en: 'Passwords do not match', bn: 'পাসওয়ার্ড মিলছে না' },
+  confirmPasswordLabel: { en: 'Confirm Password', bn: 'পাসওয়ার্ড নিশ্চিত করুন' },
+  confirmPasswordPlaceholder: { en: 'Re-enter password', bn: 'পাসওয়ার্ড আবার লিখুন' },
+  error: { en: 'Error', bn: 'ত্রুটি' },
+  registrationMissingAuth: { en: 'Phone and password are required to register', bn: 'নিবন্ধনের জন্য ফোন এবং পাসওয়ার্ড প্রয়োজন' },
+  registrationFailed: { en: 'Registration failed. Please try again.', bn: 'নিবন্ধন ব্যর্থ। আবার চেষ্টা করুন।' },
   step1of5: { en: 'Step 1/5 — Personal Info', bn: 'ধাপ ১/৫ — ব্যক্তিগত তথ্য' },
   step2of5: { en: 'Step 2/5 — Land Info', bn: 'ধাপ ২/৫ — জমি সংক্রান্ত তথ্য' },
   step3of5: { en: 'Step 3/5 — Income Info', bn: 'ধাপ ৩/৫ — আয় সংক্রান্ত তথ্য' },

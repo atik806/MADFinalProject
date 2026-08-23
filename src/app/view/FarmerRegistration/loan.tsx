@@ -13,6 +13,7 @@ import { router } from "expo-router";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
 import { loanSources } from '@/data';
+import { useRegistration } from "../../../contexts/RegistrationContext";
 
 type FormErrors = {
   hasLoan?: string;
@@ -57,8 +58,16 @@ export default function LoanScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const { patch } = useRegistration();
+
   const handleNext = () => {
     if (validate()) {
+      patch({
+        hasLoan: hasLoan ?? false,
+        loanAmount,
+        loanPurpose,
+        loanSource: selectedSource,
+      });
       router.push("/view/FarmerRegistration/photo");
     }
   };

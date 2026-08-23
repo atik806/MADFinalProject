@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useReducer } from 'react';
 import type { Href } from 'expo-router';
 import { DEMO_USERS } from '@/data/auth';
+import { api, setAuthToken } from '@/config/api';
 
 export type UserRole = 'farmer' | 'admin' | 'bank-officer' | 'field-officer';
 
@@ -56,22 +57,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (identifier: string, password: string): Promise<User> => {
     dispatch({ type: 'LOGIN_START' });
-    await new Promise((resolve) => setTimeout(resolve, 1200));
 
-    const found = DEMO_USERS.find(
-      (u) => u.identifier === identifier && u.password === password,
-    );
-
-    if (!found) {
-      dispatch({ type: 'LOGIN_ERROR' });
-      throw new Error('Invalid credentials');
+    // Officials (admin / bank-officer / field-officer) authenticate against demo data.
+    const demo = DEMO_USERS.find((u) => u.identifier === identifier && u.password === password);
+    if (demo) {
+      dispatch({ type: 'LOGIN_SUCCESS', user: demo.user });
+      return demo.user;
     }
 
-    dispatch({ type: 'LOGIN_SUCCESS', user: found.user });
-    return found.user;
+    // Farmers authenticate against the backend server.
+    try {
+      const res = await api.post<{ token: string; user: any }>('/api/farmer/auth/login', {
+        identifier,
+        password,
+      });
+      setAuthToken(res.token);
+      const u = res.user;
+      const user: User = {
+        id: u.id,
+        name: u.user_metadata?.full_name ?? u.phone ?? identifier,
+        phone: u.phone ?? identifier,
+        email: u.email,
+        role: (u.user_metadata?.role ?? 'farmer') as UserRole,
+      };
+      dispatch({ type: 'LOGIN_SUCCESS', user });
+      return user;
+    } catch (error: any) {
+      dispatch({ type: 'LOGIN_ERROR' });
+      throw new Error(error?.message ?? 'Invalid credentials');
+    }
   }, []);
 
   const logout = useCallback(() => {
+    setAuthToken(null);
     dispatch({ type: 'LOGOUT' });
   }, []);
 
@@ -80,11 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [state, login, logout],
   );
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

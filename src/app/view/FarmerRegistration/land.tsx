@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
+import { useRegistration } from "../../../contexts/RegistrationContext";
 import { REGISTRATION_CROPS } from '@/data';
 
 type FormErrors = {
@@ -66,8 +67,11 @@ export default function LandScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const { patch } = useRegistration();
+
   const handleNext = () => {
     if (validate()) {
+      patch({ totalLand, ownLand, leasedLand, selectedCrops, location });
       router.push("/view/FarmerRegistration/income");
     }
   };

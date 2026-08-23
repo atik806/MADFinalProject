@@ -10,17 +10,13 @@ export type { QuickAction, ScheduledTask, FieldVisit, VisitStatus, LoanAppTab, L
 export { defaultApplications, defaultActiveLoans, amountPresets, purposes, durationPresets, statusConfig, labelMap, statusColors, LOAN_MANAGEMENT_FILTERS } from './loans';
 export type { FilterTab } from './loans';
 
-export { DEFAULT_NOTIFICATIONS } from './notifications';
-
-export { defaultTransactions, categories } from './transactions';
+export { categories } from './transactions';
 
 export { heroStats, registrationData, loanData, adminActions, MOCK_LOGS, MODULE_FILTERS, MODULE_COLORS, STATUS_CONFIG, AVATAR_COLORS, ADMIN_USER_TABS, ROLES, REPORTS, STATS } from './admin';
 export type { LogEntry, LogStatus, LogModule, Report, StatItem, HeroStat, RegistrationDatum, LoanDatum, AdminAction } from './admin';
 
 export { CROPS, REGISTRATION_CROPS, INCOME_SOURCES, GENDERS, loanSources, otherSources } from './options';
 export type { IncomeSource } from './options';
-
-export { defaultProfile } from './profile';
 
 export { ADMIN_SETTINGS, BANK_OFFICER_SETTINGS, FIELD_OFFICER_SETTINGS, FARMER_SETTINGS } from './settings';
 export type { SettingItem, SettingSection } from './settings';

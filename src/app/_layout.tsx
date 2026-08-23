@@ -15,8 +15,8 @@ export default function RootLayout() {
   return (
     <AppThemeProvider>
       <LanguageProvider>
-        <NotificationProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <NotificationProvider>
             <TransactionProvider>
               <LoanProvider>
                 <ProfileProvider>
@@ -26,8 +26,8 @@ export default function RootLayout() {
                 </ProfileProvider>
               </LoanProvider>
             </TransactionProvider>
-          </AuthProvider>
-        </NotificationProvider>
+          </NotificationProvider>
+        </AuthProvider>
       </LanguageProvider>
     </AppThemeProvider>
   );

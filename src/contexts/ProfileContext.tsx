@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { defaultProfile } from '@/data/profile';
+import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { useAuth } from './AuthContext';
+import { api } from '@/config/api';
 
 export type FarmerProfile = {
   nameBn: string;
@@ -42,29 +43,95 @@ export type FarmerProfile = {
   experience: number;
 };
 
+const emptyProfile: FarmerProfile = {
+  nameBn: '', nameEn: '', nid: '', phone: '', dob: '', gender: '',
+  totalLand: 0, ownLand: 0, leasedLand: 0, selectedCrops: [], location: '',
+  farmingIncome: 0, otherSources: [], otherIncome: 0, familyMembers: 0, occupation: '',
+  hasLoan: false, loanAmount: 0, loanPurpose: '', loanSource: '',
+  profilePhoto: null, nidPhoto: null, landPhoto: null,
+  farmerId: '', isVerified: false, creditScore: 0, memberSince: '',
+  village: '', union: '', upazila: '', district: '', farmSize: 0, ownership: '',
+  primaryCrop: '', secondaryCrop: '', cropDiversity: '', experience: 0,
+};
 
+const mapProfile = (row: any): FarmerProfile => ({
+  nameBn: row?.name_bn ?? '',
+  nameEn: row?.name_en ?? '',
+  nid: row?.nid ?? '',
+  phone: row?.phone ?? '',
+  dob: row?.dob ?? '',
+  gender: row?.gender ?? '',
+  totalLand: Number(row?.total_land) || 0,
+  ownLand: Number(row?.own_land) || 0,
+  leasedLand: Number(row?.leased_land) || 0,
+  selectedCrops: row?.selected_crops ?? [],
+  location: row?.location ?? '',
+  farmingIncome: Number(row?.farming_income) || 0,
+  otherSources: row?.other_sources ?? [],
+  otherIncome: Number(row?.other_income) || 0,
+  familyMembers: Number(row?.family_members) || 0,
+  occupation: row?.occupation ?? '',
+  hasLoan: Boolean(row?.has_loan),
+  loanAmount: Number(row?.loan_amount) || 0,
+  loanPurpose: row?.loan_purpose ?? '',
+  loanSource: row?.loan_source ?? '',
+  profilePhoto: row?.profile_photo_url ?? null,
+  nidPhoto: row?.nid_photo_url ?? null,
+  landPhoto: row?.land_photo_url ?? null,
+  farmerId: row?.farmer_id ?? '',
+  isVerified: Boolean(row?.is_verified),
+  creditScore: Number(row?.credit_score) || 0,
+  memberSince: row?.member_since ?? '',
+  village: row?.village ?? '',
+  union: row?.union_ ?? '',
+  upazila: row?.upazila ?? '',
+  district: row?.district ?? '',
+  farmSize: Number(row?.farm_size) || 0,
+  ownership: row?.ownership ?? '',
+  primaryCrop: row?.primary_crop ?? '',
+  secondaryCrop: row?.secondary_crop ?? '',
+  cropDiversity: row?.crop_diversity ?? '',
+  experience: Number(row?.experience) || 0,
+});
 
 type ProfileContextType = {
   profile: FarmerProfile;
-  updateProfile: (data: Partial<FarmerProfile>) => void;
-  resetProfile: () => void;
+  loading: boolean;
+  updateProfile: (data: Partial<FarmerProfile>) => Promise<void>;
+  refresh: () => Promise<void>;
 };
 
 const ProfileContext = createContext<ProfileContextType | null>(null);
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
-  const [profile, setProfile] = useState<FarmerProfile>(defaultProfile);
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<FarmerProfile>(emptyProfile);
+  const [loading, setLoading] = useState(false);
 
-  const updateProfile = useCallback((data: Partial<FarmerProfile>) => {
+  const refresh = useCallback(async () => {
+    if (user?.role !== 'farmer') return;
+    try {
+      setLoading(true);
+      const row = await api.get<any>('/api/farmer/profile');
+      setProfile(mapProfile(row));
+    } catch {
+      // profile may not exist yet (e.g., right after registration)
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const updateProfile = useCallback(async (data: Partial<FarmerProfile>) => {
+    await api.put<any>('/api/farmer/profile', data);
     setProfile((prev) => ({ ...prev, ...data }));
   }, []);
 
-  const resetProfile = useCallback(() => {
-    setProfile(defaultProfile);
-  }, []);
-
   return (
-    <ProfileContext.Provider value={{ profile, updateProfile, resetProfile }}>
+    <ProfileContext.Provider value={{ profile, loading, updateProfile, refresh }}>
       {children}
     </ProfileContext.Provider>
   );

@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { defaultTransactions } from '@/data/transactions';
+import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { useAuth } from './AuthContext';
+import { api } from '@/config/api';
 
 export type Transaction = {
   id: string;
@@ -12,27 +13,54 @@ export type Transaction = {
 
 type TransactionContextType = {
   transactions: Transaction[];
-  addTransaction: (tx: Omit<Transaction, 'id'>) => void;
-  removeTransaction: (id: string) => void;
+  loading: boolean;
+  addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
+  removeTransaction: (id: string) => Promise<void>;
+  refresh: () => Promise<void>;
 };
 
 const TransactionContext = createContext<TransactionContextType | null>(null);
 
-let nextId = 1;
-
 export function TransactionProvider({ children }: { children: ReactNode }) {
-  const [transactions, setTransactions] = useState<Transaction[]>(defaultTransactions);
+  const { user } = useAuth();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const addTransaction = useCallback((tx: Omit<Transaction, 'id'>) => {
-    setTransactions((prev) => [{ id: String(nextId++), ...tx }, ...prev]);
-  }, []);
+  const refresh = useCallback(async () => {
+    if (user?.role !== 'farmer') return;
+    try {
+      setLoading(true);
+      const res = await api.get<{ data: Transaction[] }>('/api/farmer/transactions');
+      setTransactions(res.data ?? []);
+    } catch {
+      setTransactions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
-  const removeTransaction = useCallback((id: string) => {
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const addTransaction = useCallback(
+    async (tx: Omit<Transaction, 'id'>) => {
+      await api.post('/api/farmer/transactions', tx);
+      await refresh();
+    },
+    [refresh],
+  );
+
+  const removeTransaction = useCallback(
+    async (id: string) => {
+      await api.del(`/api/farmer/transactions/${id}`);
+      setTransactions((prev) => prev.filter((t) => t.id !== id));
+    },
+    [],
+  );
 
   return (
-    <TransactionContext.Provider value={{ transactions, addTransaction, removeTransaction }}>
+    <TransactionContext.Provider value={{ transactions, loading, addTransaction, removeTransaction, refresh }}>
       {children}
     </TransactionContext.Provider>
   );

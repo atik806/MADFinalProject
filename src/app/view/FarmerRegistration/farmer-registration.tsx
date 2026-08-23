@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
+import { useRegistration } from "../../../contexts/RegistrationContext";
 
 type FormErrors = {
   nameBn?: string;
@@ -19,6 +20,8 @@ type FormErrors = {
   nid?: string;
   phone?: string;
   dob?: string;
+  password?: string;
+  confirmPassword?: string;
 };
 
 export default function FarmerRegistrationScreen() {
@@ -30,7 +33,11 @@ export default function FarmerRegistrationScreen() {
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState("");
   const [gender, setGender] = useState(t('male'));
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
+
+  const { patch } = useRegistration();
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
@@ -59,12 +66,23 @@ export default function FarmerRegistrationScreen() {
       newErrors.dob = t('errDobRequired');
     }
 
+    if (!password) {
+      newErrors.password = t('errPasswordRequired');
+    } else if (password.length < 6) {
+      newErrors.password = t('errPasswordLength');
+    }
+
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = t('errPasswordMatch');
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleNext = () => {
     if (validate()) {
+      patch({ nameBn, nameEn, nid, phone, password, dob, gender });
       router.push("/view/FarmerRegistration/land");
     }
   };
@@ -181,6 +199,34 @@ export default function FarmerRegistrationScreen() {
           />
         </View>
         {errors.dob && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.dob}</Text>}
+
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('passwordLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="lock-closed-outline" size={22} color={colors.dashboard.textSecondary} />
+          <TextInput
+            placeholder={t('passwordPlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
+            secureTextEntry
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
+            value={password}
+            onChangeText={(t) => { setPassword(t); setErrors((p) => ({ ...p, password: undefined })); }}
+          />
+        </View>
+        {errors.password && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.password}</Text>}
+
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('confirmPasswordLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="lock-closed-outline" size={22} color={colors.dashboard.textSecondary} />
+          <TextInput
+            placeholder={t('confirmPasswordPlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
+            secureTextEntry
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
+            value={confirmPassword}
+            onChangeText={(t) => { setConfirmPassword(t); setErrors((p) => ({ ...p, confirmPassword: undefined })); }}
+          />
+        </View>
+        {errors.confirmPassword && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.confirmPassword}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('genderLabel2')}</Text>
 

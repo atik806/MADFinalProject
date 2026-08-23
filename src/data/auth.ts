@@ -8,11 +8,6 @@ export type DemoUser = {
 
 export const DEMO_USERS: DemoUser[] = [
   {
-    identifier: '01302228993',
-    password: '123456',
-    user: { id: 'f1', name: 'Mohammad Rahim', phone: '01302228993', role: 'farmer' },
-  },
-  {
     identifier: 'admin@gmail.com',
     password: '123456',
     user: { id: '1', name: 'System Administrator', email: 'admin@gmail.com', role: 'admin' },

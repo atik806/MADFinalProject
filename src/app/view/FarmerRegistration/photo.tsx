@@ -14,6 +14,9 @@ import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
+import { useRegistration } from "../../../contexts/RegistrationContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import { api } from "../../../config/api";
 
 type PhotoType = "profile" | "nid" | "land";
 type FormErrors = {
@@ -28,6 +31,10 @@ export default function PhotoScreen() {
   const [nidPhoto, setNidPhoto] = useState<string | null>(null);
   const [landPhoto, setLandPhoto] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const { data, patch, reset } = useRegistration();
+  const { login } = useAuth();
 
   const pickImage = async (type: PhotoType) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -110,9 +117,35 @@ export default function PhotoScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (validate()) {
+  const handleSubmit = async () => {
+    if (!validate()) {
+      return;
+    }
+
+    patch({ profilePhotoUrl: profilePhoto ?? undefined, nidPhotoUrl: nidPhoto ?? undefined, landPhotoUrl: landPhoto ?? undefined });
+
+    const payload = {
+      ...data,
+      profilePhotoUrl: profilePhoto ?? undefined,
+      nidPhotoUrl: nidPhoto ?? undefined,
+      landPhotoUrl: landPhoto ?? undefined,
+    };
+
+    if (!payload.phone || !payload.password) {
+      Alert.alert(t('error'), t('registrationMissingAuth'));
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await api.post('/api/farmer/auth/register', payload);
+      await login(payload.phone, payload.password);
+      reset();
       router.replace("/view/FarmerDashboard/farmer-dashboard");
+    } catch (e: any) {
+      Alert.alert(t('error'), e?.message ?? t('registrationFailed'));
+    } finally {
+      setSubmitting(false);
     }
   };
 

@@ -13,6 +13,7 @@ import { router } from "expo-router";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
 import { otherSources as defaultOtherSources } from '@/data';
+import { useRegistration } from "../../../contexts/RegistrationContext";
 
 type IncomeSource = {
   label: string;
@@ -69,8 +70,17 @@ export default function IncomeScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const { patch } = useRegistration();
+
   const handleNext = () => {
     if (validate()) {
+      patch({
+        farmingIncome,
+        otherIncome,
+        familyMembers,
+        occupation,
+        otherSources: otherSources.filter((s) => s.selected).map((s) => s.label),
+      });
       router.push("/view/FarmerRegistration/loan");
     }
   };
