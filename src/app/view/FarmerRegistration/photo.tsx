@@ -16,7 +16,7 @@ import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
 import { useRegistration } from "../../../contexts/RegistrationContext";
 import { useAuth } from "../../../contexts/AuthContext";
-import { api } from "../../../config/api";
+import { api, API_BASE_URL } from "../../../config/api";
 
 type PhotoType = "profile" | "nid" | "land";
 type FormErrors = {
@@ -117,29 +117,64 @@ export default function PhotoScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const uploadPhoto = async (uri: string | null, type: string): Promise<string | undefined> => {
+    if (!uri) return undefined;
+    const filename = uri.split('/').pop() || `${type}.jpg`;
+    const extMatch = /\.(\w+)$/.exec(filename);
+    const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
+    const mimeType =
+      ext === 'png' ? 'image/png' :
+      ext === 'webp' ? 'image/webp' :
+      ext === 'gif' ? 'image/gif' : 'image/jpeg';
+
+    const formData = new FormData();
+    // react-native attaches the local file uri as a multipart part
+    formData.append('file', { uri, name: filename, type: mimeType } as any);
+    formData.append('type', type);
+
+    const res = await fetch(`${API_BASE_URL}/api/farmer/auth/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    const json = await res.json();
+    if (!res.ok || !json?.url) {
+      throw new Error(json?.message || t('photoUploadFailed'));
+    }
+    return json.url as string;
+  };
+
   const handleSubmit = async () => {
     if (!validate()) {
       return;
     }
 
-    patch({ profilePhotoUrl: profilePhoto ?? undefined, nidPhotoUrl: nidPhoto ?? undefined, landPhotoUrl: landPhoto ?? undefined });
-
-    const payload = {
-      ...data,
-      profilePhotoUrl: profilePhoto ?? undefined,
-      nidPhotoUrl: nidPhoto ?? undefined,
-      landPhotoUrl: landPhoto ?? undefined,
-    };
-
-    if (!payload.phone || !payload.password) {
+    if (!data.phone || !data.password) {
       Alert.alert(t('error'), t('registrationMissingAuth'));
       return;
     }
 
+    const phone = data.phone;
+    const password = data.password;
+
     try {
       setSubmitting(true);
+      const [profileUrl, nidUrl, landUrl] = await Promise.all([
+        uploadPhoto(profilePhoto, 'profile'),
+        uploadPhoto(nidPhoto, 'nid'),
+        uploadPhoto(landPhoto, 'land'),
+      ]);
+
+      const payload = {
+        ...data,
+        profilePhotoUrl: profileUrl,
+        nidPhotoUrl: nidUrl,
+        landPhotoUrl: landUrl,
+      };
+
+      patch({ profilePhotoUrl: profileUrl, nidPhotoUrl: nidUrl, landPhotoUrl: landUrl });
+
       await api.post('/api/farmer/auth/register', payload);
-      await login(payload.phone, payload.password);
+      await login(phone, password);
       reset();
       router.replace("/view/FarmerDashboard/farmer-dashboard");
     } catch (e: any) {
