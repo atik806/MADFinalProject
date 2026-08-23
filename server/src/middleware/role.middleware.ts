@@ -8,16 +8,16 @@ export const farmerOnly = async (req: Request, res: Response, next: NextFunction
             return res.status(401).json({ message: 'Unauthorized' });
         }
 
-        const { data: userRoles, error } = await supabase
-            .from('user_roles')
+        const { data: profile, error } = await supabase
+            .from('profiles')
             .select('role')
-            .eq('user_id', req.user.id)
+            .eq('id', req.user.id)
             .single();
 
-        if(error || !userRoles) {
+        if(error || !profile) {
             return res.status(403).json({ message: 'Forbidden: User role not found' });
         }
-        if(userRoles.role !== 'farmer') {
+        if(profile.role !== 'farmer') {
             return res.status(403).json({ message: 'Forbidden: User is not a farmer' });
         }
 
