@@ -8,7 +8,7 @@ export const register = async (req: Request, res: Response) => {
     const data = await authService.registerFarmer(req.body);
     return res.status(201).json({ success: true, message: 'Farmer registered successfully', data });
   } catch (error: any) {
-    const status = /already registered/.test(error?.message) ? 409 : 400;
+    const status = /already (been )?registered/.test(error?.message ?? '') ? 409 : 400;
     return res.status(status).json({ message: error?.message ?? 'Registration failed' });
   }
 };
