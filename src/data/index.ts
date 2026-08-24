@@ -7,7 +7,7 @@ export type { Farmer, AdminUser, FarmerStatus } from './farmers';
 export { QUICK_ACTIONS, SCHEDULED_TASKS, UPCOMING_VISITS, COMPLETED_VISITS, LOAN_APP_TABS } from './field-officer';
 export type { QuickAction, ScheduledTask, FieldVisit, VisitStatus, LoanAppTab, LoanAppTabConfig } from './field-officer';
 
-export { defaultApplications, defaultActiveLoans, amountPresets, purposes, durationPresets, statusConfig, labelMap, statusColors, LOAN_MANAGEMENT_FILTERS } from './loans';
+export { amountPresets, purposes, durationPresets, statusConfig, labelMap, statusColors, LOAN_MANAGEMENT_FILTERS } from './loans';
 export type { FilterTab } from './loans';
 
 export { categories } from './transactions';
