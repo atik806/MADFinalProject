@@ -126,8 +126,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const updateProfile = useCallback(async (data: Partial<FarmerProfile>) => {
-    await api.put<any>('/api/farmer/profile', data);
-    setProfile((prev) => ({ ...prev, ...data }));
+    const row = await api.put<any>('/api/farmer/profile', data);
+    setProfile(mapProfile(row));
   }, []);
 
   return (
