@@ -14,6 +14,8 @@ import {
 import { router } from "expo-router";
 import { useLoans } from "../../../contexts/LoanContext";
 import { useNotifications } from "../../../contexts/NotificationContext";
+import { useTransactions } from "../../../contexts/TransactionContext";
+import { useProfile } from "../../../contexts/ProfileContext";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from '../../../features/officials/shared/constants/theme';
 
@@ -35,7 +37,9 @@ function getInitials(name: string): string {
 export default function DashboardScreen() {
   const colors = useColors();
   const { activeLoans } = useLoans();
-  const { unreadCount } = useNotifications();
+  const { notifications, unreadCount } = useNotifications();
+  const { transactions } = useTransactions();
+  const { profile } = useProfile();
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>("home");
 
@@ -63,7 +67,9 @@ export default function DashboardScreen() {
     }
   };
 
-  const farmerInitials = getInitials(t('farmerName'));
+  const farmerName = lang === 'bn' && profile.nameBn ? profile.nameBn : profile.nameEn || t('farmerName');
+  const farmerInitials = getInitials(farmerName);
+  const location = [profile.village, profile.upazila, profile.district].filter(Boolean).join(', ');
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
@@ -99,11 +105,13 @@ export default function DashboardScreen() {
           <View style={styles.heroTop}>
             <View style={styles.heroInfo}>
               <Text style={styles.welcomeLabel}>{t('welcomeBack')}</Text>
-              <Text style={styles.farmerName}>{t('farmerName')}</Text>
-              <View style={styles.locationRow}>
-                <Feather name="map-pin" size={14} color="#BBF7D0" />
-                <Text style={styles.locationText}>Char Fasson, Bhola</Text>
-              </View>
+              <Text style={styles.farmerName}>{farmerName}</Text>
+              {location ? (
+                <View style={styles.locationRow}>
+                  <Feather name="map-pin" size={14} color="#BBF7D0" />
+                  <Text style={styles.locationText}>{location}</Text>
+                </View>
+              ) : null}
             </View>
             <View style={[styles.avatar, { backgroundColor: colors.userVerifiedText }]}>
               <Text style={styles.avatarText}>{farmerInitials}</Text>
@@ -118,7 +126,7 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
             <View style={styles.scoreRow}>
-              <Text style={styles.scoreValue}>720</Text>
+              <Text style={styles.scoreValue}>{profile.creditScore}</Text>
               <Text style={styles.scoreRange}>{t('outOf')}</Text>
             </View>
             <View style={styles.scoreMeta}>
@@ -128,7 +136,7 @@ export default function DashboardScreen() {
               </View>
             </View>
             <View style={styles.ratingBarTrack}>
-              <View style={[styles.ratingBarFill, { width: "85%" }]} />
+              <View style={[styles.ratingBarFill, { width: `${Math.min(100, Math.round((profile.creditScore / 850) * 100))}%` }]} />
             </View>
             <View style={styles.ratingLabels}>
               <Text style={styles.ratingLabel}>{t('poor')}</Text>
@@ -249,10 +257,23 @@ export default function DashboardScreen() {
             <Text style={[styles.viewAll, { color: colors.deepGreen }]}>{t('seeAll')}</Text>
           </TouchableOpacity>
         </View>
-        <TransactionRow title="Crop Sales" date="18 Jun 2024" amount="+৳45K" positive colors={colors} />
-        <TransactionRow title="Fertilizer" date="15 Jun 2024" amount="-৳9K" colors={colors} />
-        <TransactionRow title="Livestock" date="10 Jun 2024" amount="+৳12K" positive colors={colors} />
-        <TransactionRow title="Labor" date="8 Jun 2024" amount="-৳6K" colors={colors} />
+        {transactions.length > 0 ? (
+          transactions.slice(0, 4).map((tx) => (
+            <TransactionRow
+              key={tx.id}
+              title={tx.title}
+              date={tx.date}
+              amount={`${tx.category === 'income' ? '+' : '-'}৳${tx.amount.toLocaleString('en-BD')}`}
+              positive={tx.category === 'income'}
+              colors={colors}
+            />
+          ))
+        ) : (
+          <View style={[styles.emptyLoan, { backgroundColor: colors.dashboard.cardBg }]}>
+            <Feather name="repeat" size={32} color={colors.dashboard.textSecondary} />
+            <Text style={[styles.emptyLoanText, { color: colors.dashboard.textSecondary }]}>{t('noTransactions')}</Text>
+          </View>
+        )}
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('notifications')}</Text>
@@ -260,38 +281,24 @@ export default function DashboardScreen() {
             <Text style={[styles.viewAll, { color: colors.deepGreen }]}>{t('viewAll')}</Text>
           </TouchableOpacity>
         </View>
-        <NotificationItem
-          icon="checkmark-circle"
-          color={colors.dashboard.greenUp}
-          title="Loan Approved!"
-          time="2h ago"
-          description="Your application L-2024-004 for ৳60,000 has been approved by Sonali Bank."
-          colors={colors}
-        />
-        <NotificationItem
-          icon="trending-up"
-          color={colors.blueLight}
-          title="Credit Score Updated"
-          time="1d ago"
-          description="Your score increased from 710 to 720. Great financial discipline!"
-          colors={colors}
-        />
-        <NotificationItem
-          icon="shield-checkmark"
-          color="#7C3AED"
-          title="Profile Verified"
-          time="3d ago"
-          description="Your farm details have been verified by Field Officer Khorshed Alam."
-          colors={colors}
-        />
-        <NotificationItem
-          icon="document-text"
-          color="#F59E0B"
-          title="Document Required"
-          time="5d ago"
-          description="Please upload your land deed to complete your loan application."
-          colors={colors}
-        />
+        {notifications.length > 0 ? (
+          notifications.slice(0, 4).map((notif) => (
+            <NotificationItem
+              key={notif.id}
+              icon={notif.icon}
+              color={notif.color}
+              title={notif.title}
+              time={notif.time}
+              description={notif.description}
+              colors={colors}
+            />
+          ))
+        ) : (
+          <View style={[styles.emptyLoan, { backgroundColor: colors.dashboard.cardBg }]}>
+            <Ionicons name="notifications-outline" size={32} color={colors.dashboard.textSecondary} />
+            <Text style={[styles.emptyLoanText, { color: colors.dashboard.textSecondary }]}>{t('noNotifications')}</Text>
+          </View>
+        )}
       </ScrollView>
 
       <View style={[styles.bottomNav, { backgroundColor: colors.dashboard.cardBg, borderTopColor: colors.dashboard.border, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }]}>
