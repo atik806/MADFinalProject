@@ -1,5 +1,6 @@
 import { supabase } from '../../../config/supabase';
 
+//get all transactions for a farmer
 export const getTransactions = async (farmerId: string) => {
   const { data, error } = await supabase
     .from('transactions')
@@ -12,6 +13,7 @@ export const getTransactions = async (farmerId: string) => {
   return data;
 };
 
+//gettomg tje transaction by id for a farmer
 export const getTransactionById = async (farmerId: string, transactionId: string) => {
   const { data, error } = await supabase
     .from('transactions')
@@ -25,9 +27,12 @@ export const getTransactionById = async (farmerId: string, transactionId: string
   return data;
 };
 
+
+//method for creating a new transaction for a farmer
 export const createTransaction = async (farmerId: string, input: Record<string, any>) => {
-  const { title, description, date, amount, category } = input;
-  if (!title || !description || !date || !amount || !category) {
+  const { title, description, date, amount } = input;
+  const category = String(input.category ?? '').toLowerCase();
+  if (!title || !date || amount === undefined || amount === null || amount === '') {
     throw new Error('Missing required fields');
   }
   if (category !== 'income' && category !== 'expense') {
@@ -38,8 +43,8 @@ export const createTransaction = async (farmerId: string, input: Record<string, 
     .insert({
       farmer_id: farmerId,
       title,
-      description,
-      date: date || new Date().toISOString().split('T')[0],
+      description: description ?? '',
+      date,
       amount,
       category,
     })
@@ -50,7 +55,7 @@ export const createTransaction = async (farmerId: string, input: Record<string, 
   }
   return data;
 };
-
+//its for updating a transaction for a farmer
 export const updateTransaction = async (
   farmerId: string,
   transactionId: string,
@@ -68,7 +73,7 @@ export const updateTransaction = async (
   }
   return data;
 };
-
+//this is for deleting a transaction for a farmer
 export const deleteTransaction = async (farmerId: string, transactionId: string) => {
   const { data, error } = await supabase
     .from('transactions')
