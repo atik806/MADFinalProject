@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { api } from '@/config/api';
-import { defaultApplications, defaultActiveLoans } from '@/data/loans';
 
 export type LoanStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'active' | 'completed';
 
@@ -125,11 +124,8 @@ export function LoanProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const isFarmer = user?.role === 'farmer';
 
-  const [demoApplications, setDemoApplications] = useState<LoanApplication[]>(defaultApplications);
-  const [demoActiveLoans] = useState<ActiveLoan[]>(defaultActiveLoans);
-
-  const [farmerApplications, setFarmerApplications] = useState<LoanApplication[]>([]);
-  const [farmerActiveLoans, setFarmerActiveLoans] = useState<ActiveLoan[]>([]);
+  const [applications, setApplications] = useState<LoanApplication[]>([]);
+  const [activeLoans, setActiveLoans] = useState<ActiveLoan[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -141,12 +137,12 @@ export function LoanProvider({ children }: { children: ReactNode }) {
         const res = await api.get<{ data: any[] }>('/api/farmer/loans');
         if (cancelled) return;
         const apps = (res.data ?? []).map(mapLoanApplication);
-        setFarmerApplications(apps);
-        setFarmerActiveLoans(
+        setApplications(apps);
+        setActiveLoans(
           apps.filter((a) => a.status === 'approved').map(mapActiveLoan),
         );
       } catch {
-        if (!cancelled) setFarmerApplications([]);
+        if (!cancelled) setApplications([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -156,60 +152,31 @@ export function LoanProvider({ children }: { children: ReactNode }) {
     };
   }, [isFarmer, user]);
 
-  const demoAddApplication = useCallback(
+  const addApplication = useCallback(
     async (app: { title: string; amount: number; duration: string; purpose: string; installmentType: 'monthly' | 'seasonal' }) => {
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
       const months = parseInt(app.duration, 10);
-      const emi = !isNaN(months) && months > 0
-        ? Math.round((app.amount * (0.09 / 12) * Math.pow(1 + 0.09 / 12, months)) / (Math.pow(1 + 0.09 / 12, months) - 1))
-        : 0;
-      setDemoApplications((prev) => [
-        {
-          id: `L-2024-${Math.floor(Math.random() * 1000)}`,
-          date: dateStr,
-          status: 'pending',
-          emi,
-          timeline: [
-            { label: 'Application Submitted', date: dateStr, status: 'done' },
-            { label: 'Field Officer Verified', date: '', status: 'current' },
-            { label: 'Under Bank Review', date: '', status: 'pending' },
-            { label: 'Field Visit Scheduled', date: '', status: 'pending' },
-            { label: 'Loan Decision', date: '', status: 'pending' },
-            { label: 'Amount Disbursed', date: '', status: 'pending' },
-          ],
-          bankOfficer: { name: '—', bank: '—', branch: '—' },
-          ...app,
-        },
-        ...prev,
-      ]);
-    },
-    [],
-  );
-
-  const farmerAddApplication = useCallback(
-    async (app: { title: string; amount: number; duration: string; purpose: string; installmentType: 'monthly' | 'seasonal' }) => {
+      const r = 9 / 12 / 100;
+      const emi =
+        !isNaN(months) && months > 0
+          ? Math.round((app.amount * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1))
+          : 0;
       await api.post('/api/farmer/loans', {
         title: app.title,
         amount: app.amount,
         duration: app.duration,
         purpose: app.purpose,
         installment_type: app.installmentType,
-        emi: 0,
+        emi,
       });
       const res = await api.get<{ data: any[] }>('/api/farmer/loans');
       const apps = (res.data ?? []).map(mapLoanApplication);
-      setFarmerApplications(apps);
-      setFarmerActiveLoans(
+      setApplications(apps);
+      setActiveLoans(
         apps.filter((a) => a.status === 'approved').map(mapActiveLoan),
       );
     },
     [],
   );
-
-  const applications = isFarmer ? farmerApplications : demoApplications;
-  const activeLoans = isFarmer ? farmerActiveLoans : demoActiveLoans;
-  const addApplication = isFarmer ? farmerAddApplication : demoAddApplication;
 
   return (
     <LoanContext.Provider value={{ applications, activeLoans, loading, addApplication }}>
