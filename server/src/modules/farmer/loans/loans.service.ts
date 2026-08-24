@@ -32,8 +32,8 @@ export const getLoanById = async (farmerId: string, loanId: string) => {
 //this is for applying for a new loan
 
 export const applyForLoan = async (farmerId: string, input: Record<string, any>) => {
-  const { title, amount, duration, purpose, installment_type, emi } = input;
-  if (!title || !amount || !duration || !purpose || !installment_type || !emi) {
+  const { title, amount, duration, purpose, installment_type } = input;
+  if (!title || !amount || !duration || !purpose || !installment_type) {
     throw new Error('Missing required fields');
   }
   const { data, error } = await supabase
@@ -45,7 +45,7 @@ export const applyForLoan = async (farmerId: string, input: Record<string, any>)
       duration,
       purpose,
       installment_type,
-      emi,
+      emi: Number(input.emi) || 0,
       status: 'pending',
       application_date: new Date().toISOString(),
     })
