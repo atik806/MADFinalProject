@@ -8,6 +8,8 @@ import {
   StyleSheet,
   Image,
   Alert,
+  Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -22,6 +24,16 @@ type PhotoType = "profile" | "nid" | "land";
 type FormErrors = {
   profile?: string;
   nid?: string;
+};
+
+// Alert.alert is a no-op on react-native-web, which made submit failures
+// completely silent in the browser. Route through window.alert there.
+const showError = (title: string, message?: string) => {
+  if (Platform.OS === "web") {
+    window.alert(message ? `${title}\n${message}` : title);
+  } else {
+    Alert.alert(title, message ?? "");
+  }
 };
 
 export default function PhotoScreen() {
@@ -39,7 +51,7 @@ export default function PhotoScreen() {
   const pickImage = async (type: PhotoType) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(t('galleryPermission'));
+      showError(t('galleryPermission'));
       return;
     }
 
@@ -65,7 +77,7 @@ export default function PhotoScreen() {
   const takePhoto = async (type: PhotoType) => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(t('cameraPermission'));
+      showError(t('cameraPermission'));
       return;
     }
 
@@ -88,6 +100,11 @@ export default function PhotoScreen() {
   };
 
   const showPicker = (type: PhotoType) => {
+    // Alert.alert with buttons is also a no-op on web — go straight to the picker.
+    if (Platform.OS === "web") {
+      pickImage(type);
+      return;
+    }
     const labels: Record<PhotoType, string> = {
       profile: t('profilePhoto'),
       nid: t('nidPhoto'),
@@ -128,8 +145,14 @@ export default function PhotoScreen() {
       ext === 'gif' ? 'image/gif' : 'image/jpeg';
 
     const formData = new FormData();
-    // react-native attaches the local file uri as a multipart part
-    formData.append('file', { uri, name: filename, type: mimeType } as any);
+    if (Platform.OS === "web") {
+      // { uri } parts only work on native; web needs a Blob.
+      const blob = await (await fetch(uri)).blob();
+      formData.append('file', blob, filename);
+    } else {
+      // react-native attaches the local file uri as a multipart part
+      formData.append('file', { uri, name: filename, type: mimeType } as any);
+    }
     formData.append('type', type);
 
     const res = await fetch(`${API_BASE_URL}/api/farmer/auth/upload`, {
@@ -144,12 +167,14 @@ export default function PhotoScreen() {
   };
 
   const handleSubmit = async () => {
+    if (submitting) return;
+
     if (!validate()) {
       return;
     }
 
     if (!data.phone || !data.password) {
-      Alert.alert(t('error'), t('registrationMissingAuth'));
+      showError(t('error'), t('registrationMissingAuth'));
       return;
     }
 
@@ -178,7 +203,7 @@ export default function PhotoScreen() {
       reset();
       router.replace("/view/FarmerDashboard/farmer-dashboard");
     } catch (e: any) {
-      Alert.alert(t('error'), e?.message ?? t('registrationFailed'));
+      showError(t('error'), e?.message ?? t('registrationFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -320,9 +345,20 @@ export default function PhotoScreen() {
           landPhoto
         )}
 
-        <TouchableOpacity style={[styles.submitBtn, { backgroundColor: colors.deepGreen }]} onPress={handleSubmit}>
-          <Ionicons name="checkmark-circle" size={22} color="#fff" />
-          <Text style={styles.submitBtnText}>{t('submitRegistration')}</Text>
+        <TouchableOpacity
+          style={[styles.submitBtn, { backgroundColor: colors.deepGreen }, submitting && { opacity: 0.6 }]}
+          onPress={handleSubmit}
+          disabled={submitting}
+          activeOpacity={0.8}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle" size={22} color="#fff" />
+              <Text style={styles.submitBtnText}>{t('submitRegistration')}</Text>
+            </>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
