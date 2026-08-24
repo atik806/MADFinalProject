@@ -1,21 +1,22 @@
-import React, { useState } from 'react';
+import { categories } from '@/data';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import {
-  View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
+  View,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useTransactions } from '../../../contexts/TransactionContext';
-import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
-import { categories } from '@/data';
+import { useTranslation } from '../../../hooks/use-translation';
 
 export default function AddTransactionScreen() {
   const colors = useColors();
@@ -26,8 +27,11 @@ export default function AddTransactionScreen() {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<'Income' | 'Expense'>('Expense');
 
-  const handleSave = () => {
-    if (!title.trim() || !amount.trim()) return;
+  const [saving, setSaving] = useState(false);
+
+  //handeling the save transaction logic
+  const handleSave = async () => {
+    if (saving || !title.trim() || !amount.trim()) return;
     const numericAmount = parseFloat(amount.replace(/,/g, ''));
     if (isNaN(numericAmount) || numericAmount <= 0) return;
 
@@ -38,14 +42,26 @@ export default function AddTransactionScreen() {
       year: 'numeric',
     }).replace(/ /g, ' ');
 
-    addTransaction({
-      title: title.trim(),
-      description: description.trim(),
-      date: dateStr,
-      amount: category === 'Expense' ? -numericAmount : numericAmount,
-      category,
-    });
-    router.back();
+    try {
+      setSaving(true);
+      await addTransaction({
+        title: title.trim(),
+        description: description.trim() || title.trim(),
+        date: dateStr,
+        amount: category === 'Expense' ? -numericAmount : numericAmount,
+        category: category.toLowerCase(),
+      });
+      router.back();
+    } catch (e: any) {
+      const msg = e?.message ?? 'Failed to save transaction';
+      if (typeof window !== 'undefined' && Platform.OS === 'web') {
+        window.alert(msg);
+      } else if (typeof Alert !== 'undefined') {
+        Alert.alert(t('error'), msg);
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const canSave = title.trim().length > 0 && amount.trim().length > 0;
@@ -119,9 +135,9 @@ export default function AddTransactionScreen() {
 
         <View style={[styles.footer, { backgroundColor: colors.dashboard.cardBg, borderTopColor: colors.dashboard.border }]}>
           <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: colors.deepGreen }, !canSave && { opacity: 0.5 }]}
+            style={[styles.saveBtn, { backgroundColor: colors.deepGreen }, (!canSave || saving) && { opacity: 0.5 }]}
             onPress={handleSave}
-            disabled={!canSave}
+            disabled={!canSave || saving}
             activeOpacity={0.8}
           >
             <Ionicons name="checkmark-circle" size={20} color="#fff" style={{ marginRight: 6 }} />
