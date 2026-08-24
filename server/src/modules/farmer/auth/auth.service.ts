@@ -35,6 +35,26 @@ const toNumber = (value: string | number | undefined): number => {
 
 const toArray = (value: string[] | undefined): string[] => (Array.isArray(value) ? value : []);
 
+// Returns an auth user matching the email/phone only when it has no profile
+// row (i.e. it is a leftover from a failed registration, not a real farmer).
+const findOrphanAuthUser = async (email: string, phone: string) => {
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) return null;
+    for (const user of data.users) {
+      if (user.email === email || user.phone === phone) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (!profile) return user;
+      }
+    }
+    if ((data.users?.length ?? 0) < 200) return null;
+  }
+};
+
 const normalizePhone = (phone: string): string => {
   const digits = String(phone).replace(/\D/g, '');
   if (digits.startsWith('880')) return `+${digits}`;
@@ -77,12 +97,16 @@ export const registerFarmer = async (input: RegisterInput) => {
   const normalizedPhone = normalizePhone(phone);
 
   // prevent duplicate registration by nid or phone
-  const { data: existing } = await supabase
+  const { data: existing, error: dupError } = await supabase
     .from('profiles')
     .select('id')
     .or(`nid.eq.${nid},phone.eq.${normalizedPhone}`)
     .limit(1)
     .maybeSingle();
+
+  if (dupError) {
+    throw new Error(dupError.message);
+  }
 
   if (existing) {
     throw new Error('Farmer with this NID or phone is already registered');
@@ -90,14 +114,36 @@ export const registerFarmer = async (input: RegisterInput) => {
 
   const email = `${nid}@sofol.local`;
 
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-    phone: normalizedPhone,
-    password,
-    phone_confirm: true,
-    user_metadata: { full_name: nameEn, role: 'farmer' },
-  });
+  const createAuthUser = () =>
+    supabase.auth.admin.createUser({
+      phone: normalizedPhone,
+      email,
+      password,
+      phone_confirm: true,
+      email_confirm: true,
+      user_metadata: { full_name: nameEn, role: 'farmer' },
+    });
+
+  let { data: authData, error: authError } = await createAuthUser();
+
+  // A previous registration can fail midway and leave an auth user without a
+  // profile row. auth.users enforces unique email/phone, so the retry then
+  // collides even though the profiles dup-check above passed. Remove the
+  // orphan and try once more.
+  if (authError && /already (been )?registered/i.test(authError.message)) {
+    const orphan = await findOrphanAuthUser(email, normalizedPhone);
+    if (orphan) {
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(orphan.id);
+      if (!deleteError) {
+        ({ data: authData, error: authError } = await createAuthUser());
+      }
+    }
+  }
 
   if (authError || !authData.user) {
+    if (/already (been )?registered/i.test(authError?.message ?? '')) {
+      throw new Error('Farmer with this NID or phone is already registered');
+    }
     throw new Error(authError?.message ?? 'Failed to create auth user');
   }
 
@@ -147,11 +193,38 @@ export const registerFarmer = async (input: RegisterInput) => {
 
 export const loginFarmer = async (identifier: string, password: string) => {
   const isPhone = /^\+?\d[\d\s-]{6,}$/.test(identifier);
-  const credentials = isPhone
-    ? { phone: normalizePhone(identifier), password }
-    : { email: identifier, password };
 
-  const { data, error } = await supabase.auth.signInWithPassword(credentials as any);
+  if (!isPhone) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: identifier,
+      password,
+    });
+    if (error) {
+      throw new Error(error.message);
+    }
+    return data;
+  }
+
+  // Phone logins may be disabled on the Supabase project; resolve the
+  // registration email (nid@sofol.local) from the profile and sign in with it.
+  const normalizedPhone = normalizePhone(identifier);
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('nid')
+    .eq('phone', normalizedPhone)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+  if (!profile?.nid) {
+    throw new Error('Invalid login credentials');
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: `${profile.nid}@sofol.local`,
+    password,
+  });
   if (error) {
     throw new Error(error.message);
   }
