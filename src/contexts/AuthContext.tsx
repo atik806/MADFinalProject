@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useReducer } from 'react';
 import type { Href } from 'expo-router';
-import { DEMO_USERS } from '@/data/auth';
 import { api, setAuthToken } from '@/config/api';
 
 export type UserRole = 'farmer' | 'admin' | 'bank-officer' | 'field-officer';
@@ -58,14 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (identifier: string, password: string): Promise<User> => {
     dispatch({ type: 'LOGIN_START' });
 
-    // Officials (admin / bank-officer / field-officer) authenticate against demo data.
-    const demo = DEMO_USERS.find((u) => u.identifier === identifier && u.password === password);
-    if (demo) {
-      dispatch({ type: 'LOGIN_SUCCESS', user: demo.user });
-      return demo.user;
-    }
-
-    // Farmers authenticate against the backend server.
     try {
       const res = await api.post<{ token: string; user: any }>('/api/farmer/auth/login', {
         identifier,
