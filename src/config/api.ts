@@ -1,9 +1,13 @@
+import { Platform } from 'react-native';
+
 // Central API configuration for talking to the Sofol backend server.
-// Change API_BASE_URL to match how you run the app:
-//   - Android emulator: http://10.0.2.2:3000
-//   - iOS simulator:    http://localhost:3000
-//   - Physical device:  http://<your-machine-LAN-IP>:3000
-export const API_BASE_URL = 'http://10.0.2.2:3000';
+//   - Android emulator: http://10.0.2.2:3000 (10.0.2.2 = host machine)
+//   - iOS simulator / web: http://localhost:3000
+//   - Physical device: replace with your machine's LAN IP, e.g. http://192.168.x.x:3000
+export const API_BASE_URL =
+  Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+
+const REQUEST_TIMEOUT_MS = 30000;
 
 let authToken: string | null = null;
 
@@ -22,9 +26,28 @@ export async function apiFetch<T = any>(path: string, options: RequestInit = {})
     headers['Authorization'] = `Bearer ${authToken}`;
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers, signal: controller.signal });
+  } catch (e: any) {
+    if (e?.name === 'AbortError') {
+      throw new Error('Request timed out. Is the server running and reachable?');
+    }
+    throw new Error(e?.message ?? 'Network request failed');
+  } finally {
+    clearTimeout(timer);
+  }
+
   const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
+  let data: any = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
 
   if (!res.ok) {
     throw new Error(data?.message || `Request failed (${res.status})`);
