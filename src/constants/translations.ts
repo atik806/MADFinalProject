@@ -253,7 +253,24 @@ export const translations = {
   sourceLabel: { en: 'Source', bn: 'ঋণের উৎস' },
   sourcePlaceholder: { en: 'e.g. Bank', bn: 'যেমন: ব্যাংক' },
   saveChanges: { en: 'Save Changes', bn: 'পরিবর্তন সংরক্ষণ করুন' },
+  saving: { en: 'Saving...', bn: 'সংরক্ষণ করা হচ্ছে...' },
   profileSaved: { en: 'Your profile has been updated.', bn: 'আপনার প্রোফাইল আপডেট করা হয়েছে।' },
+
+  // Settings
+  settings: { en: 'Settings', bn: 'সেটিংস' },
+  account: { en: 'Account', bn: 'অ্যাকাউন্ট' },
+  preferences: { en: 'Preferences', bn: 'পছন্দসমূহ' },
+  about: { en: 'About', bn: 'সম্পর্কে' },
+  changePassword: { en: 'Change Password', bn: 'পাসওয়ার্ড পরিবর্তন' },
+  language: { en: 'Language', bn: 'ভাষা' },
+  darkMode: { en: 'Dark Mode', bn: 'ডার্ক মোড' },
+  version: { en: 'Version', bn: 'সংস্করণ' },
+  termsOfService: { en: 'Terms of Service', bn: 'সেবার শর্তাবলী' },
+  privacyPolicy: { en: 'Privacy Policy', bn: 'গোপনীয়তা নীতি' },
+  english: { en: 'English', bn: 'ইংরেজি' },
+  bangla: { en: 'Bangla', bn: 'বাংলা' },
+  logout: { en: 'Logout', bn: 'লগ আউট' },
+  logoutConfirm: { en: 'Are you sure you want to logout?', bn: 'আপনি কি নিশ্চিত যে আপনি লগ আউট করতে চান?' },
 
   // Notifications
   markAllRead: { en: 'Mark all read', bn: 'সব পড়া হয়েছে' },
