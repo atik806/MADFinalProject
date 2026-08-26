@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
   Alert,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -14,7 +15,27 @@ import { router } from 'expo-router';
 import { useColors } from '../../../features/officials/shared/constants/theme';
 import { useThemeContext } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useTranslation } from '../../../hooks/use-translation';
 import { FARMER_SETTINGS } from '@/data';
+
+// Canonical (English) labels from FARMER_SETTINGS are used as stable keys for
+// behavior; these maps translate them for display without breaking that logic.
+const SECTION_TITLE_KEYS: Record<string, string> = {
+  Account: 'account',
+  Preferences: 'preferences',
+  About: 'about',
+};
+
+const ITEM_LABEL_KEYS: Record<string, string> = {
+  'Edit Profile': 'editProfile',
+  'Change Password': 'changePassword',
+  Language: 'language',
+  'Dark Mode': 'darkMode',
+  Notifications: 'notifications',
+  Version: 'version',
+  'Terms of Service': 'termsOfService',
+  'Privacy Policy': 'privacyPolicy',
+};
 
 type SettingItem = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -35,23 +56,40 @@ export default function FarmerSettingsScreen() {
   const colors = useColors();
   const { isDark, toggleTheme } = useThemeContext();
   const { logout } = useAuth();
+  const { t, lang, toggleLang } = useTranslation();
   const [notifications, setNotifications] = useState(true);
 
+  const notify = (title: string, msg: string) => {
+    if (typeof window !== 'undefined' && Platform.OS === 'web') {
+      window.alert(msg);
+    } else {
+      Alert.alert(title, msg);
+    }
+  };
+
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => { logout(); router.replace('/'); } },
-    ]);
+    const doLogout = async () => {
+      await logout();
+      router.replace('/');
+    };
+    if (typeof window !== 'undefined' && Platform.OS === 'web') {
+      if (window.confirm(t('logoutConfirm'))) doLogout();
+    } else {
+      Alert.alert(t('logout'), t('logoutConfirm'), [
+        { text: t('cancel'), style: 'cancel' },
+        { text: t('logout'), style: 'destructive', onPress: doLogout },
+      ]);
+    }
   };
 
   const sections: SettingSection[] = FARMER_SETTINGS.map((section) => ({
     ...section,
     items: section.items.map((item) => {
       if (item.label === 'Edit Profile') {
-        return { ...item, type: 'navigate' as const, onPress: () => router.push('/view/Profile/profile') };
+        return { ...item, type: 'navigate' as const, onPress: () => router.push('/view/Profile/edit-profile') };
       }
       if (item.label === 'Change Password') {
-        return { ...item, type: 'action' as const, onPress: () => Alert.alert('Coming Soon', 'Change password feature will be available soon.') };
+        return { ...item, type: 'action' as const, onPress: () => notify(t('changePassword'), t('comingSoon')) };
       }
       if (item.label === 'Dark Mode') {
         return { ...item, type: 'toggle' as const, value: isDark, onToggle: toggleTheme };
@@ -60,16 +98,21 @@ export default function FarmerSettingsScreen() {
         return { ...item, type: 'toggle' as const, value: notifications, onToggle: setNotifications };
       }
       if (item.label === 'Language') {
-        return { ...item, type: 'navigate' as const, onPress: () => Alert.alert('Coming Soon', 'Language selection coming soon.') };
+        return {
+          ...item,
+          type: 'navigate' as const,
+          subtitle: lang === 'en' ? t('english') : t('bangla'),
+          onPress: toggleLang,
+        };
       }
       if (item.label === 'Version') {
         return { ...item, type: 'navigate' as const, onPress: () => {} };
       }
       if (item.label === 'Privacy Policy') {
-        return { ...item, type: 'action' as const, onPress: () => Alert.alert('Privacy Policy', 'Coming soon.') };
+        return { ...item, type: 'action' as const, onPress: () => notify(t('privacyPolicy'), t('comingSoon')) };
       }
       if (item.label === 'Terms of Service') {
-        return { ...item, type: 'action' as const, onPress: () => Alert.alert('Terms of Service', 'Coming soon.') };
+        return { ...item, type: 'action' as const, onPress: () => notify(t('termsOfService'), t('comingSoon')) };
       }
       return { ...item, type: 'action' as const, onPress: () => {} };
     }),
@@ -81,14 +124,14 @@ export default function FarmerSettingsScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.dashboard.textPrimary} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('settings')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {sections.map((section, si) => (
           <View key={si} style={{ marginBottom: 24 }}>
-            <Text style={[styles.sectionTitle, { color: colors.dashboard.textSecondary }]}>{section.title}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.dashboard.textSecondary }]}>{t((SECTION_TITLE_KEYS[section.title] ?? section.title) as any)}</Text>
             <View style={[styles.sectionCard, { backgroundColor: colors.dashboard.cardBg }]}>
               {section.items.map((item, ii) => (
                 <Pressable
@@ -104,7 +147,7 @@ export default function FarmerSettingsScreen() {
                     <Ionicons name={item.icon} size={20} color={colors.deepGreen} />
                   </View>
                   <View style={styles.settingInfo}>
-                    <Text style={[styles.settingLabel, { color: colors.dashboard.textPrimary }]}>{item.label}</Text>
+                    <Text style={[styles.settingLabel, { color: colors.dashboard.textPrimary }]}>{t((ITEM_LABEL_KEYS[item.label] ?? item.label) as any)}</Text>
                     {item.subtitle && (
                       <Text style={[styles.settingSubtitle, { color: colors.dashboard.textSecondary }]}>{item.subtitle}</Text>
                     )}
@@ -129,7 +172,7 @@ export default function FarmerSettingsScreen() {
           onPress={handleLogout}
           style={[styles.logoutBtn, { backgroundColor: colors.userRejected, borderColor: colors.userRejected }]}>
           <Ionicons name="log-out-outline" size={20} color={colors.dashboard.redDown} />
-          <Text style={[styles.logoutText, { color: colors.dashboard.redDown }]}>Logout</Text>
+          <Text style={[styles.logoutText, { color: colors.dashboard.redDown }]}>{t('logout')}</Text>
         </Pressable>
 
         <View style={{ height: 40 }} />

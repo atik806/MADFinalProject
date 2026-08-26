@@ -16,6 +16,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../../hooks/use-translation';
 import { useColors } from '../../features/officials/shared/constants/theme';
+import { api } from '@/config/api';
 
 type Step = 1 | 2 | 3;
 
@@ -91,19 +92,39 @@ export default function ResetPasswordScreen() {
     setLoading(false);
   };
 
-  const handleResetPassword = () => {
+  const handleResetPassword = async () => {
     setError('');
     if (!newPwd.trim() || newPwd.length < 6) {
       setError(t('passwordMinLength'));
       return;
     }
     if (newPwd !== confirmPwd) {
-      setError('Passwords do not match');
+      setError(t('passwordMismatch'));
       return;
     }
-    Alert.alert('Success', t('passwordResetSuccess'), [
-      { text: t('ok'), onPress: () => router.push('/view/login') },
-    ]);
+    setLoading(true);
+    try {
+      // OTP above is cosmetic; the server verifies the phone/NID exists and
+      // sets the new password. `phone` here is the identifier from step 1
+      // (a phone number or email).
+      await api.post('/api/farmer/auth/reset-password', {
+        identifier: phone,
+        newPassword: newPwd,
+      });
+      const goToLogin = () => router.push('/view/login');
+      if (typeof window !== 'undefined' && Platform.OS === 'web') {
+        window.alert(t('passwordResetSuccess'));
+        goToLogin();
+      } else {
+        Alert.alert('Success', t('passwordResetSuccess'), [
+          { text: t('ok'), onPress: goToLogin },
+        ]);
+      }
+    } catch (e: any) {
+      setError(e?.message ?? t('passwordResetFailed'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
