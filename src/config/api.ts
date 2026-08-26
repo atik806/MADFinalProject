@@ -4,8 +4,19 @@ import { Platform } from 'react-native';
 //   - Android emulator: http://10.0.2.2:3000 (10.0.2.2 = host machine)
 //   - iOS simulator / web: http://localhost:3000
 //   - Physical device: replace with your machine's LAN IP, e.g. http://192.168.x.x:3000
+//
+// Set EXPO_PUBLIC_API_URL in a .env file to override (e.g. when running on a
+// physical device against a machine on your LAN). Expo inlines EXPO_PUBLIC_*
+// vars at build time.
+const ENV_API_URL =
+  typeof process !== 'undefined' ? process.env?.EXPO_PUBLIC_API_URL : undefined;
+
 export const API_BASE_URL =
-  Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+  ENV_API_URL && ENV_API_URL.length > 0
+    ? ENV_API_URL
+    : Platform.OS === 'android'
+      ? 'http://10.0.2.2:3000'
+      : 'http://localhost:3000';
 
 const REQUEST_TIMEOUT_MS = 30000;
 
