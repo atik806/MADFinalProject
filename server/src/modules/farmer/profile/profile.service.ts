@@ -36,10 +36,11 @@ export const PROFILE_FIELD_MAP: Record<string, string> = {
   profilePhoto: 'profile_photo_url',
   nidPhoto: 'nid_photo_url',
   landPhoto: 'land_photo_url',
-  farmerId: 'farmer_id',
-  isVerified: 'is_verified',
-  creditScore: 'credit_score',
-  memberSince: 'member_since',
+  // NOTE: farmer_id, is_verified, credit_score and member_since are deliberately
+  // NOT in this map. They are privileged, system/official-assigned fields and must
+  // never be settable through the farmer-facing PUT /api/farmer/profile endpoint
+  // (which would otherwise allow a farmer to self-verify or set their own credit
+  // score via mass assignment). They are still returned by GET (select '*').
 };
 
 export const toProfileRow = (input: Record<string, any>): Record<string, any> => {

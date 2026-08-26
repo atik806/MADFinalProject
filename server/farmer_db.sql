@@ -115,3 +115,22 @@ create table if not exists public.notifications (
 insert into storage.buckets (id, name, public)
 values ('farmer-documents', 'farmer-documents', true)
 on conflict (id) do nothing;
+
+-- ---------- SCHEMA REPAIR (idempotent, safe to re-run) ----------
+-- The live database may already exist with an older/partial schema. This block
+-- adds any columns introduced after the initial deployment without dropping
+-- data. Re-run it any time the app reports a "column does not exist" error.
+
+alter table if exists public.notifications
+  add column if not exists user_id uuid references public.profiles (id) on delete cascade,
+  add column if not exists icon text,
+  add column if not exists color text,
+  add column if not exists description text,
+  add column if not exists read boolean default false;
+
+alter table if exists public.loan_applications
+  add column if not exists progress integer default 0,
+  add column if not exists installments_paid integer default 0,
+  add column if not exists installments_total integer default 0,
+  add column if not exists next_payment_date text,
+  add column if not exists next_payment_amount numeric default 0;
