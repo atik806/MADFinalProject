@@ -1,6 +1,12 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { useAuth } from './AuthContext';
 import { api } from '@/config/api';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useAuth } from './AuthContext';
+
+const isFarmerRole = (role?: string) =>
+  String(role ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-') === 'farmer';
 
 export type Transaction = {
   id: string;
@@ -27,12 +33,13 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (user?.role !== 'farmer') return;
+    if (!isFarmerRole(user?.role)) return;
     try {
       setLoading(true);
       const res = await api.get<{ data: Transaction[] }>('/api/farmer/transactions');
       setTransactions(res.data ?? []);
-    } catch {
+    } catch (error) {
+      console.warn('Transaction refresh failed:', error);
       setTransactions([]);
     } finally {
       setLoading(false);

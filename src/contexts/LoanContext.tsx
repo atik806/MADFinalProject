@@ -1,6 +1,12 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { useAuth } from './AuthContext';
 import { api } from '@/config/api';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useAuth } from './AuthContext';
+
+const isFarmerRole = (role?: string) =>
+  String(role ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-') === 'farmer';
 
 export type LoanStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'active' | 'completed';
 
@@ -100,7 +106,7 @@ const mapActiveLoan = (row: any): ActiveLoan => ({
   emi: Number(row.emi) || 0,
   progress: 0,
   installmentsPaid: 0,
-  installmentsTotal: Number(row.duration) || 0,
+  installmentsTotal: parseInt(String(row.duration ?? ''), 10) || 0,
   nextPaymentDate: '—',
   nextPaymentAmount: Number(row.emi) || 0,
 });
@@ -122,7 +128,7 @@ const LoanContext = createContext<LoanContextType | null>(null);
 
 export function LoanProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const isFarmer = user?.role === 'farmer';
+  const isFarmer = isFarmerRole(user?.role);
 
   const [applications, setApplications] = useState<LoanApplication[]>([]);
   const [activeLoans, setActiveLoans] = useState<ActiveLoan[]>([]);
@@ -141,7 +147,8 @@ export function LoanProvider({ children }: { children: ReactNode }) {
         setActiveLoans(
           apps.filter((a) => a.status === 'approved').map(mapActiveLoan),
         );
-      } catch {
+      } catch (error) {
+        console.warn('Loan refresh failed:', error);
         if (!cancelled) setApplications([]);
       } finally {
         if (!cancelled) setLoading(false);

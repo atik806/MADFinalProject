@@ -1,6 +1,12 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { useAuth } from './AuthContext';
 import { api } from '@/config/api';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useAuth } from './AuthContext';
+
+const isFarmerRole = (role?: string) =>
+  String(role ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-') === 'farmer';
 
 export type Notification = {
   id: string;
@@ -36,7 +42,7 @@ type NotificationContextType = {
   addNotification: (notif: Omit<Notification, 'id' | 'time' | 'read'>) => void;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
-  clearNotifications: () => void;
+  clearNotifications: () => Promise<void>;
   refresh: () => Promise<void>;
 };
 
@@ -48,12 +54,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (user?.role !== 'farmer') return;
+    if (!isFarmerRole(user?.role)) return;
     try {
       setLoading(true);
       const res = await api.get<{ notifications: any[] }>('/api/farmer/notifications');
       setNotifications((res.notifications ?? []).map(mapNotification));
-    } catch {
+    } catch (error) {
+      console.warn('Notification refresh failed:', error);
       setNotifications([]);
     } finally {
       setLoading(false);
@@ -83,9 +90,21 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     await Promise.all(unread.map((n) => api.put(`/api/farmer/notifications/${n.id}/read`, {}).catch(() => {})));
   }, [notifications]);
 
-  const clearNotifications = useCallback(() => {
+  const clearNotifications = useCallback(async () => {
+    const current = notifications;
+    if (current.length === 0) return;
+    // Optimistically clear, then delete each on the server. If any deletion
+    // fails, resync from the server so the UI reflects the true state.
     setNotifications([]);
-  }, []);
+    const results = await Promise.all(
+      current.map((n) =>
+        api.del(`/api/farmer/notifications/${n.id}`).then(() => true).catch(() => false),
+      ),
+    );
+    if (results.some((ok) => !ok)) {
+      refresh();
+    }
+  }, [notifications, refresh]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

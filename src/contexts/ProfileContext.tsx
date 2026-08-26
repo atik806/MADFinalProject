@@ -1,6 +1,12 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { useAuth } from './AuthContext';
 import { api } from '@/config/api';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useAuth } from './AuthContext';
+
+const isFarmerRole = (role?: string) =>
+  String(role ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-') === 'farmer';
 
 export type FarmerProfile = {
   nameBn: string;
@@ -109,13 +115,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (user?.role !== 'farmer') return;
+    if (!isFarmerRole(user?.role)) return;
     try {
       setLoading(true);
       const row = await api.get<any>('/api/farmer/profile');
       setProfile(mapProfile(row));
-    } catch {
+    } catch (error) {
       // profile may not exist yet (e.g., right after registration)
+      console.warn('Profile refresh failed:', error);
     } finally {
       setLoading(false);
     }
@@ -126,7 +133,8 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const updateProfile = useCallback(async (data: Partial<FarmerProfile>) => {
-    const row = await api.put<any>('/api/farmer/profile', data);
+    const res = await api.put<any>('/api/farmer/profile', data);
+    const row = res?.data ?? res;
     setProfile(mapProfile(row));
   }, []);
 

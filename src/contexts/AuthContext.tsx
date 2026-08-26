@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useMemo, useReducer } from 'react';
-import type { Href } from 'expo-router';
 import { api, setAuthToken } from '@/config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { Href } from 'expo-router';
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from 'react';
 
 export type UserRole = 'farmer' | 'admin' | 'bank-officer' | 'field-officer';
 
@@ -15,18 +16,38 @@ export type User = {
 export type AuthState = {
   user: User | null;
   isLoading: boolean;
+  // True while we restore a saved session on app start. The UI shows a splash
+  // until this flips to false so we never flash the landing page for a
+  // logged-in user (or a protected screen for a logged-out one).
+  isBootstrapping: boolean;
 };
 
 type AuthAction =
   | { type: 'LOGIN_START' }
   | { type: 'LOGIN_SUCCESS'; user: User }
   | { type: 'LOGIN_ERROR' }
-  | { type: 'LOGOUT' };
+  | { type: 'LOGOUT' }
+  | { type: 'BOOTSTRAP_DONE' };
 
 type AuthContextValue = AuthState & {
   isLoggedIn: boolean;
   login: (identifier: string, password: string) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
+};
+
+const STORAGE_KEY = 'sofol.auth.v1';
+
+const normalizeRole = (value: unknown): UserRole => {
+  const raw = String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-');
+
+  if (raw === 'farmer') return 'farmer';
+  if (raw === 'admin') return 'admin';
+  if (raw === 'bank-officer' || raw === 'bankofficer') return 'bank-officer';
+  if (raw === 'field-officer' || raw === 'fieldofficer') return 'field-officer';
+  return 'farmer';
 };
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
@@ -34,11 +55,13 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
     case 'LOGIN_START':
       return { ...state, isLoading: true };
     case 'LOGIN_SUCCESS':
-      return { user: action.user, isLoading: false };
+      return { user: action.user, isLoading: false, isBootstrapping: false };
     case 'LOGIN_ERROR':
       return { ...state, isLoading: false };
     case 'LOGOUT':
-      return { user: null, isLoading: false };
+      return { user: null, isLoading: false, isBootstrapping: false };
+    case 'BOOTSTRAP_DONE':
+      return { ...state, isBootstrapping: false };
     default:
       return state;
   }
@@ -47,30 +70,78 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 const initialAuthState: AuthState = {
   user: null,
   isLoading: false,
+  isBootstrapping: true,
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// Builds our app User from a Supabase auth user object (shape returned by both
+// the login endpoint and /auth/me).
+function buildUser(u: any, fallbackIdentifier?: string): User {
+  const metadataRole = u?.user_metadata?.role ?? u?.app_metadata?.role;
+  return {
+    id: u?.id,
+    name: u?.user_metadata?.full_name ?? u?.phone ?? u?.email ?? fallbackIdentifier ?? 'User',
+    phone: u?.phone ?? fallbackIdentifier,
+    email: u?.email,
+    role: normalizeRole(metadataRole),
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialAuthState);
+
+  // Restore a saved session on mount and validate the token against the server.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          if (!cancelled) dispatch({ type: 'BOOTSTRAP_DONE' });
+          return;
+        }
+        const saved = JSON.parse(raw) as { token?: string; user?: User };
+        if (!saved?.token || !saved?.user) {
+          if (!cancelled) dispatch({ type: 'BOOTSTRAP_DONE' });
+          return;
+        }
+        setAuthToken(saved.token);
+        // Validate the token is still good. Throws on 401 (expired/invalid) or
+        // when the server is unreachable.
+        const me = await api.get<{ data: any; profile?: any }>('/api/farmer/auth/me');
+        if (cancelled) return;
+        const user = buildUser(me?.data ?? saved.user, saved.user?.phone ?? saved.user?.email);
+        user.role = normalizeRole(me?.profile?.role ?? user.role);
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ token: saved.token, user })).catch(() => {});
+        dispatch({ type: 'LOGIN_SUCCESS', user });
+      } catch {
+        // Invalid/expired token or unreachable server → drop the saved session.
+        setAuthToken(null);
+        await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+        if (!cancelled) dispatch({ type: 'BOOTSTRAP_DONE' });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const login = useCallback(async (identifier: string, password: string): Promise<User> => {
     dispatch({ type: 'LOGIN_START' });
 
     try {
-      const res = await api.post<{ token: string; user: any }>('/api/farmer/auth/login', {
+      const res = await api.post<{ token: string; user: any; profile?: any }>('/api/farmer/auth/login', {
         identifier,
         password,
       });
+      if (!res?.token || !res?.user) {
+        throw new Error('Login failed: invalid server response');
+      }
       setAuthToken(res.token);
-      const u = res.user;
-      const user: User = {
-        id: u.id,
-        name: u.user_metadata?.full_name ?? u.phone ?? identifier,
-        phone: u.phone ?? identifier,
-        email: u.email,
-        role: (u.user_metadata?.role ?? 'farmer') as UserRole,
-      };
+      const user = buildUser(res.user, identifier);
+      user.role = normalizeRole(res?.profile?.role ?? user.role);
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ token: res.token, user })).catch(() => {});
       dispatch({ type: 'LOGIN_SUCCESS', user });
       return user;
     } catch (error: any) {
@@ -79,8 +150,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     setAuthToken(null);
+    await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
     dispatch({ type: 'LOGOUT' });
   }, []);
 
@@ -108,5 +180,7 @@ export function getRouteForRole(role: UserRole): Href {
       return '/officials/(bank-officer)' as Href;
     case 'field-officer':
       return '/officials/(field-officer)' as Href;
+    default:
+      return '/view/FarmerDashboard/farmer-dashboard' as Href;
   }
 }
