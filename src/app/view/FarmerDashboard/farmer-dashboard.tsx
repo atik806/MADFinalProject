@@ -16,6 +16,7 @@ import { useLoans } from "../../../contexts/LoanContext";
 import { useNotifications } from "../../../contexts/NotificationContext";
 import { useTransactions } from "../../../contexts/TransactionContext";
 import { useProfile } from "../../../contexts/ProfileContext";
+import { useAuth } from "../../../contexts/AuthContext";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from '../../../features/officials/shared/constants/theme';
 
@@ -40,6 +41,7 @@ export default function DashboardScreen() {
   const { notifications, unreadCount } = useNotifications();
   const { transactions } = useTransactions();
   const { profile } = useProfile();
+  const { user } = useAuth();
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>("home");
 
@@ -67,9 +69,28 @@ export default function DashboardScreen() {
     }
   };
 
-  const farmerName = lang === 'bn' && profile.nameBn ? profile.nameBn : profile.nameEn || t('farmerName');
+  const farmerName =
+    lang === 'bn' && profile.nameBn
+      ? profile.nameBn
+      : profile.nameEn || user?.name || t('farmerName');
   const farmerInitials = getInitials(farmerName);
   const location = [profile.village, profile.upazila, profile.district].filter(Boolean).join(', ');
+
+  // Lifetime income/expense totals from the farmer's own transactions
+  // (expenses are stored as negative amounts).
+  const totalIncome = transactions
+    .filter((tx) => tx.amount > 0)
+    .reduce((sum, tx) => sum + tx.amount, 0);
+  const totalExpense = transactions
+    .filter((tx) => tx.amount < 0)
+    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+
+  const formatCompact = (n: number): string => {
+    if (n >= 10000000) return `৳${(n / 10000000).toFixed(1)}Cr`;
+    if (n >= 100000) return `৳${(n / 100000).toFixed(1)}L`;
+    if (n >= 1000) return `৳${Math.round(n / 1000)}K`;
+    return `৳${n}`;
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
@@ -93,6 +114,9 @@ export default function DashboardScreen() {
                 <Text style={styles.badgeCount}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
               </View>
             )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/view/Settings/farmer-settings')} hitSlop={8}>
+            <Ionicons name="settings-outline" size={22} color={colors.dashboard.textSecondary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -118,31 +142,31 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          <View style={[styles.scoreCard, { backgroundColor: colors.userVerifiedText }]}>
+          <View style={[styles.scoreCard, { backgroundColor: colors.scoreCardBg }]}>
             <View style={styles.scoreHeader}>
-              <Text style={styles.scoreLabel}>{t('creditScore')}</Text>
+              <Text style={[styles.scoreLabel, { color: colors.scoreCardText }]}>{t('creditScore')}</Text>
               <TouchableOpacity onPress={() => router.push('/view/Profile/profile')}>
-                <Text style={styles.scoreDetails}>{t('details')} →</Text>
+                <Text style={[styles.scoreDetails, { color: colors.scoreCardValue }]}>{t('details')} →</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.scoreRow}>
-              <Text style={styles.scoreValue}>{profile.creditScore}</Text>
-              <Text style={styles.scoreRange}>{t('outOf')}</Text>
+              <Text style={[styles.scoreValue, { color: colors.scoreCardValue }]}>{profile.creditScore}</Text>
+              <Text style={[styles.scoreRange, { color: colors.scoreCardSub }]}>{t('outOf')}</Text>
             </View>
             <View style={styles.scoreMeta}>
-              <View style={styles.riskBadge}>
+              <View style={[styles.riskBadge, { backgroundColor: colors.dashboard.greenUp + '20' }]}>
                 <View style={[styles.riskDot, { backgroundColor: colors.dashboard.greenUp }]} />
-                <Text style={styles.riskText}>{t('lowRisk')}</Text>
+                <Text style={[styles.riskText, { color: colors.scoreCardText }]}>{t('lowRisk')}</Text>
               </View>
             </View>
-            <View style={styles.ratingBarTrack}>
+            <View style={[styles.ratingBarTrack, { backgroundColor: colors.scoreCardTrack }]}>
               <View style={[styles.ratingBarFill, { width: `${Math.min(100, Math.round((profile.creditScore / 850) * 100))}%` }]} />
             </View>
             <View style={styles.ratingLabels}>
-              <Text style={styles.ratingLabel}>{t('poor')}</Text>
-              <Text style={styles.ratingLabel}>{t('fair')}</Text>
-              <Text style={[styles.ratingLabel, styles.ratingLabelActive]}>{t('good')}</Text>
-              <Text style={styles.ratingLabel}>{t('excellent')}</Text>
+              <Text style={[styles.ratingLabel, { color: colors.scoreCardSub }]}>{t('poor')}</Text>
+              <Text style={[styles.ratingLabel, { color: colors.scoreCardSub }]}>{t('fair')}</Text>
+              <Text style={[styles.ratingLabel, styles.ratingLabelActive, { color: colors.scoreCardActive }]}>{t('good')}</Text>
+              <Text style={[styles.ratingLabel, { color: colors.scoreCardSub }]}>{t('excellent')}</Text>
             </View>
           </View>
         </View>
@@ -152,22 +176,22 @@ export default function DashboardScreen() {
             <View style={[styles.statIconWrap, { backgroundColor: colors.userVerified }]}>
               <Feather name="briefcase" size={18} color={colors.dashboard.greenUp} />
             </View>
-            <Text style={[styles.statValue, { color: colors.dashboard.textPrimary }]}>1</Text>
+            <Text style={[styles.statValue, { color: colors.dashboard.textPrimary }]}>{activeLoans.length}</Text>
             <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{t('activeLoans')}</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
             <View style={[styles.statIconWrap, { backgroundColor: '#EFF6FF' }]}>
               <Feather name="trending-up" size={18} color={colors.blueLight} />
             </View>
-            <Text style={[styles.statValue, { color: colors.dashboard.greenUp }]}>৳60K</Text>
-            <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{t('income')} (Jun)</Text>
+            <Text style={[styles.statValue, { color: colors.dashboard.greenUp }]}>{formatCompact(totalIncome)}</Text>
+            <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{t('income')}</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
             <View style={[styles.statIconWrap, { backgroundColor: colors.userRejected }]}>
               <Feather name="trending-down" size={18} color={colors.dashboard.redDown} />
             </View>
-            <Text style={[styles.statValue, { color: colors.dashboard.redDown }]}>৳19K</Text>
-            <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{t('expense')} (Jun)</Text>
+            <Text style={[styles.statValue, { color: colors.dashboard.redDown }]}>{formatCompact(totalExpense)}</Text>
+            <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{t('expense')}</Text>
           </View>
         </View>
 
@@ -263,8 +287,8 @@ export default function DashboardScreen() {
               key={tx.id}
               title={tx.title}
               date={tx.date}
-              amount={`${tx.category === 'income' ? '+' : '-'}৳${tx.amount.toLocaleString('en-BD')}`}
-              positive={tx.category === 'income'}
+              amount={`${tx.amount >= 0 ? '+' : '-'}৳${Math.abs(tx.amount).toLocaleString('en-BD')}`}
+              positive={tx.amount >= 0}
               colors={colors}
             />
           ))
