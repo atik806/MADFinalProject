@@ -35,6 +35,29 @@ const toNumber = (value: string | number | undefined): number => {
 
 const toArray = (value: string[] | undefined): string[] => (Array.isArray(value) ? value : []);
 
+// 6-character hex identifier, used to generate a human-readable farmer_id
+// at registration. Not security-sensitive — just an opaque short code.
+const shortHex = (): string => {
+  return Math.floor(Math.random() * 0xffffff)
+    .toString(16)
+    .padStart(6, '0')
+    .toUpperCase();
+};
+
+// Fetches the profile row for an authenticated user. Returns null when the
+// profile does not yet exist (e.g. mid-registration or after a self-heal).
+export const getProfileById = async (userId: string) => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data;
+};
+
 // Returns an auth user matching the email/phone only when it has no profile
 // row (i.e. it is a leftover from a failed registration, not a real farmer).
 const findOrphanAuthUser = async (email: string, phone: string) => {
@@ -151,6 +174,14 @@ export const registerFarmer = async (input: RegisterInput) => {
     id: authData.user.id,
     role: 'farmer',
     status: 'pending',
+    // Privileged/system fields seeded once at registration. They remain
+    // non-settable through the farmer-facing PUT /profile endpoint (see
+    // PROFILE_FIELD_MAP in profile.service.ts) but must be present in the
+    // row so the Profile screen has something to render.
+    farmer_id: `FRM-${shortHex()}`,
+    is_verified: false,
+    credit_score: 0,
+    member_since: new Date().toISOString(),
     name_bn: nameBn,
     name_en: nameEn,
     nid,
@@ -174,6 +205,19 @@ export const registerFarmer = async (input: RegisterInput) => {
     profile_photo_url: profilePhotoUrl ?? null,
     nid_photo_url: nidPhotoUrl ?? null,
     land_photo_url: landPhotoUrl ?? null,
+    // Address / farm-detail fields. The mobile registration flow doesn't
+    // collect them yet, but the Profile screen reads them, so seed with
+    // safe defaults so the UI doesn't show "undefined".
+    village: null,
+    union_: null,
+    upazila: null,
+    district: null,
+    farm_size: toNumber(totalLand),
+    ownership: null,
+    primary_crop: null,
+    secondary_crop: null,
+    crop_diversity: null,
+    experience: 0,
   };
 
   const { data: profile, error: profileError } = await supabase
@@ -192,41 +236,131 @@ export const registerFarmer = async (input: RegisterInput) => {
 };
 
 export const loginFarmer = async (identifier: string, password: string) => {
-  const isPhone = /^\+?\d[\d\s-]{6,}$/.test(identifier);
+  const rawIdentifier = String(identifier ?? '').trim();
+  const isPhone = /^\+?\d[\d\s-]{6,}$/.test(rawIdentifier);
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawIdentifier);
 
-  if (!isPhone) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: identifier,
-      password,
-    });
-    if (error) {
-      throw new Error(error.message);
-    }
+  // Attempts a password sign-in with the given email and returns on success.
+  const tryEmailLogin = async (email: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return null;
+    if (!data?.session?.access_token || !data?.user) return null;
     return data;
-  }
+  };
+
+  // Attempts a password sign-in with the given phone and returns on success.
+  const tryPhoneLogin = async (phone: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ phone, password });
+    if (error) return null;
+    if (!data?.session?.access_token || !data?.user) return null;
+    return data;
+  };
+
+  let loginEmail = rawIdentifier;
 
   // Phone logins may be disabled on the Supabase project; resolve the
   // registration email (nid@sofol.local) from the profile and sign in with it.
-  const normalizedPhone = normalizePhone(identifier);
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('nid')
-    .eq('phone', normalizedPhone)
-    .maybeSingle();
+  if (isPhone) {
+    const normalizedPhone = normalizePhone(rawIdentifier);
+    const digits = rawIdentifier.replace(/\D/g, '');
+    const localPhone = digits.startsWith('880')
+      ? `0${digits.slice(3)}`
+      : digits.startsWith('0')
+        ? digits
+        : `0${digits}`;
 
-  if (profileError) {
-    throw new Error(profileError.message);
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('nid, email')
+      .in('phone', [normalizedPhone, rawIdentifier, localPhone])
+      .limit(1)
+      .maybeSingle();
+
+    if (profileError) {
+      throw new Error(profileError.message);
+    }
+
+    // Primary path for app-created users.
+    if (profile?.nid) {
+      loginEmail = `${profile.nid}@sofol.local`;
+      const bySyntheticEmail = await tryEmailLogin(loginEmail);
+      if (bySyntheticEmail) {
+        return bySyntheticEmail;
+      }
+    }
+
+    // Legacy fallback: profile may already store an email.
+    if (profile?.email) {
+      const byProfileEmail = await tryEmailLogin(profile.email);
+      if (byProfileEmail) {
+        return byProfileEmail;
+      }
+    }
+
+    // Last fallback for legacy users created as phone-auth accounts.
+    for (const phoneCandidate of [normalizedPhone, localPhone, rawIdentifier]) {
+      const byPhone = await tryPhoneLogin(phoneCandidate);
+      if (byPhone) {
+        return byPhone;
+      }
+    }
+
+    throw new Error('Invalid login credentials');
+  } else if (!isEmail) {
+    // Allow login with raw NID by mapping it to the internal registration email.
+    loginEmail = `${rawIdentifier}@sofol.local`;
   }
-  if (!profile?.nid) {
+
+  const byEmail = await tryEmailLogin(loginEmail);
+  if (!byEmail) {
     throw new Error('Invalid login credentials');
   }
+  return byEmail;
+};
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: `${profile.nid}@sofol.local`,
-    password,
-  });
+// Resolves a farmer's auth-user id (== profiles.id) from a phone number,
+// registration email (nid@sofol.local) or raw NID. Returns null if none match.
+const resolveFarmerId = async (identifier: string): Promise<string | null> => {
+  const value = String(identifier).trim();
+  if (value.includes('@')) {
+    const nid = value.split('@')[0];
+    const { data } = await supabase.from('profiles').select('id').eq('nid', nid).maybeSingle();
+    return data?.id ?? null;
+  }
+  const normalizedPhone = normalizePhone(value);
+  const { data: byPhone } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('phone', normalizedPhone)
+    .maybeSingle();
+  if (byPhone?.id) return byPhone.id;
+  const { data: byNid } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('nid', value)
+    .maybeSingle();
+  return byNid?.id ?? null;
+};
+
+// DEMO password reset: verifies that a farmer account exists for the given
+// phone/NID/email, then sets the new password via the Supabase admin API.
+// The OTP step in the app is cosmetic — there is no real OTP verification here.
+export const resetFarmerPassword = async (identifier: string, newPassword: string) => {
+  if (!identifier || !newPassword) {
+    throw new Error('Identifier and new password are required');
+  }
+  if (String(newPassword).length < 6) {
+    throw new Error('Password must be at least 6 characters');
+  }
+
+  const userId = await resolveFarmerId(identifier);
+  if (!userId) {
+    throw new Error('No account found for the provided phone or NID');
+  }
+
+  const { error } = await supabase.auth.admin.updateUserById(userId, { password: newPassword });
   if (error) {
     throw new Error(error.message);
   }
-  return data;
+  return { success: true };
 };
