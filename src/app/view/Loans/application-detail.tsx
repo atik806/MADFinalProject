@@ -12,7 +12,7 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLoans, type TimelineEntry } from '../../../contexts/LoanContext';
 import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
-import { labelMap, statusColors } from '@/data';
+import { statusConfig, statusColors } from '@/data';
 
 export default function ApplicationDetailScreen() {
   const colors = useColors();
@@ -74,7 +74,7 @@ export default function ApplicationDetailScreen() {
             </View>
             <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
               <Text style={[styles.statusBadgeText, { color: sc.color }]}>
-                {labelMap[app.status]}
+                {t((statusConfig[app.status]?.labelKey ?? 'pending') as any)}
               </Text>
             </View>
           </View>
@@ -102,17 +102,21 @@ export default function ApplicationDetailScreen() {
           ))}
         </View>
 
-        <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('assignedBankOfficer')}</Text>
-        <View style={[styles.officerCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
-          <View style={[styles.officerAvatar, { backgroundColor: colors.userVerified }]}>
-            <Feather name="user" size={22} color={colors.deepGreen} />
-          </View>
-          <View style={styles.officerInfo}>
-            <Text style={[styles.officerName, { color: colors.dashboard.textPrimary }]}>{app.bankOfficer.name}</Text>
-            <Text style={[styles.officerDetail, { color: colors.dashboard.textSecondary }]}>{app.bankOfficer.bank}</Text>
-            <Text style={[styles.officerDetail, { color: colors.dashboard.textSecondary }]}>{app.bankOfficer.branch}</Text>
-          </View>
-        </View>
+        {app.bankOfficer.name !== '—' && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('assignedBankOfficer')}</Text>
+            <View style={[styles.officerCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
+              <View style={[styles.officerAvatar, { backgroundColor: colors.userVerified }]}>
+                <Feather name="user" size={22} color={colors.deepGreen} />
+              </View>
+              <View style={styles.officerInfo}>
+                <Text style={[styles.officerName, { color: colors.dashboard.textPrimary }]}>{app.bankOfficer.name}</Text>
+                <Text style={[styles.officerDetail, { color: colors.dashboard.textSecondary }]}>{app.bankOfficer.bank}</Text>
+                <Text style={[styles.officerDetail, { color: colors.dashboard.textSecondary }]}>{app.bankOfficer.branch}</Text>
+              </View>
+            </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

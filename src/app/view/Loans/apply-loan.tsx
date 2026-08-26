@@ -7,6 +7,8 @@ import {
   SafeAreaView,
   ScrollView,
   TextInput,
+  Alert,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -30,6 +32,7 @@ export default function ApplyLoanScreen() {
   const { addApplication } = useLoans();
   const { t } = useTranslation();
   const [step, setStep] = useState<Step>(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [amount, setAmount] = useState(75000);
   const [customAmount, setCustomAmount] = useState('');
@@ -73,16 +76,29 @@ export default function ApplyLoanScreen() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
     const monthsLabel = durationMonths === 1 ? '1 month' : `${durationMonths} months`;
-    addApplication({
-      title: purpose,
-      amount,
-      duration: monthsLabel,
-      purpose,
-      installmentType,
-    });
-    router.back();
+    try {
+      setIsSubmitting(true);
+      await addApplication({
+        title: purpose,
+        amount,
+        duration: monthsLabel,
+        purpose,
+        installmentType,
+      });
+      router.back();
+    } catch (e: any) {
+      const msg = e?.message ?? 'Failed to submit application';
+      if (typeof window !== 'undefined' && Platform.OS === 'web') {
+        window.alert(msg);
+      } else {
+        Alert.alert(t('error'), msg);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -184,8 +200,9 @@ export default function ApplyLoanScreen() {
         )}
         {step === 3 && (
           <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: colors.deepGreen }]}
+            style={[styles.primaryBtn, { backgroundColor: colors.deepGreen }, isSubmitting && { opacity: 0.5 }]}
             onPress={handleSubmit}
+            disabled={isSubmitting}
             activeOpacity={0.8}
           >
             <Ionicons name="checkmark-circle" size={18} color="#fff" style={{ marginRight: 6 }} />

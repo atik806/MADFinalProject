@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-} from 'react-native';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import {
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useProfile } from '../../../contexts/ProfileContext';
-import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
+import { useTranslation } from '../../../hooks/use-translation';
 
 type TabName = 'home' | 'transactions' | 'loans' | 'profile';
 
@@ -54,8 +54,8 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleSignOut = () => {
-    logout();
+  const handleSignOut = async () => {
+    await logout();
     router.replace('/');
   };
 
@@ -86,28 +86,30 @@ export default function ProfileScreen() {
           <View style={styles.heroTop}>
             <View style={styles.heroInfo}>
               <Text style={styles.farmerName}>{lang === 'bn' && profile.nameBn ? profile.nameBn : profile.nameEn}</Text>
-              <Text style={styles.farmerId}>{t('farmerId')}: {profile.farmerId}</Text>
+              <Text style={[styles.farmerId, { color: colors.scoreCardText }]}>{t('farmerId')}: {profile.farmerId}</Text>
             </View>
-            <View style={[styles.verifiedBadge, { backgroundColor: '#22C55E20' }]}>
-              <Ionicons name="checkmark-circle" size={14} color={colors.dashboard.greenUp} />
-              <Text style={styles.verifiedText}>{t('verified')}</Text>
-            </View>
+            {profile.isVerified && (
+              <View style={[styles.verifiedBadge, { backgroundColor: '#22C55E20' }]}>
+                <Ionicons name="checkmark-circle" size={14} color={colors.dashboard.greenUp} />
+                <Text style={[styles.verifiedText, { color: colors.scoreCardText }]}>{t('verified')}</Text>
+              </View>
+            )}
           </View>
 
-          <View style={[styles.heroStats, { backgroundColor: colors.userVerifiedText }]}>
+          <View style={[styles.heroStats, { backgroundColor: colors.scoreCardBg }]}>
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{profile.creditScore}</Text>
-              <Text style={styles.heroStatLabel}>{t('creditScoreLabel')}</Text>
+              <Text style={[styles.heroStatValue, { color: colors.scoreCardValue }]}>{profile.creditScore}</Text>
+              <Text style={[styles.heroStatLabel, { color: colors.scoreCardSub }]}>{t('creditScoreLabel')}</Text>
             </View>
             <View style={[styles.heroStatDivider, { backgroundColor: '#FFFFFF20' }]} />
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{profile.farmSize} {t('ac')}</Text>
-              <Text style={styles.heroStatLabel}>{t('farmSize')}</Text>
+              <Text style={[styles.heroStatValue, { color: colors.scoreCardValue }]}>{profile.totalLand} {t('ac')}</Text>
+              <Text style={[styles.heroStatLabel, { color: colors.scoreCardSub }]}>{t('farmSize')}</Text>
             </View>
             <View style={[styles.heroStatDivider, { backgroundColor: '#FFFFFF20' }]} />
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{profile.experience} {t('yr')}</Text>
-              <Text style={styles.heroStatLabel}>{t('experience')}</Text>
+              <Text style={[styles.heroStatValue, { color: colors.scoreCardValue }]}>{profile.experience} {t('yr')}</Text>
+              <Text style={[styles.heroStatLabel, { color: colors.scoreCardSub }]}>{t('experience')}</Text>
             </View>
           </View>
         </View>
@@ -133,7 +135,7 @@ export default function ProfileScreen() {
 
         <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('farmDetails')}</Text>
         <View style={[styles.infoCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
-          <ProfileRow label={t('landSize')} value={`${profile.farmSize} ${t('acres')}`} colors={colors} />
+          <ProfileRow label={t('landSize')} value={`${profile.totalLand} ${t('acres')}`} colors={colors} />
           <ProfileRow label={t('ownership')} value={profile.ownership} colors={colors} />
           <ProfileRow label={t('primaryCrop')} value={profile.primaryCrop} colors={colors} />
           <ProfileRow label={t('secondaryCrop')} value={profile.secondaryCrop} colors={colors} />

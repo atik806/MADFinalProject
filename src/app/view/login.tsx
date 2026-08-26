@@ -1,34 +1,35 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  Pressable,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth, getRouteForRole } from '../../contexts/AuthContext';
-import { useTranslation } from '../../hooks/use-translation';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import {
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { z } from 'zod';
+import { getRouteForRole, useAuth } from '../../contexts/AuthContext';
 import { useColors } from '../../features/officials/shared/constants/theme';
+import { useTranslation } from '../../hooks/use-translation';
 
-const isPhone = (value: string) => /^01\d{9}$/.test(value);
+const isPhone = (value: string) => /^01\d{9}$/.test(value) || /^\+8801\d{9}$/.test(value);
 const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const isNid = (value: string) => /^\d{8,20}$/.test(value);
 
 const loginSchema = z.object({
   identifier: z
     .string()
-    .min(1, 'Enter email or phone number')
-    .refine((val) => isPhone(val) || isEmail(val), 'Enter a valid email or 11-digit phone number'),
+    .min(1, 'Enter email, phone number or NID')
+    .refine((val) => isPhone(val) || isEmail(val) || isNid(val), 'Enter a valid email, phone number or NID'),
   password: z
     .string()
     .min(1, 'Enter password')
@@ -73,8 +74,8 @@ export default function LoginScreen() {
     try {
       await login(data.identifier, data.password);
       setShouldRedirect(true);
-    } catch {
-      setError('identifier', { message: t('invalidCredentials') });
+    } catch (error: any) {
+      setError('identifier', { message: error?.message ?? t('invalidCredentials') });
       setError('password', { message: '' });
     }
   };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,6 +42,33 @@ export default function EditProfileScreen() {
   const [loanAmount, setLoanAmount] = useState(profile.hasLoan ? String(profile.loanAmount) : '');
   const [loanPurpose, setLoanPurpose] = useState(profile.hasLoan ? profile.loanPurpose : '');
   const [loanSource, setLoanSource] = useState(profile.hasLoan ? profile.loanSource : '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  // The profile is fetched asynchronously, so it may still be empty when this
+  // screen first mounts. Re-seed the form fields whenever the profile changes
+  // so the inputs reflect the loaded values instead of blanks.
+  useEffect(() => {
+    setNameBn(profile.nameBn);
+    setNameEn(profile.nameEn);
+    setNid(profile.nid);
+    setPhone(profile.phone);
+    setDob(profile.dob);
+    setGender(profile.gender);
+    setTotalLand(String(profile.totalLand));
+    setOwnLand(String(profile.ownLand));
+    setLeasedLand(String(profile.leasedLand));
+    setSelectedCrops(profile.selectedCrops);
+    setLocation(profile.location);
+    setFarmingIncome(String(profile.farmingIncome));
+    setSelectedSources(profile.otherSources);
+    setOtherIncome(String(profile.otherIncome));
+    setFamilyMembers(String(profile.familyMembers));
+    setOccupation(profile.occupation);
+    setHasLoan(profile.hasLoan);
+    setLoanAmount(profile.hasLoan ? String(profile.loanAmount) : '');
+    setLoanPurpose(profile.hasLoan ? profile.loanPurpose : '');
+    setLoanSource(profile.hasLoan ? profile.loanSource : '');
+  }, [profile]);
 
   const toggleCrop = (crop: string) => {
     setSelectedCrops((prev) =>
@@ -54,32 +82,50 @@ export default function EditProfileScreen() {
     );
   };
 
-  const handleSave = () => {
-    updateProfile({
-      nameBn,
-      nameEn,
-      nid,
-      phone,
-      dob,
-      gender,
-      totalLand: Number(totalLand) || 0,
-      ownLand: Number(ownLand) || 0,
-      leasedLand: Number(leasedLand) || 0,
-      selectedCrops,
-      location,
-      farmingIncome: Number(farmingIncome) || 0,
-      otherSources: selectedSources,
-      otherIncome: Number(otherIncome) || 0,
-      familyMembers: Number(familyMembers) || 0,
-      occupation,
-      hasLoan,
-      loanAmount: hasLoan ? Number(loanAmount) || 0 : 0,
-      loanPurpose: hasLoan ? loanPurpose : '',
-      loanSource: hasLoan ? loanSource : '',
-    });
-    Alert.alert(t('saved'), t('profileSaved'), [
-      { text: t('ok'), onPress: () => router.back() },
-    ]);
+  const handleSave = async () => {
+    if (isSaving) return;
+    try {
+      setIsSaving(true);
+      await updateProfile({
+        nameBn,
+        nameEn,
+        nid,
+        phone,
+        dob,
+        gender,
+        totalLand: Number(totalLand) || 0,
+        ownLand: Number(ownLand) || 0,
+        leasedLand: Number(leasedLand) || 0,
+        selectedCrops,
+        location,
+        farmingIncome: Number(farmingIncome) || 0,
+        otherSources: selectedSources,
+        otherIncome: Number(otherIncome) || 0,
+        familyMembers: Number(familyMembers) || 0,
+        occupation,
+        hasLoan,
+        loanAmount: hasLoan ? Number(loanAmount) || 0 : 0,
+        loanPurpose: hasLoan ? loanPurpose : '',
+        loanSource: hasLoan ? loanSource : '',
+      });
+      if (typeof window !== 'undefined' && Platform.OS === 'web') {
+        window.alert(t('profileSaved'));
+        router.back();
+      } else {
+        Alert.alert(t('saved'), t('profileSaved'), [
+          { text: t('ok'), onPress: () => router.back() },
+        ]);
+      }
+    } catch (e: any) {
+      const msg = e?.message ?? 'Failed to update profile';
+      if (typeof window !== 'undefined' && Platform.OS === 'web') {
+        window.alert(msg);
+      } else {
+        Alert.alert(t('error'), msg);
+      }
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -387,9 +433,9 @@ export default function EditProfileScreen() {
           </>
         )}
 
-        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.deepGreen }]} onPress={handleSave} activeOpacity={0.8}>
+        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.deepGreen }, isSaving && { opacity: 0.5 }]} onPress={handleSave} disabled={isSaving} activeOpacity={0.8}>
           <Ionicons name="checkmark-circle" size={22} color="#fff" />
-          <Text style={styles.saveBtnText}>{t('saveChanges')}</Text>
+          <Text style={styles.saveBtnText}>{isSaving ? t('saving') : t('saveChanges')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
