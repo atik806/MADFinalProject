@@ -15,7 +15,6 @@ const safeCount = async (
       console.error('safeCount error:', error);
       return 0;
     }
-    console.log('[debug] safeCount -> count:', count);
     return count ?? 0;
   } catch (err) {
     console.error('safeCount threw:', err);
@@ -177,8 +176,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     recentFarmers,
     recentFieldOfficers,
     generatedAt: new Date().toISOString(),
-    _reloaded_at: 'VERSION-MARKER-2',
-  } as any;
+  };
 };
 
 export interface RegistrationSeriesPoint {
