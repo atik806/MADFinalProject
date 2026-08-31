@@ -107,7 +107,7 @@ npm start       # node dist/server.js
 ### Supabase setup
 
 1. Create a Supabase project.
-2. Open **SQL Editor → New query**, paste [`server/farmer_db.sql`](server/farmer_db.sql), and **Run**.
+2. Open **SQL Editor → New query**, run [`server/farmer_db.sql`](server/farmer_db.sql), then run [`server/admin.sql`](server/admin.sql) (admin/officer/audit schema).
 3. Copy your **Project URL** and **service-role key** (Project Settings → API) into `server/.env`.
 
 ---
@@ -141,8 +141,12 @@ Base URL: `http://localhost:3000`
 | *      | `/api/farmer/transactions`  | farmer | Income / expense records |
 | *      | `/api/farmer/loans`         | farmer | Loan applications        |
 | *      | `/api/farmer/notifications` | farmer | Notifications            |
+| POST   | `/api/admin/auth/login`     | none   | Admin login (self-seeds) |
+| *      | `/api/admin/dashboard`      | admin  | Stats, trends, overview  |
+| *      | `/api/admin/field-officers` | admin  | Field-officer management |
+| GET    | `/api/admin/audit`          | admin  | Audit trail              |
 
-Admin, Field Officer, and Bank Officer endpoints are in progress — see
+Field Officer and Bank Officer endpoints are in progress — see
 [AI_README.md](AI_README.md) for live status.
 
 ---
@@ -167,7 +171,9 @@ Postgres (Supabase). Core tables in [`server/farmer_db.sql`](server/farmer_db.sq
 - `notifications` — per-user notifications.
 - Storage bucket `farmer-documents` for uploaded photos / documents.
 
-Schema extensions for verification, field visits, audit logs, and admin are planned.
+[`server/admin.sql`](server/admin.sql) adds the admin/officer surface: `audit_logs`,
+`field_officer_assignments`, `field_visits`, `farmer_verifications`, and admin/field-officer
+columns on `profiles`.
 
 ---
 
