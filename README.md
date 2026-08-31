@@ -146,8 +146,29 @@ Base URL: `http://localhost:3000`
 | *      | `/api/admin/field-officers` | admin  | Field-officer management |
 | GET    | `/api/admin/audit`          | admin  | Audit trail              |
 
-Field Officer and Bank Officer endpoints are in progress — see
-[AI_README.md](AI_README.md) for live status.
+Field Officer endpoints are available for the current profile, farmer, verification, and visit
+workflow. Bank Officer endpoints are still in progress — see [AI_README.md](AI_README.md) for
+the detailed live status.
+
+### Field Officer API
+
+All endpoints below require `Authorization: Bearer <supabase-access-token>` and a server-side
+`field_officer` profile. Farmer reads, verification writes, and visits are scoped to the
+officer's active assignments/owned visits.
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| GET/PUT | `/api/field-officer/profile/me` | Read/update own officer profile |
+| GET | `/api/field-officer/farmers` | List assigned farmers; supports `search`, `status`, `page`, `pageSize` |
+| GET/PUT | `/api/field-officer/farmers/:id` | Read/update an assigned farmer |
+| POST | `/api/field-officer/farmers` | Register a new farmer account and assign it to the officer |
+| GET | `/api/field-officer/verification` | List this officer's verification history |
+| POST | `/api/field-officer/verification/farmers/:id` | Submit verification for an assigned farmer |
+| PUT | `/api/field-officer/verification/:id` | Update an officer-owned verification |
+| GET/POST | `/api/field-officer/visits` | List or schedule visits for assigned farmers |
+| GET/PUT | `/api/field-officer/visits/:id` | Read/update an owned visit |
+| POST | `/api/field-officer/visits/:id/complete` | Mark an owned visit completed |
+| POST | `/api/field-officer/visits/:id/cancel` | Cancel an owned visit |
 
 ---
 
@@ -179,8 +200,14 @@ columns on `profiles`.
 
 ## Testing
 
-- Current: manual smoke tests (server boot, health `200`, `401` on protected routes, `404` on unknown routes).
-- Planned: automated integration tests (auth, role authorization, per-role endpoints).
+- Current: TypeScript build plus live Field Officer E2E coverage. From `server/`, run
+  `npm run build` and `node test/field-officer.e2e.cjs` against a running server. The E2E
+  harness needs fresh local bearer tokens in `server/scripts/token.tmp` and
+  `server/test/admin_token.tmp`; these files are test artifacts and must not be committed.
+- The live E2E suite covers successful requests, validation failures, duplicate registration,
+  assignment/ownership checks, unauthenticated access, and wrong-role access. Test-created
+  records should be removed after a run against a shared Supabase project.
+- Planned: automated unit/integration coverage for the Farmer, Bank Officer, and Admin modules.
 
 ---
 

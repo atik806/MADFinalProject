@@ -69,19 +69,17 @@ create index if not exists foa_field_officer_idx on public.field_officer_assignm
 create index if not exists foa_farmer_idx on public.field_officer_assignments (farmer_id);
 
 -- ---------- FIELD VISITS ----------
--- Visits a field officer schedules / completes for a farmer. The Field
--- Officer milestone builds the write-paths; created here so admin dashboard
--- counts resolve.
+-- Visits a field officer schedules / completes for a farmer.
 create table if not exists public.field_visits (
   id uuid primary key default gen_random_uuid(),
   field_officer_id uuid references public.profiles (id) on delete cascade,
   farmer_id uuid references public.profiles (id) on delete cascade,
   visit_date timestamptz,
-  scheduled_date timestamptz,
-  completed_date timestamptz,
   status text default 'scheduled',
   purpose text,
   notes text,
+  location text,
+  visit_type text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -95,16 +93,44 @@ create index if not exists field_visits_visit_date_idx on public.field_visits (v
 create table if not exists public.farmer_verifications (
   id uuid primary key default gen_random_uuid(),
   farmer_id uuid references public.profiles (id) on delete cascade,
-  verified_by uuid references public.profiles (id) on delete set null,
+  field_officer_id uuid references public.profiles (id),
   status text default 'pending',
   notes text,
-  verification_date timestamptz,
+  verification_type text not null,
+  verified_at timestamptz,
+  photo_urls text[] default '{}',
+  documents_checked text[] default '{}',
+  farmer_present boolean default false,
+  land_verified boolean default false,
+  documents_verified boolean default false,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 
 create index if not exists farmer_verifications_farmer_idx on public.farmer_verifications (farmer_id);
 create index if not exists farmer_verifications_status_idx on public.farmer_verifications (status);
+
+-- ---------- SCHEMA REPAIR (idempotent, safe to re-run) ----------
+-- Layers the current field-visit / verification columns onto older tables
+-- without dropping data. Re-run any time a "column does not exist" error
+-- appears after upgrading. verification_type can only be backfilled for
+-- existing rows when a sensible default is known; new rows always provide it.
+
+alter table if exists public.field_visits
+  add column if not exists location text,
+  add column if not exists visit_type text;
+
+alter table if exists public.farmer_verifications
+  add column if not exists field_officer_id uuid references public.profiles (id),
+  add column if not exists verification_type text,
+  add column if not exists verified_at timestamptz,
+  add column if not exists photo_urls text[] default '{}',
+  add column if not exists documents_checked text[] default '{}',
+  add column if not exists farmer_present boolean default false,
+  add column if not exists land_verified boolean default false,
+  add column if not exists documents_verified boolean default false;
+
+create index if not exists field_visits_visit_date_idx on public.field_visits (visit_date);
 
 -- ---------- LOAN APPLICATIONS: review columns ----------
 -- Used by the admin dashboard and (later) the bank-officer review flow.

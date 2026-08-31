@@ -37,7 +37,7 @@ and `admin.sql` reproduce that schema for a fresh project.
 | ------------- | --------------------- | --------------------------------------------------------------------- |
 | Admin         | Implemented (core)    | auth (login/me/change-password/seed), dashboard (stats/trends/overview), audit trail, and field-officer **read** management are **mounted at `/api/admin` and verified live**. Field-officer **create/update/status/reset** are wired + schema-backed but not yet live-mutation-tested. Generic user management, reports, and settings still planned. |
 | Farmer        | Partially implemented | auth, profile, dashboard, loans, transactions, notifications modules exist; server boots and login round-trips to Supabase. Full per-endpoint DB behavior not re-verified this cycle. |
-| Field Officer | Planned               | Role middleware exists; admin can (once tested) create officer accounts. No officer-facing routes yet. |
+| Field Officer | Implemented (core)    | Profile, assigned-farmer management/registration, verification history/update, and field visits are mounted at `/api/field-officer` and verified live. Loan-application officer workflow and frontend API wiring remain open. |
 | Bank Officer  | Planned               | Nothing yet (no middleware, routes, or services).                     |
 
 ---
@@ -47,7 +47,8 @@ and `admin.sql` reproduce that schema for a fresh project.
 **Foundation (server/src):**
 
 - `app.ts` — `cors` (origin `*`), `express.json()`, health `GET /` →
-  `{ message: 'Sofol api is running' }`, mounts `/api/farmer` and `/api/admin`, 404 handler,
+  `{ message: 'Sofol api is running' }`, mounts `/api/farmer`, `/api/admin`, and
+  `/api/field-officer`, 404 handler,
   generic 500 error handler.
 - `server.ts` — `app.listen(process.env.PORT || 3000)`.
 - `config/supabase.ts` — `supabase` + `supabaseAdmin` service-role clients; **throws at startup**
@@ -71,6 +72,20 @@ and `admin.sql` reproduce that schema for a fresh project.
   `PUT /:id`, `PATCH /:id/status`, `POST /:id/reset-password` (guarded). Creates a
   `field_officer` auth user + profile; edits via a field white-list.
 - `audit/*` — `recordAuditLog` (best-effort insert) + `GET /` (paginated audit trail, guarded).
+
+**Field Officer module** (`modules/fieldOfficer/*`, mounted at `/api/field-officer`):
+- `profile/*` — guarded `GET /profile/me` and `PUT /profile/me`; updates use a field white-list.
+- `farmers/*` — guarded list/get/update for active assignments and `POST /farmers` to create a
+  farmer Auth user, farmer profile, and active officer assignment. Privileged roles and profile
+  fields are never accepted from the request.
+- `verification/*` — guarded `GET /verification`, `POST /verification/farmers/:id`, and
+  `PUT /verification/:id`; status changes update the farmer's `is_verified` flag only after
+  assignment authorization succeeds.
+- `visits/*` — guarded list/create/get/update plus complete/cancel transitions. Visit ownership
+  is checked for every read/write; `scheduledDate` is accepted as a compatibility alias for
+  `visitDate`.
+- `validation.ts` — shared UUID, date, pagination, bounded text, array, and boolean validation
+  used by the Field Officer handlers/services.
 
 **Schema:** `farmer_db.sql` (profiles, transactions, loan_applications, loan_timeline,
 notifications, storage bucket) + `admin.sql` (admin/field-officer columns on profiles;
@@ -121,6 +136,51 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 - **Next step:** Milestone 2 — Field Officer module (officer-facing routes for farmer
   registration/verification/visits), plus admin ability to create officer accounts end-to-end.
 
+### Milestone 2 — Field Officer core workflow
+- **Feature:** Officer profile, assigned farmer management/registration, farmer verification, and
+  field visit scheduling/status management.
+- **Status:** Implemented and verified live. Loan-application management for the officer and
+  frontend API integration are intentionally still pending.
+- **Files created:** `server/src/modules/fieldOfficer/fieldOfficer.routes.ts`,
+  `server/src/modules/fieldOfficer/validation.ts`, and the profile, farmers, verification, and
+  visits controller/route/service files; `server/test/field-officer.e2e.cjs`.
+- **Files modified:** `server/src/app.ts` (mount), `server/admin.sql` (idempotent visit and
+  verification columns/compatibility repair), `README.md`, and `AI_README.md`.
+- **Architecture:** `Route → authenticateUser → fieldOfficerOnly → Controller → Service →
+  Supabase`; shared `assertAssigned` scopes farmer operations and visit/verification writes.
+- **API endpoints:**
+  `GET/PUT /api/field-officer/profile/me`; `GET/POST /api/field-officer/farmers`,
+  `GET/PUT /api/field-officer/farmers/:id`; `GET /api/field-officer/verification`,
+  `POST /api/field-officer/verification/farmers/:id`,
+  `PUT /api/field-officer/verification/:id`; `GET/POST /api/field-officer/visits`,
+  `GET/PUT /api/field-officer/visits/:id`, and visit complete/cancel actions.
+- **Database changes:** no destructive migration. `admin.sql` adds/repairs `location`,
+  `visit_type`, `field_officer_id`, `verification_type`, verification timestamps/arrays/flags,
+  and the visit-date index. New farmer registration inserts `profiles` and
+  `field_officer_assignments` and rolls back Auth/profile creation when assignment setup fails.
+- **Authentication/authorization:** every officer route requires a valid Supabase Bearer token
+  and server-resolved `field_officer` role. Farmer access requires an active assignment; visit
+  access requires ownership by the current officer; verification updates require both record
+  ownership and current assignment.
+- **Validation:** shared native validators cover UUIDs, positive pagination, valid dates, enum
+  statuses, bounded text, non-negative numeric profile fields, arrays, booleans, passwords, and
+  registration identifiers. Privileged request fields are ignored by white-lists.
+- **Error handling:** controllers return 400 for invalid input, 401 for missing auth, 403 for
+  wrong role, and 404 for nonexistent/unassigned/unowned resources. Audit writes remain
+  best-effort and do not block the business action.
+- **Audit logging:** farmer registration/update, verification changes, and visit schedule/update/
+  complete/cancel actions record an audit row through the existing audit service.
+- **Tests:** `npm run build` passed from `server/`; live `node test/field-officer.e2e.cjs` passed
+  **31/31** after fresh local tokens were generated. Test-created farmer, visits, verifications,
+  assignment, and Auth user were cleaned up afterward. Existing stale-token run is not counted.
+- **Frontend integration:** none; existing Expo screens remain local/mock as documented. No Expo
+  dependency versions were changed.
+- **Known issues:** Field Officer loan-application endpoints are not implemented; frontend API
+  services are not wired; Farmer response shapes are still inconsistent; CORS/security hardening
+  remains open.
+- **Next step:** implement the Field Officer loan-application portion only after confirming the
+  existing loan schema/status design, then continue with Farmer backend endpoint verification.
+
 ---
 
 ## Audit findings (updated)
@@ -133,6 +193,8 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 6. **Security hardening absent.** No helmet, no rate limiting. *(open)*
 7. **`tsconfig` `types: []`.** `tsc --noEmit` can error on Node globals; runtime uses `--transpile-only`. *(open)*
 8. **Unused deps.** `jsonwebtoken`, `bcryptjs` unused (auth is Supabase-based). *(open)*
+9. **Field Officer loan workflow.** Officer-facing loan application review/forwarding is not yet
+   implemented; the current officer loan screen remains local/mock. *(open)*
 
 ---
 
@@ -142,8 +204,8 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 - Add central request validation (Zod available).
 - Add security middleware: `helmet`, rate limiting, scoped CORS.
 - Admin: generic user management (all roles), bank-officer account creation, reports, settings.
-- Live-test the field-officer create/update/status/reset paths (with cleanup).
-- Automated tests (auth, per-role authorization, error codes).
+- Live-test the remaining Admin field-officer create/update/status/reset paths (with cleanup).
+- Standardize/extend automated tests across Farmer, Bank Officer, and Admin APIs.
 - Remove the superseded JS `backend/` skeleton.
 
 ---

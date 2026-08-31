@@ -2,6 +2,7 @@ import cors = require('cors');
 import express = require('express');
 import farmerRoutes from './modules/farmer/farmer.routes';
 import adminRoutes from './modules/admin/admin.routes';
+import fieldOfficerRoutes from './modules/fieldOfficer/fieldOfficer.routes';
 
 const app = express();
 
@@ -23,6 +24,9 @@ app.use('/api/farmer', farmerRoutes);
 
 // admin module api
 app.use('/api/admin', adminRoutes);
+
+// field-officer module api
+app.use('/api/field-officer', fieldOfficerRoutes);
 
 // 404
 app.use((req, res) => {
