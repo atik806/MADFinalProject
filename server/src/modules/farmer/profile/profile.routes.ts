@@ -8,6 +8,8 @@ const router = Router();
 router.use(authenticateUser);
 router.use(farmerOnly);
 
+// Both /profile and /me serve the farmer's own profile; /me matches the
+// milestone API contract (GET/PUT /api/farmer/me).
 router.get('/', profileController.getFarmerProfile);
 router.put('/', profileController.updateProfile);
 

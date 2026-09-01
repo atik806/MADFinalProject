@@ -38,9 +38,9 @@ export const PROFILE_FIELD_MAP: Record<string, string> = {
   landPhoto: 'land_photo_url',
   // NOTE: farmer_id, is_verified, credit_score and member_since are deliberately
   // NOT in this map. They are privileged, system/official-assigned fields and must
-  // never be settable through the farmer-facing PUT /api/farmer/profile endpoint
-  // (which would otherwise allow a farmer to self-verify or set their own credit
-  // score via mass assignment). They are still returned by GET (select '*').
+  // never be settable through the farmer-facing PUT endpoint (which would
+  // otherwise allow a farmer to self-verify or set their own credit score via
+  // mass assignment). They are still returned by GET (select '*').
 };
 
 export const toProfileRow = (input: Record<string, any>): Record<string, any> => {
@@ -67,9 +67,10 @@ export const getProfile = async (userId: string) => {
 };
 
 export const updateProfile = async (userId: string, profileData: Record<string, any>) => {
+  const row = toProfileRow(profileData);
   const payload = {
     id: userId,
-    ...toProfileRow(profileData),
+    ...row,
     updated_at: new Date().toISOString(),
   };
   const { data, error } = await supabase
