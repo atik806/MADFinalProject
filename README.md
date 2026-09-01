@@ -230,9 +230,11 @@ application to the bank (`forwarded_at`/`forwarded_by`). Bank-officer decisions
 
 ### Bank Officer API
 
-> ⚠️ **Status: implemented but not live-verified.** These endpoints require the
-> bank-officer columns from [`server/admin.sql`](server/admin.sql), which are **not yet
-> applied** to the development Supabase project. Apply them (see
+> ⚠️ **Status: implemented but not live-verified (blocked on schema).** These endpoints
+> require the bank-officer columns from [`server/admin.sql`](server/admin.sql), which are
+> **not yet applied** to the development Supabase project (all 8 columns re-probed and
+> still returning `42703`). The E2E suite is written and desk-checked against the
+> implementation, but has not been executed. Apply the columns (see
 > [Supabase setup](#supabase-setup)) before using this section.
 
 All endpoints require `Authorization: Bearer <supabase-access-token>` and a server-side
@@ -326,7 +328,8 @@ in the lifecycle for disbursement and repayment, which are **not yet implemented
 - `node test/bank-officer.e2e.cjs` (bank officer profile + loan review/decision) is
   also self-provisioning but requires the bank-officer columns to be applied first
   (see [Supabase setup](#supabase-setup)). **This suite has not yet been executed** —
-  the schema is still outstanding.
+  the schema is still outstanding; it has been desk-checked against the implementation
+  and is ready to run the moment the columns exist.
 - After any run, `node test/cleanup.cjs` and `node test/cleanup-sweep.cjs` remove the
   test-created records (including any officer the farmer suite provisioned).
 - The live E2E suites cover successful requests, validation failures, duplicate

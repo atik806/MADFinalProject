@@ -45,7 +45,7 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
 | Admin         | Implemented (core)    | auth (login/me/change-password/seed), dashboard (stats/trends/overview), audit trail, and field-officer **read** management are **mounted at `/api/admin` and verified live**. Field-officer **create/update/status/reset** are wired + schema-backed but not yet live-mutation-tested. Bank-officer provisioning (`create`/`list`/`status`) is implemented but **not yet live-verified**. Generic user management, reports, and settings still planned. |
 | Farmer        | Implemented (backend, hardened + verified live) | auth (register/login/reset/upload/me), profile (`GET/PUT /me` + `/profile` alias, privileged columns filtered), read-only credit profile, dashboard, transactions (full CRUD, whitelisted updates, sign-convention amounts), loans (list/get/apply, pinned `pending`, shared lifecycle), notifications — mounted at `/api/farmer` and verified live with a 64-assertion E2E suite. Frontend API wiring remains open (contexts still local/mock). |
 | Field Officer | Implemented (core + loans) | Profile, assigned-farmer management/registration, verification history/update, field visits, and the loan-application workflow (draft → submit → verify → forward) are mounted at `/api/field-officer` and verified live. Frontend API wiring remains open. |
-| Bank Officer  | **Implemented (backend) — NOT live-verified** | Profile (`GET/PUT /profile/me`), forwarded-application review queue, application detail, `pending → under_review`, and the `approved`/`rejected` decision are written, type-checked (`npm run build` passes) and mounted at `/api/bank-officer`. **Nothing has been executed against a live database yet**: the `admin.sql` bank-officer columns have not been applied to the connected Supabase project, and `server/test/bank-officer.e2e.cjs` has never been run. Treat every behaviour below as *intended*, not *proven*. Disbursement and repayment are out of scope. |
+| Bank Officer  | **Implemented (backend) — NOT live-verified (schema blocked)** | Profile (`GET/PUT /profile/me`), forwarded-application review queue, application detail, `pending → under_review`, and the `approved`/`rejected` decision are written, type-checked (`npm run build` passes) and mounted at `/api/bank-officer`. The 89-assertion E2E suite exists and has been **desk-checked line-by-line against the implementation** (routes, guards, state transitions, validation messages, cleanup ordering all match), but **has never been executed**: the `admin.sql` bank-officer columns are still absent from the connected Supabase project (Postgres `42703` on all 8 — re-probed this session, twice, 45s apart to rule out schema-cache lag). The owner is applying the block via the SQL editor; live verification resumes the moment the columns exist. Treat every behaviour below as *intended and reviewed*, not *proven*. Disbursement and repayment are out of scope. |
 
 ---
 
@@ -116,7 +116,7 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
   used by the Field Officer handlers/services.
 
 **Bank Officer module** (`modules/bankOfficer/*`, mounted at `/api/bank-officer`)
-— *written and type-checked, not yet live-verified*:
+— *written and type-checked, E2E desk-checked, not yet executed live (schema blocked)*:
 - `profile/*` — guarded `GET /profile/me` and `PUT /profile/me`. The update white-list covers
   personal fields only; the bank posting (`bank_name`, `branch_name`, `branch_code`) is set by the
   admin at provisioning time and is **not** self-editable, so an officer cannot reassign
@@ -374,17 +374,33 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 - **Next milestone:** Bank Officer Backend.
 
 ### Milestone 5 — Bank Officer backend (loan review & decision)
-- **Status:** ⚠️ **Implemented but NOT live-verified.** All code is written and
-  `npm run build` (tsc) passes. **Zero endpoints have been executed.** Two things
-  block verification and both are still outstanding:
-  1. The `admin.sql` bank-officer block has **not** been applied to the connected
-     Supabase project. Confirmed live: `loan_applications.bank_officer_id`,
-     `reviewed_at`, `decision_at`, `decision_notes`, `approved_amount` and
-     `profiles.bank_name`, `branch_name`, `branch_code` all return Postgres
-     `42703 column does not exist`. `supabase-js` cannot run DDL, so this must be
-     pasted into the Supabase SQL editor by hand.
-  2. `server/test/bank-officer.e2e.cjs` has therefore never been run — the
-     assertion count below is the number of checks *written*, not passed.
+- **Status:** ⚠️ **Implemented but NOT live-verified — blocked solely on schema
+  application.** All code is written and `npm run build` (tsc) passes. **Zero Bank
+  Officer endpoints have been executed.** As of the finalization session (this
+  milestone's verification attempt):
+  1. The `admin.sql` bank-officer block has **not** landed on the connected Supabase
+     project. Re-probed twice, 45s apart (ruling out PostgREST schema-cache lag; the
+     error is Postgres `42703` from the engine itself, identical to a never-existing
+     column — verified against a fake column control probe). All 8 columns
+     (`loan_applications.bank_officer_id`, `reviewed_at`, `decision_at`,
+     `decision_notes`, `approved_amount`; `profiles.bank_name`, `branch_name`,
+     `branch_code`) are absent. Two attempts to apply via the SQL editor did not
+     take effect (likely wrong project/tab selected); the owner will share env
+     details later so the block can be applied programmatically. **Schema application
+     is parked as a user action.**
+  2. `server/test/bank-officer.e2e.cjs` (89 assertions) has therefore never run —
+     but it has been **desk-checked assertion-by-assertion against the implementation
+     this session**: admin login token shape, provisioning route guards, profile
+     mass-assignment white-list, queue forwarded-only filter + embedded summaries,
+     decision enum/status/amount/notes business rules and their exact 400/404/403
+     mappings, suspension flow through the status re-check in `bankOfficerOnly`, and
+     the cleanup manifest's FK-safe deletion order. All 89 match the code. The count
+     below remains checks *written and reviewed*, not passed.
+  3. What **was** verified live this session: `npm run build` passes; the Farmer
+     regression suite **72/72 passed** against the running server (including the
+     dashboard contract checks), with the DB confirmed back to its exact baseline
+     afterwards. Field Officer suites remain unrunnable (stale-token dependency,
+     documented backlog) and no standalone Admin suite exists.
   Per the golden rule at the top of this file, nothing here may be described as
   working until it has actually been run.
 - **Scope decision:** review/decision only. Disbursement (`approved` → `active`) and
@@ -472,9 +488,10 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
   no `PUT`/reset-password for bank officers (only create/list/status);
   `officerAccounts.ts` is used by the bank path only while `fieldOfficers.service.ts` keeps
   its own copies of the same helpers; frontend not wired.
-- **Next step:** apply the `admin.sql` bank-officer block to the live project, then run
-  `node test/bank-officer.e2e.cjs` plus the three existing suites as regressions, clean up,
-  and only then update this entry to "verified live".
+- **Next step:** the owner shares Supabase env details; apply the `admin.sql`
+  bank-officer block programmatically (Management API or one-off Postgres connection),
+  then run `node test/bank-officer.e2e.cjs` plus the three existing suites as
+  regressions, clean up, and only then update this entry to "verified live".
 
 ---
 
@@ -501,10 +518,15 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
    `POST /api/admin/bank-officers` + `PATCH /:id/status` added. *(not yet live-verified)*
 12. **Milestone 5 schema is not applied to the live project.** The `admin.sql`
    bank-officer block exists in the repo but the connected Supabase database still
-   returns `42703` for every new column, so `/api/bank-officer/loans` degrades to an
-   empty queue and every write path would fail. **This is the single blocking item.**
-   `supabase-js` cannot execute DDL — the block must be run in the Supabase SQL editor.
-   *(open)*
+   returns `42703` for every new column (all 8, re-probed in the finalization session
+   twice, 45s apart, with a fake-column control probe confirming the error comes from
+   Postgres itself). Two SQL-editor attempts by the owner did not take effect (most
+   likely the editor was open on a different project/tab). `/api/bank-officer/loans`
+   degrades to an empty queue and every write path would fail. **This is the single
+   blocking item.** `supabase-js` cannot execute DDL; no `exec_sql`-style RPC exists;
+   no `SUPABASE_ACCESS_TOKEN`/`DATABASE_URL` is configured. **Owner decision: schema
+   work is parked until env details are shared** (then the block can be applied via
+   the Management API or a one-off Postgres connection). *(open — user action pending)*
 13. **Schema is applied by hand, with no migration history.** `farmer_db.sql` and
    `admin.sql` are idempotent scripts pasted into the SQL editor; there is no
    `supabase/migrations/` directory and nothing records which project is at which
@@ -526,7 +548,8 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 
 - **Apply the `admin.sql` bank-officer block to the live project and run
   `node test/bank-officer.e2e.cjs` + the three existing suites** (blocking; see audit
-  finding 12).
+  finding 12 — parked on the owner sharing Supabase env details; the E2E has been
+  desk-checked against the implementation in the meantime).
 - Adopt versioned migrations instead of hand-pasted SQL (audit finding 13).
 - Standardize `{ success, message, data }` across farmer handlers.
 - Add central request validation (Zod available).
