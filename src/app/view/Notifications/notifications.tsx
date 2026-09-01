@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -15,9 +15,13 @@ import { useColors } from "../../../features/officials/shared/constants/theme";
 
 export default function NotificationsScreen() {
   const colors = useColors();
-  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications } =
+  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications, refreshNotifications } =
     useNotifications();
   const { t } = useTranslation();
+
+  useEffect(() => {
+    refreshNotifications();
+  }, [refreshNotifications]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>

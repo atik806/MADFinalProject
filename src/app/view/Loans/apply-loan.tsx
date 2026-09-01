@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   ScrollView,
   TextInput,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -85,16 +86,22 @@ export default function ApplyLoanScreen() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const monthsLabel = durationMonths === 1 ? '1 month' : `${durationMonths} months`;
-    addApplication({
-      title: purpose,
-      amount,
-      duration: monthsLabel,
-      purpose,
-      installmentType,
-    });
-    router.back();
+    try {
+      await addApplication({
+        title: purpose,
+        amount,
+        duration: monthsLabel,
+        purpose,
+        installmentType,
+      });
+      router.back();
+    } catch (err: any) {
+      // Backend validation (amount > 0, required text, installmentType enum)
+      // is surfaced instead of silently dropping the application.
+      Alert.alert(t('applyLoan'), err?.message ?? 'Could not submit the application.');
+    }
   };
 
   return (

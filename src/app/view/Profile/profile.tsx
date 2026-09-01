@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -26,9 +26,13 @@ type TabDef = {
 export default function ProfileScreen() {
   const colors = useColors();
   const { logout } = useAuth();
-  const { profile } = useProfile();
+  const { profile, refreshProfile } = useProfile();
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('profile');
+
+  useEffect(() => {
+    refreshProfile();
+  }, [refreshProfile]);
 
   const tabs: TabDef[] = [
     { key: 'home', activeIcon: 'home', inactiveIcon: 'home-outline', labelKey: 'home' },

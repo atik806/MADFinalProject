@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { api, ApiError } from '../lib/api';
 
 export type FarmerProfile = {
   nameBn: string;
@@ -41,68 +42,179 @@ export type FarmerProfile = {
   experience: number;
 };
 
+// Neutral placeholder shown before the first successful fetch — recognizably
+// empty rather than a realistic-looking fake person.
 const defaultProfile: FarmerProfile = {
-  nameBn: 'মোহাম্মদ রহিম',
-  nameEn: 'Mohammad Rahim',
-  nid: '1234567890',
-  phone: '01711-234567',
-  dob: '15 March 1982',
-  gender: 'Male',
-  totalLand: 35,
-  ownLand: 25,
-  leasedLand: 10,
-  selectedCrops: ['Rice (Boro)', 'Vegetables'],
-  location: 'Char Fasson, Bhola',
-  farmingIncome: 100000,
-  otherSources: ['কৃষি শ্রমিক'],
-  otherIncome: 25000,
-  familyMembers: 4,
-  occupation: 'কৃষি',
-  hasLoan: true,
-  loanAmount: 60000,
-  loanPurpose: 'সেচ ব্যবস্থা',
-  loanSource: 'ব্যাংক',
+  nameBn: '',
+  nameEn: '',
+  nid: '',
+  phone: '',
+  dob: '',
+  gender: '',
+  totalLand: 0,
+  ownLand: 0,
+  leasedLand: 0,
+  selectedCrops: [],
+  location: '',
+  farmingIncome: 0,
+  otherSources: [],
+  otherIncome: 0,
+  familyMembers: 0,
+  occupation: '',
+  hasLoan: false,
+  loanAmount: 0,
+  loanPurpose: '',
+  loanSource: '',
   profilePhoto: null,
   nidPhoto: null,
   landPhoto: null,
-  farmerId: 'FAR-2024-001',
-  isVerified: true,
-  creditScore: 720,
-  memberSince: 'January 2024',
+  farmerId: '—',
+  isVerified: false,
+  creditScore: 0,
+  memberSince: '',
 
-  village: 'Char Fasson',
-  union: 'Osmanganj',
-  upazila: 'Char Fasson',
-  district: 'Bhola',
-  farmSize: 3.5,
-  ownership: 'Own Land',
-  primaryCrop: 'Rice (Boro)',
-  secondaryCrop: 'Vegetables',
-  cropDiversity: 'High',
-  experience: 5,
+  village: '',
+  union: '',
+  upazila: '',
+  district: '',
+  farmSize: 0,
+  ownership: '',
+  primaryCrop: '',
+  secondaryCrop: '',
+  cropDiversity: '',
+  experience: 0,
+};
+
+// The inverse of the backend's PROFILE_FIELD_MAP: profiles row (snake_case)
+// → the FarmerProfile shape the screens already render (camelCase).
+const ROW_MAP: Record<string, keyof FarmerProfile> = {
+  name_bn: 'nameBn',
+  name_en: 'nameEn',
+  nid: 'nid',
+  phone: 'phone',
+  dob: 'dob',
+  gender: 'gender',
+  total_land: 'totalLand',
+  own_land: 'ownLand',
+  leased_land: 'leasedLand',
+  selected_crops: 'selectedCrops',
+  location: 'location',
+  village: 'village',
+  union_: 'union',
+  upazila: 'upazila',
+  district: 'district',
+  farm_size: 'farmSize',
+  ownership: 'ownership',
+  primary_crop: 'primaryCrop',
+  secondary_crop: 'secondaryCrop',
+  crop_diversity: 'cropDiversity',
+  experience: 'experience',
+  farming_income: 'farmingIncome',
+  other_sources: 'otherSources',
+  other_income: 'otherIncome',
+  family_members: 'familyMembers',
+  occupation: 'occupation',
+  has_loan: 'hasLoan',
+  loan_amount: 'loanAmount',
+  loan_purpose: 'loanPurpose',
+  loan_source: 'loanSource',
+  profile_photo_url: 'profilePhoto',
+  nid_photo_url: 'nidPhoto',
+  land_photo_url: 'landPhoto',
+  farmer_id: 'farmerId',
+  is_verified: 'isVerified',
+  credit_score: 'creditScore',
+  member_since: 'memberSince',
+};
+
+const profileFromRow = (row: any): FarmerProfile => {
+  const out: any = { ...defaultProfile };
+  for (const [col, key] of Object.entries(ROW_MAP)) {
+    if (row?.[col] !== undefined && row?.[col] !== null) {
+      out[key] = row[col];
+    }
+  }
+  return out as FarmerProfile;
 };
 
 type ProfileContextType = {
   profile: FarmerProfile;
-  updateProfile: (data: Partial<FarmerProfile>) => void;
+  loading: boolean;
+  error: string | null;
+  updateProfile: (data: Partial<FarmerProfile>) => Promise<void>;
+  refreshProfile: () => Promise<void>;
   resetProfile: () => void;
 };
 
 const ProfileContext = createContext<ProfileContextType | null>(null);
 
+const errorMessage = (err: unknown): string =>
+  err instanceof ApiError ? err.message : 'Something went wrong. Please try again.';
+
+// Fields the edit screen may send — the exact set the backend's
+// PROFILE_FIELD_MAP accepts. Privileged fields (is_verified, credit_score,
+// farmer_id, member_since, role, status) are NEVER included here; the backend
+// filters them too, but the client not sending them is defense in depth.
+const EDITABLE_KEYS: (keyof FarmerProfile)[] = [
+  'nameBn', 'nameEn', 'nid', 'phone', 'dob', 'gender',
+  'totalLand', 'ownLand', 'leasedLand', 'selectedCrops', 'location',
+  'village', 'union', 'upazila', 'district', 'farmSize', 'ownership',
+  'primaryCrop', 'secondaryCrop', 'cropDiversity', 'experience',
+  'farmingIncome', 'otherSources', 'otherIncome', 'familyMembers',
+  'occupation', 'hasLoan', 'loanAmount', 'loanPurpose', 'loanSource',
+];
+
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<FarmerProfile>(defaultProfile);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const updateProfile = useCallback((data: Partial<FarmerProfile>) => {
-    setProfile((prev) => ({ ...prev, ...data }));
+  const refreshProfile = useCallback(async () => {
+    setError(null);
+    try {
+      const res = await api.get<any>('/api/farmer/me');
+      // The profile endpoints return { success, message, data }; the legacy
+      // auth /me returns { data, profile } — both are accepted.
+      const row = res?.data?.id ? res.data : res?.profile ?? res?.data;
+      if (row?.id) {
+        setProfile(profileFromRow(row));
+      }
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  const updateProfile = useCallback(async (data: Partial<FarmerProfile>) => {
+    // Local-first so the edit screen feels instant; rolled back on failure.
+    const snapshot = profile;
+    setProfile((prev) => ({ ...prev, ...data }));
+    try {
+      const body: Record<string, unknown> = {};
+      for (const key of EDITABLE_KEYS) {
+        if (key in data) {
+          body[key] = (data as Record<string, unknown>)[key];
+        }
+      }
+      const res = await api.put<any>('/api/farmer/me', body);
+      if (res?.data?.id) {
+        setProfile(profileFromRow(res.data));
+      }
+    } catch (err) {
+      setProfile(snapshot);
+      throw err instanceof ApiError ? err : new Error(errorMessage(err));
+    }
+  }, [profile]);
 
   const resetProfile = useCallback(() => {
     setProfile(defaultProfile);
+    setLoading(true);
+    setError(null);
   }, []);
 
   return (
-    <ProfileContext.Provider value={{ profile, updateProfile, resetProfile }}>
+    <ProfileContext.Provider value={{ profile, loading, error, updateProfile, refreshProfile, resetProfile }}>
       {children}
     </ProfileContext.Provider>
   );

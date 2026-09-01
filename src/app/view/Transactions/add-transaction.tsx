@@ -9,6 +9,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,7 +28,7 @@ export default function AddTransactionScreen() {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<'Income' | 'Expense'>('Expense');
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim() || !amount.trim()) return;
     const numericAmount = parseFloat(amount.replace(/,/g, ''));
     if (isNaN(numericAmount) || numericAmount <= 0) return;
@@ -39,14 +40,20 @@ export default function AddTransactionScreen() {
       year: 'numeric',
     }).replace(/ /g, ' ');
 
-    addTransaction({
-      title: title.trim(),
-      description: description.trim(),
-      date: dateStr,
-      amount: category === 'Expense' ? -numericAmount : numericAmount,
-      category,
-    });
-    router.back();
+    try {
+      await addTransaction({
+        title: title.trim(),
+        description: description.trim(),
+        date: dateStr,
+        amount: category === 'Expense' ? -numericAmount : numericAmount,
+        category,
+      });
+      router.back();
+    } catch (err: any) {
+      // Backend validation (sign convention, required fields) surfaces here;
+      // staying on the form keeps the user's input intact.
+      Alert.alert(t('addTransactionTitle'), err?.message ?? 'Could not save the transaction.');
+    }
   };
 
   const canSave = title.trim().length > 0 && amount.trim().length > 0;

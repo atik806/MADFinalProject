@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,8 @@ import {
 import { router } from "expo-router";
 import { useLoans } from "../../../contexts/LoanContext";
 import { useNotifications } from "../../../contexts/NotificationContext";
+import { useProfile } from "../../../contexts/ProfileContext";
+import { useTransactions } from "../../../contexts/TransactionContext";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from '../../../features/officials/shared/constants/theme';
 
@@ -34,10 +36,28 @@ function getInitials(name: string): string {
 
 export default function DashboardScreen() {
   const colors = useColors();
-  const { activeLoans } = useLoans();
-  const { unreadCount } = useNotifications();
+  const { activeLoans, applications, refreshApplications } = useLoans();
+  const { notifications, unreadCount, refreshNotifications } = useNotifications();
+  const { profile, refreshProfile } = useProfile();
+  const { transactions, refreshTransactions } = useTransactions();
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>("home");
+
+  useEffect(() => {
+    refreshProfile();
+    refreshTransactions();
+    refreshApplications();
+    refreshNotifications();
+  }, [refreshProfile, refreshTransactions, refreshApplications, refreshNotifications]);
+
+  const recentTransactions = transactions.slice(0, 4);
+  const recentNotifications = notifications.slice(0, 3);
+  const totalIncome = transactions.filter((tx) => tx.amount > 0).reduce((sum, tx) => sum + tx.amount, 0);
+  const totalExpense = transactions.filter((tx) => tx.amount < 0).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+
+  const farmerName = lang === 'bn' && profile.nameBn ? profile.nameBn : (profile.nameEn || t('farmerName'));
+  const farmerInitials = profile.nameEn ? getInitials(profile.nameEn) : 'ফা';
+  const locationText = [profile.village, profile.district].filter(Boolean).join(', ') || '—';
 
   const tabs: TabDef[] = [
     { key: "home", activeIcon: "home", inactiveIcon: "home-outline", labelKey: "home" },
@@ -62,8 +82,6 @@ export default function DashboardScreen() {
       return;
     }
   };
-
-  const farmerInitials = getInitials(t('farmerName'));
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
@@ -99,10 +117,10 @@ export default function DashboardScreen() {
           <View style={styles.heroTop}>
             <View style={styles.heroInfo}>
               <Text style={styles.welcomeLabel}>{t('welcomeBack')}</Text>
-              <Text style={styles.farmerName}>{t('farmerName')}</Text>
+              <Text style={styles.farmerName}>{farmerName}</Text>
               <View style={styles.locationRow}>
                 <Feather name="map-pin" size={14} color="#BBF7D0" />
-                <Text style={styles.locationText}>Char Fasson, Bhola</Text>
+                <Text style={styles.locationText}>{locationText}</Text>
               </View>
             </View>
             <View style={[styles.avatar, { backgroundColor: colors.userVerifiedText }]}>
@@ -118,7 +136,7 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
             <View style={styles.scoreRow}>
-              <Text style={styles.scoreValue}>720</Text>
+              <Text style={styles.scoreValue}>{profile.creditScore}</Text>
               <Text style={styles.scoreRange}>{t('outOf')}</Text>
             </View>
             <View style={styles.scoreMeta}>
@@ -144,22 +162,22 @@ export default function DashboardScreen() {
             <View style={[styles.statIconWrap, { backgroundColor: colors.userVerified }]}>
               <Feather name="briefcase" size={18} color={colors.dashboard.greenUp} />
             </View>
-            <Text style={[styles.statValue, { color: colors.dashboard.textPrimary }]}>1</Text>
+            <Text style={[styles.statValue, { color: colors.dashboard.textPrimary }]}>{applications.length}</Text>
             <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{t('activeLoans')}</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
             <View style={[styles.statIconWrap, { backgroundColor: '#EFF6FF' }]}>
               <Feather name="trending-up" size={18} color={colors.blueLight} />
             </View>
-            <Text style={[styles.statValue, { color: colors.dashboard.greenUp }]}>৳60K</Text>
-            <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{t('income')} (Jun)</Text>
+            <Text style={[styles.statValue, { color: colors.dashboard.greenUp }]}>৳{totalIncome.toLocaleString('en-BD')}</Text>
+            <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{t('income')}</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
             <View style={[styles.statIconWrap, { backgroundColor: colors.userRejected }]}>
               <Feather name="trending-down" size={18} color={colors.dashboard.redDown} />
             </View>
-            <Text style={[styles.statValue, { color: colors.dashboard.redDown }]}>৳19K</Text>
-            <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{t('expense')} (Jun)</Text>
+            <Text style={[styles.statValue, { color: colors.dashboard.redDown }]}>৳{totalExpense.toLocaleString('en-BD')}</Text>
+            <Text style={[styles.statLabel, { color: colors.dashboard.textSecondary }]}>{t('expense')}</Text>
           </View>
         </View>
 
@@ -249,10 +267,20 @@ export default function DashboardScreen() {
             <Text style={[styles.viewAll, { color: colors.deepGreen }]}>{t('seeAll')}</Text>
           </TouchableOpacity>
         </View>
-        <TransactionRow title="Crop Sales" date="18 Jun 2024" amount="+৳45K" positive colors={colors} />
-        <TransactionRow title="Fertilizer" date="15 Jun 2024" amount="-৳9K" colors={colors} />
-        <TransactionRow title="Livestock" date="10 Jun 2024" amount="+৳12K" positive colors={colors} />
-        <TransactionRow title="Labor" date="8 Jun 2024" amount="-৳6K" colors={colors} />
+        {recentTransactions.length > 0 ? (
+          recentTransactions.map((tx) => (
+            <TransactionRow
+              key={tx.id}
+              title={tx.title}
+              date={tx.date}
+              amount={`${tx.amount >= 0 ? '+' : '-'}৳${Math.abs(tx.amount).toLocaleString('en-BD')}`}
+              positive={tx.amount >= 0}
+              colors={colors}
+            />
+          ))
+        ) : (
+          <TransactionRow title={t('noData')} date="" amount="—" colors={colors} />
+        )}
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('notifications')}</Text>
@@ -260,38 +288,27 @@ export default function DashboardScreen() {
             <Text style={[styles.viewAll, { color: colors.deepGreen }]}>{t('viewAll')}</Text>
           </TouchableOpacity>
         </View>
-        <NotificationItem
-          icon="checkmark-circle"
-          color={colors.dashboard.greenUp}
-          title="Loan Approved!"
-          time="2h ago"
-          description="Your application L-2024-004 for ৳60,000 has been approved by Sonali Bank."
-          colors={colors}
-        />
-        <NotificationItem
-          icon="trending-up"
-          color={colors.blueLight}
-          title="Credit Score Updated"
-          time="1d ago"
-          description="Your score increased from 710 to 720. Great financial discipline!"
-          colors={colors}
-        />
-        <NotificationItem
-          icon="shield-checkmark"
-          color="#7C3AED"
-          title="Profile Verified"
-          time="3d ago"
-          description="Your farm details have been verified by Field Officer Khorshed Alam."
-          colors={colors}
-        />
-        <NotificationItem
-          icon="document-text"
-          color="#F59E0B"
-          title="Document Required"
-          time="5d ago"
-          description="Please upload your land deed to complete your loan application."
-          colors={colors}
-        />
+        {recentNotifications.map((notif) => (
+          <NotificationItem
+            key={notif.id}
+            icon={notif.icon as any}
+            color={notif.color}
+            title={notif.title}
+            time={notif.time}
+            description={notif.description}
+            colors={colors}
+          />
+        ))}
+        {recentNotifications.length === 0 && (
+          <NotificationItem
+            icon="notifications-off-outline"
+            color={colors.dashboard.textSecondary}
+            title={t('noData')}
+            time=""
+            description=""
+            colors={colors}
+          />
+        )}
       </ScrollView>
 
       <View style={[styles.bottomNav, { backgroundColor: colors.dashboard.cardBg, borderTopColor: colors.dashboard.border, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }]}>

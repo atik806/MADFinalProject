@@ -57,32 +57,38 @@ export default function EditProfileScreen() {
     );
   };
 
-  const handleSave = () => {
-    updateProfile({
-      nameBn,
-      nameEn,
-      nid,
-      phone,
-      dob,
-      gender,
-      totalLand: Number(totalLand) || 0,
-      ownLand: Number(ownLand) || 0,
-      leasedLand: Number(leasedLand) || 0,
-      selectedCrops,
-      location,
-      farmingIncome: Number(farmingIncome) || 0,
-      otherSources: selectedSources,
-      otherIncome: Number(otherIncome) || 0,
-      familyMembers: Number(familyMembers) || 0,
-      occupation,
-      hasLoan,
-      loanAmount: hasLoan ? Number(loanAmount) || 0 : 0,
-      loanPurpose: hasLoan ? loanPurpose : '',
-      loanSource: hasLoan ? loanSource : '',
-    });
-    Alert.alert(t('saved'), t('profileSaved'), [
-      { text: t('ok'), onPress: () => router.back() },
-    ]);
+  const handleSave = async () => {
+    try {
+      await updateProfile({
+        nameBn,
+        nameEn,
+        nid,
+        phone,
+        dob,
+        gender,
+        totalLand: Number(totalLand) || 0,
+        ownLand: Number(ownLand) || 0,
+        leasedLand: Number(leasedLand) || 0,
+        selectedCrops,
+        location,
+        farmingIncome: Number(farmingIncome) || 0,
+        otherSources: selectedSources,
+        otherIncome: Number(otherIncome) || 0,
+        familyMembers: Number(familyMembers) || 0,
+        occupation,
+        hasLoan,
+        loanAmount: hasLoan ? Number(loanAmount) || 0 : 0,
+        loanPurpose: hasLoan ? loanPurpose : '',
+        loanSource: hasLoan ? loanSource : '',
+      });
+      Alert.alert(t('saved'), t('profileSaved'), [
+        { text: t('ok'), onPress: () => router.back() },
+      ]);
+    } catch (err: any) {
+      // Backend validation / network failure: stay on the form with the
+      // user's input intact and explain what went wrong.
+      Alert.alert(t('editProfile'), err?.message ?? 'Could not save your profile.');
+    }
   };
 
   return (

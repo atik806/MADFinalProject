@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -32,7 +32,11 @@ const statusConfig: Record<string, { labelKey: string; color: string; bg: string
 
 export default function LoansScreen() {
   const colors = useColors();
-  const { applications, activeLoans } = useLoans();
+  const { applications, activeLoans, refreshApplications } = useLoans();
+
+  useEffect(() => {
+    refreshApplications();
+  }, [refreshApplications]);
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('loans');
   const [loansTab, setLoansTab] = useState<LoansTab>('active');

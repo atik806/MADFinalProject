@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
+import { api } from '../../../lib/api';
 import { useLoans, type TimelineEntry } from '../../../contexts/LoanContext';
 import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
@@ -30,9 +31,25 @@ const statusColors: Record<string, { color: string; bg: string }> = {
 export default function ApplicationDetailScreen() {
   const colors = useColors();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { applications } = useLoans();
+  const { applications, refreshApplications, applyDetailTimeline } = useLoans();
   const { t } = useTranslation();
   const app = applications.find((a) => a.id === id);
+
+  useEffect(() => {
+    if (!id) return;
+    // The list endpoint returns rows without loan_timeline; fetch the full
+    // detail (with the real timeline rows) for the opened application.
+    api.get<any>(`/api/farmer/loans/${id}`)
+      .then((res) => {
+        if (res?.data?.id) {
+          applyDetailTimeline(String(res.data.id), res.data);
+        }
+      })
+      .catch(() => {
+        // The status-derived timeline from the list stays visible; a failed
+        // detail fetch is not a reason to blank the screen.
+      });
+  }, [id, applyDetailTimeline]);
 
   if (!app) {
     return (

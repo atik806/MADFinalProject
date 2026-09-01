@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -30,10 +30,14 @@ type FilterType = 'all' | 'income' | 'expense';
 
 export default function TransactionsScreen() {
   const colors = useColors();
-  const { transactions, removeTransaction } = useTransactions();
+  const { transactions, removeTransaction, refreshTransactions } = useTransactions();
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('transactions');
   const [filter, setFilter] = useState<FilterType>('all');
+
+  useEffect(() => {
+    refreshTransactions();
+  }, [refreshTransactions]);
 
   const tabs: TabDef[] = [
     { key: 'home', activeIcon: 'home', inactiveIcon: 'home-outline', labelKey: 'home' },
@@ -187,7 +191,11 @@ export default function TransactionsScreen() {
               onLongPress={() => {
                 Alert.alert(t('deleteTransaction'), `Remove "${tx.title}"?`, [
                   { text: t('cancel'), style: 'cancel' },
-                  { text: t('removeConfirm'), style: 'destructive', onPress: () => removeTransaction(tx.id) },
+                  { text: t('removeConfirm'), style: 'destructive', onPress: () => {
+                    removeTransaction(tx.id).catch((err: any) => {
+                      Alert.alert(t('deleteTransaction'), err?.message ?? 'Could not delete the transaction.');
+                    });
+                  } },
                 ]);
               }}
               activeOpacity={0.7}
