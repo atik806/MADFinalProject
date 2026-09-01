@@ -5,8 +5,10 @@ informed lending decisions. It serves four roles — **Farmer**, **Field Officer
 **Bank Officer**, and **Admin** — from a single Expo app backed by an Express + Supabase API.
 
 > **Status:** The Expo frontend is built. The backend is under active development on the
-> `feature/akash` branch. See [AI_README.md](AI_README.md) for the detailed, honest
-> per-feature implementation status.
+> `feature/akash` branch. Farmer and Field Officer APIs are implemented and verified
+> against a live database; the Bank Officer API is implemented but **awaiting a schema
+> migration and its first live run**. See [AI_README.md](AI_README.md) for the detailed,
+> honest per-feature implementation status.
 
 ---
 
@@ -46,9 +48,10 @@ Request flow: **Route → Middleware (authenticate → requireRole) → Controll
 │   │   ├── app.ts           # Express app: CORS, JSON, routes, 404, error handler
 │   │   ├── server.ts        # HTTP listener
 │   │   ├── config/          # supabase.ts (service-role client)
-│   │   ├── middleware/      # auth, role, admin, field-officer guards
+│   │   ├── middleware/      # auth, role, admin, field-officer, bank-officer guards
 │   │   └── modules/         # <role>/<feature>/{controller,routes,service}
-│   ├── farmer_db.sql        # Supabase schema (run in the SQL editor)
+│   ├── farmer_db.sql        # Supabase base schema (run in the SQL editor)
+│   ├── admin.sql            # admin/officer/audit/loan-review schema (run second)
 │   └── .env.example         # copy to server/.env
 ├── README.md            # this file
 └── AI_README.md         # detailed technical status / project memory
@@ -110,6 +113,24 @@ npm start       # node dist/server.js
 2. Open **SQL Editor → New query**, run [`server/farmer_db.sql`](server/farmer_db.sql), then run [`server/admin.sql`](server/admin.sql) (admin/officer/audit schema).
 3. Copy your **Project URL** and **service-role key** (Project Settings → API) into `server/.env`.
 
+Both files are **idempotent** — re-run [`server/admin.sql`](server/admin.sql) after pulling
+changes that add columns. It only ever adds what is missing and never drops data.
+
+> **Existing projects:** the bank-officer columns added for the Bank Officer API
+> (`profiles.bank_name/branch_name/branch_code` and
+> `loan_applications.bank_officer_id/reviewed_at/decision_at/decision_notes/approved_amount`)
+> are **not** applied automatically. `supabase-js` cannot execute DDL, so re-run
+> `server/admin.sql` in the SQL editor. Verify with:
+>
+> ```sql
+> select column_name from information_schema.columns
+> where table_schema = 'public' and table_name = 'loan_applications'
+>   and column_name in ('bank_officer_id','reviewed_at','decision_at','decision_notes','approved_amount');
+> ```
+>
+> Five rows means the API is ready; zero means `/api/bank-officer` will return an empty
+> queue and fail on every write.
+
 ---
 
 ## Frontend — setup & run
@@ -145,10 +166,12 @@ Base URL: `http://localhost:3000`
 | POST   | `/api/admin/auth/login`     | none   | Admin login (self-seeds) |
 | *      | `/api/admin/dashboard`      | admin  | Stats, trends, overview  |
 | *      | `/api/admin/field-officers` | admin  | Field-officer management |
+| *      | `/api/admin/bank-officers`  | admin  | Bank-officer provisioning |
 | GET    | `/api/admin/audit`          | admin  | Audit trail              |
 
 Field Officer endpoints are available for the current profile, farmer, verification, visit,
-and loan-application workflows. Bank Officer endpoints are still in progress — see
+and loan-application workflows. Bank Officer endpoints (profile + loan review/decision) are
+implemented but **not yet verified against a live database** — see
 [AI_README.md](AI_README.md) for the detailed live status.
 
 ### Farmer API
@@ -204,6 +227,43 @@ submission the officer records a verification verdict and, when verified, forwar
 application to the bank (`forwarded_at`/`forwarded_by`). Bank-officer decisions
 (`under_review`/`approved`/`rejected`) are not writable through these endpoints.
 
+### Bank Officer API
+
+> ⚠️ **Status: implemented but not live-verified.** These endpoints require the
+> bank-officer columns from [`server/admin.sql`](server/admin.sql), which are **not yet
+> applied** to the development Supabase project. Apply them (see
+> [Supabase setup](#supabase-setup)) before using this section.
+
+All endpoints require `Authorization: Bearer <supabase-access-token>` and a server-side
+**active** `bank_officer` profile. Bank officer accounts are created by an admin via
+`POST /api/admin/bank-officers`; there is no self-registration.
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| GET/PUT | `/api/bank-officer/profile/me` | Read/update own bank-officer profile |
+| GET | `/api/bank-officer/loans` | Review queue — **forwarded applications only**; supports `status`, `verificationStatus`, `farmerId`, `page`, `pageSize` |
+| GET | `/api/bank-officer/loans/:id` | Application detail with timeline, farmer, and field-officer summaries |
+| POST | `/api/bank-officer/loans/:id/review` | Move a forwarded application `pending` → `under_review` |
+| POST | `/api/bank-officer/loans/:id/decision` | Record the final verdict (`approved` / `rejected`) |
+
+Review workflow notes:
+
+- **The bank only ever sees applications a field officer has forwarded.** A draft, or a
+  submitted-but-not-forwarded application, returns `404` — identical to a nonexistent id, so
+  the upstream pipeline cannot be enumerated.
+- All bank officers share one queue. There is no branch assignment table, so who *acted* is
+  recorded in `bank_officer_id` rather than restricting who *can* act.
+- A decision requires `verification_status = 'verified'`. An already-decided application
+  cannot be re-decided (`400`), so an approval cannot later be flipped to a rejection.
+- A **rejection must include `notes`** and must not include `approvedAmount`.
+- `approvedAmount` defaults to the officer's `recommended_amount` (else the requested
+  `amount`) and **can never exceed the requested amount** — a bank may sanction less, never
+  more.
+- Disbursement (`approved` → `active`) and repayment (`→ completed`) are **not implemented**;
+  no endpoint here can set those statuses.
+- The profile update white-list excludes `bank_name` / `branch_name` / `branch_code`: the
+  posting is set by the admin, so an officer cannot move themselves to another branch.
+
 ---
 
 ## Authentication & roles
@@ -227,10 +287,24 @@ Postgres (Supabase). Core tables in [`server/farmer_db.sql`](server/farmer_db.sq
 - Storage bucket `farmer-documents` for uploaded photos / documents.
 
 [`server/admin.sql`](server/admin.sql) adds the admin/officer surface: `audit_logs`,
-`field_officer_assignments`, `field_visits`, `farmer_verifications`, admin/field-officer
-columns on `profiles`, and the loan review columns on `loan_applications`
+`field_officer_assignments`, `field_visits`, `farmer_verifications`, admin/field-officer/
+bank-officer columns on `profiles`, the loan review columns on `loan_applications`
 (`verification_status`, `verified_at`, `verification_notes`, `field_officer_id`,
-`forwarded_at`/`forwarded_by`, `recommended_amount`).
+`forwarded_at`/`forwarded_by`, `recommended_amount`), and the bank decision columns
+(`bank_officer_id`, `reviewed_at`, `decision_at`, `decision_notes`, `approved_amount`).
+
+Loan application status lifecycle across all three roles:
+
+```
+        field officer                          bank officer
+draft ──────submit──────> pending ──review──> under_review ──┬──> approved
+  ▲                          │                               └──> rejected
+  └── officer-created        └── verify (verification_status)
+      draft only                 then forward (forwarded_at) ── hands over to the bank
+```
+
+The bank only receives applications with `forwarded_at` set. `active` and `completed` exist
+in the lifecycle for disbursement and repayment, which are **not yet implemented**.
 
 ---
 
@@ -244,6 +318,12 @@ columns on `profiles`, and the loan review columns on `loan_applications`
   officer) and `server/test/admin_token.tmp` (admin); these files are test artifacts and
   must not be committed. After a run, `node test/cleanup.cjs` and
   `node test/cleanup-sweep.cjs` remove the test-created records.
+- `node test/bank-officer.e2e.cjs` (bank officer profile + loan review/decision) is
+  **self-provisioning**: it needs no token files at all. It logs in through the public
+  admin endpoint using `ADMIN_EMAIL`/`ADMIN_PASSWORD` from `server/.env`, then creates its
+  own field officer, bank officers and farmer, and drives the whole pipeline. Requires the
+  bank-officer columns to be applied first (see [Supabase setup](#supabase-setup)).
+  **This suite has not yet been executed** — the schema is still outstanding.
 - The live E2E suites cover successful requests, validation failures, duplicate
   registration, assignment/ownership checks (including cross-officer IDOR attempts),
   invalid state transitions, unauthenticated access, and wrong-role access.
