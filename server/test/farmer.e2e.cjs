@@ -1,14 +1,22 @@
 // Farmer backend E2E: profile (/me + /profile), transactions CRUD + IDOR,
-// loans (list/get/apply + status protection), credit profile, and auth
-// guards. Requires the server on :3000, an officer token in
-// scripts/token.tmp and an admin token in test/admin_token.tmp (only used
-// for wrong-role 403 checks). Test farmers are cleaned up via
-// farmer-cleanup.tmp + node test/cleanup.cjs.
+// loans (list/get/apply + status protection), credit profile, dashboard, and
+// auth guards. Requires the server on :3000.
+//
+// Farmers are self-registered through the public register/login endpoints. The
+// field-officer token used for wrong-role 403 checks is resolved lazily: an
+// existing scripts/token.tmp is reused if it still works, otherwise a
+// throwaway field officer is provisioned through the admin API using
+// ADMIN_EMAIL / ADMIN_PASSWORD from server/.env. That keeps the suite runnable
+// after the previous token has expired without rewriting the token file.
+//
+// Test farmers are cleaned up via farmer-cleanup.tmp + node test/cleanup.cjs.
+require('dotenv').config({ path: __dirname + '/../.env' });
 const fs = require('fs');
 const path = require('path');
 
-const BASE = 'http://localhost:3000';
-const OFFICER_TOKEN = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'token.tmp'), 'utf8').trim();
+const BASE = process.env.TEST_BASE_URL || 'http://localhost:3000';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@gmail.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '123456';
 
 const results = [];
 
@@ -30,8 +38,55 @@ async function req(method, url, opts = {}) {
   return { status: res.status, data };
 }
 
+// Resolves a usable field-officer token. Only needed so the wrong-role checks
+// assert a real 403 (role present but wrong) rather than a 401.
+async function resolveOfficerToken(stamp, cleanupOfficerIds) {
+  const tokenFile = path.join(__dirname, '..', 'scripts', 'token.tmp');
+  if (fs.existsSync(tokenFile)) {
+    const existing = fs.readFileSync(tokenFile, 'utf8').trim();
+    if (existing) {
+      const probe = await req('GET', '/api/field-officer/profile/me', { token: existing });
+      if (probe.status === 200) return existing;
+    }
+  }
+
+  const admin = await req('POST', '/api/admin/auth/login', { json: true, body: { identifier: ADMIN_EMAIL, password: ADMIN_PASSWORD } });
+  const adminToken = admin.data?.token ?? null;
+  if (!adminToken) return null;
+
+  const nid = '73' + stamp.slice(-6);
+  const created = await req('POST', '/api/admin/field-officers', { token: adminToken, json: true, body: {
+    nameEn: 'Farmer Suite Officer', nid, phone: '0186' + stamp.slice(-7),
+    password: 'fieldofficer123', designation: 'Field Officer',
+  }});
+  const officerId = created.data?.data?.profile?.id;
+  if (officerId) cleanupOfficerIds.push(officerId);
+
+  const login = await req('POST', '/api/farmer/auth/login', { json: true, body: { identifier: `${nid}@sofol.local`, password: 'fieldofficer123' } });
+  return login.data?.token ?? null;
+}
+
 (async () => {
   const stamp = Date.now().toString().slice(-8);
+  const provisionedOfficerIds = [];
+  const cleanupFile = path.join(__dirname, 'farmer-cleanup.tmp');
+  const farmerIds = [];
+
+  // Written eagerly and re-written after every fixture so an early abort still
+  // leaves a complete cleanup manifest. Recording it only at the end leaked a
+  // provisioned officer when farmer setup failed.
+  const saveCleanup = () => {
+    fs.writeFileSync(cleanupFile, JSON.stringify({ farmerIds, officerIds: provisionedOfficerIds }));
+  };
+
+  const OFFICER_TOKEN = await resolveOfficerToken(stamp, provisionedOfficerIds);
+  saveCleanup();
+  report('setup: field officer token resolved', !!OFFICER_TOKEN,
+    provisionedOfficerIds.length ? 'provisioned via admin API' : 'reused scripts/token.tmp');
+  if (!OFFICER_TOKEN) {
+    console.log('==== aborted: no field-officer token (check ADMIN_EMAIL / ADMIN_PASSWORD in server/.env) ====');
+    process.exit(1);
+  }
 
   // ---------- setup: register + login two farmers ----------
   async function makeFarmer(label) {
@@ -56,14 +111,13 @@ async function req(method, url, opts = {}) {
   }
 
   const farmerA = await makeFarmer('1');
+  if (farmerA) { farmerIds.push(farmerA.id); saveCleanup(); }
   const farmerB = await makeFarmer('2');
+  if (farmerB) { farmerIds.push(farmerB.id); saveCleanup(); }
   report('setup: farmers A + B registered/logged in', !!farmerA && !!farmerB, `A=${farmerA?.id} B=${farmerB?.id}`);
   if (!farmerA || !farmerB) { console.log('==== aborted (setup failed) ===='); process.exit(1); }
 
-  // save state for cleanup
-  fs.writeFileSync(path.join(__dirname, 'farmer-cleanup.tmp'), JSON.stringify({
-    farmerIds: [farmerA.id, farmerB.id],
-  }));
+  saveCleanup();
 
   const TA = farmerA.token;
   const TB = farmerB.token;

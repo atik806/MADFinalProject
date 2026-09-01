@@ -69,7 +69,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
   const farmerFile = path.join(__dirname, 'farmer-cleanup.tmp');
   if (fs.existsSync(farmerFile)) {
-    const { farmerIds } = JSON.parse(fs.readFileSync(farmerFile, 'utf8'));
+    const { farmerIds, officerIds } = JSON.parse(fs.readFileSync(farmerFile, 'utf8'));
     for (const fid of farmerIds ?? []) {
       // dependent rows first (transactions/loans cascade on profile delete,
       // but timeline/notifications need explicit cleanup for loan children)
@@ -85,6 +85,19 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
         const { error: pErr } = await supabase.from('profiles').delete().eq('id', fid);
         if (!pErr) removed.farmers += 1;
         const { error: aErr } = await supabase.auth.admin.deleteUser(fid);
+        if (!aErr) removed.authUsers += 1;
+      }
+    }
+    // Throwaway field officer the suite provisions when scripts/token.tmp has
+    // expired. Removed after the farmers so no loan/assignment FK is dangling.
+    for (const oid of officerIds ?? []) {
+      await supabase.from('field_officer_assignments').delete().eq('field_officer_id', oid);
+      await supabase.from('field_visits').delete().eq('field_officer_id', oid);
+      const { data: officerProfile } = await supabase.from('profiles').select('id').eq('id', oid).maybeSingle();
+      if (officerProfile) {
+        const { error: pErr } = await supabase.from('profiles').delete().eq('id', oid);
+        if (!pErr) removed.officers += 1;
+        const { error: aErr } = await supabase.auth.admin.deleteUser(oid);
         if (!aErr) removed.authUsers += 1;
       }
     }
