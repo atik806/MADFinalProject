@@ -314,9 +314,26 @@ async function resolveOfficerToken(stamp, cleanupOfficerIds) {
   r = await req('GET', '/api/farmer/credit', { token: OFFICER_TOKEN });
   report('credit GET officer token 403', r.status === 403, `status=${r.status}`);
 
-  // ---------- Dashboard regression ----------
+  // ---------- Dashboard ----------
+  // The dashboard now follows the shared { success, message, data } contract;
+  // it was previously the one farmer endpoint returning a bare payload.
   r = await req('GET', '/api/farmer/dashboard', { token: TA });
-  report('dashboard GET still 200', r.status === 200 && r.data?.loanCount === 2, `status=${r.status} loanCount=${r.data?.loanCount}`);
+  report('dashboard GET 200', r.status === 200, `status=${r.status}`);
+  report('dashboard GET uses success/message/data contract',
+    r.data?.success === true && typeof r.data?.message === 'string' && !!r.data?.data,
+    `success=${r.data?.success} hasData=${!!r.data?.data}`);
+  report('dashboard counts nested under data', r.data?.data?.loanCount === 2, `loanCount=${r.data?.data?.loanCount}`);
+  report('dashboard returns own profile only', r.data?.data?.profile?.id === farmerA.id, `profile=${r.data?.data?.profile?.id}`);
+  report('dashboard exposes credit score', r.data?.data?.creditScore !== undefined, `creditScore=${r.data?.data?.creditScore}`);
+  report('dashboard scopes transactions/loans to owner',
+    (r.data?.data?.transactions ?? []).every((t) => t.farmer_id === farmerA.id)
+      && (r.data?.data?.loans ?? []).every((l) => l.farmer_id === farmerA.id),
+    `tx=${(r.data?.data?.transactions ?? []).length} loans=${(r.data?.data?.loans ?? []).length}`);
+
+  r = await req('GET', '/api/farmer/dashboard');
+  report('dashboard GET no token 401', r.status === 401, `status=${r.status}`);
+  r = await req('GET', '/api/farmer/dashboard', { token: OFFICER_TOKEN });
+  report('dashboard GET officer token 403', r.status === 403, `status=${r.status}`);
 
   // ---------- summary ----------
   const passed = results.filter((x) => x.ok).length;
