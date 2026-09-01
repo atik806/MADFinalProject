@@ -167,6 +167,8 @@ Base URL: `http://localhost:3000`
 | *      | `/api/admin/dashboard`      | admin  | Stats, trends, overview  |
 | *      | `/api/admin/field-officers` | admin  | Field-officer management |
 | *      | `/api/admin/bank-officers`  | admin  | Bank-officer provisioning |
+| *      | `/api/admin/users`          | admin  | All-role user directory |
+| *      | `/api/admin/farmers`        | admin  | Farmer directory (read-only) |
 | GET    | `/api/admin/audit`          | admin  | Audit trail              |
 
 Field Officer endpoints are available for the current profile, farmer, verification, visit,
@@ -269,6 +271,40 @@ Review workflow notes:
 
 ---
 
+### Admin API
+
+All endpoints require `Authorization: Bearer <supabase-access-token>` and a server-resolved
+`admin` profile (the `ADMIN_EMAIL` account short-circuits the role check so the primary
+admin keeps working while the schema is applied). Admin actions are audit-logged.
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| GET | `/api/admin/users` | Directory across **all roles**; supports `role`, `status`, `search`, `page`, `pageSize` |
+| GET | `/api/admin/users/:id` | Full profile of any account |
+| PATCH | `/api/admin/users/:id/status` | `active` / `inactive` / `suspended` — refused for admin rows |
+| GET | `/api/admin/farmers` | Farmer directory (read-only); `search`, `district`, `verification`, `status` filters |
+| GET | `/api/admin/farmers/:id` | Farmer profile + officer verification history |
+| GET/POST | `/api/admin/field-officers` | List / create field officers |
+| GET/PUT/PATCH | `/api/admin/field-officers/:id…` | Detail, edit, status, reset-password |
+| GET/POST | `/api/admin/bank-officers` | List / create bank officers |
+| GET/PATCH | `/api/admin/bank-officers/:id…` | Detail, status |
+| GET | `/api/admin/dashboard/stats` | Platform statistics (incl. bank-officer counts) |
+| GET | `/api/admin/dashboard/overview` | Stats + trends + analytics + recent activity |
+| GET | `/api/admin/audit` | Paginated audit trail |
+
+Notes:
+
+- **Suspension has immediate effect:** the role guards (`farmerOnly`,
+  `fieldOfficerOnly`, `bankOfficerOnly`) re-read `profiles.status` on every
+  request, so a deactivated account loses access while its token is still
+  valid. `pending` farmers are unaffected — that is the registration default.
+- **Admin accounts cannot be suspended** through the API: the primary admin is
+  env-configured (`ADMIN_EMAIL`/`ADMIN_PASSWORD`) and has no lockout recovery.
+- The farmer directory is **read-only**: verification is a field-officer
+  workflow and account status lives in the unified users endpoint.
+- Directory listings exclude NID; bank-officer posting details (bank/branch)
+  appear in per-record detail views.
+
 ## Authentication & roles
 
 - Auth is handled by **Supabase Auth**. The app sends the Supabase access token as
@@ -330,8 +366,12 @@ in the lifecycle for disbursement and repayment, which are **not yet implemented
   (see [Supabase setup](#supabase-setup)). **This suite has not yet been executed** —
   the schema is still outstanding; it has been desk-checked against the implementation
   and is ready to run the moment the columns exist.
+- `node test/admin.e2e.cjs` (user directory, farmer directory, status enforcement,
+  dashboard, audit, authorization) is self-provisioning like the farmer suite and needs
+  no token files. Its cleanup manifest **merges across runs** so consecutive runs cannot
+  orphan fixtures.
 - After any run, `node test/cleanup.cjs` and `node test/cleanup-sweep.cjs` remove the
-  test-created records (including any officer the farmer suite provisioned).
+  test-created records (including any officer the farmer/admin suites provisioned).
 - The live E2E suites cover successful requests, validation failures, duplicate
   registration, assignment/ownership checks (including cross-officer IDOR attempts),
   invalid state transitions, unauthenticated access, and wrong-role access.

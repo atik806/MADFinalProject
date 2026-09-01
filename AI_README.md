@@ -42,7 +42,7 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
 
 | Role          | Status                | Notes                                                                 |
 | ------------- | --------------------- | --------------------------------------------------------------------- |
-| Admin         | Implemented (core)    | auth (login/me/change-password/seed), dashboard (stats/trends/overview), audit trail, and field-officer **read** management are **mounted at `/api/admin` and verified live**. Field-officer **create/update/status/reset** are wired + schema-backed but not yet live-mutation-tested. Bank-officer provisioning (`create`/`list`/`status`) is implemented but **not yet live-verified**. Generic user management, reports, and settings still planned. |
+| Admin         | Implemented (core) — **verified live this milestone (57/57)** | auth (login/me/change-password/seed), dashboard (stats incl. bank-officer counts/trends/loan-analytics/recent-activity/overview), audit trail, field-officer management (list/get/create/update/status/reset — create + status now live-tested), bank-officer management (list/get/create/status — create blocked by parked schema), and the **unified user directory** (`GET /users`, `GET /users/:id`, `PATCH /users/:id/status`) plus **farmer directory** (`GET /farmers`, `GET /farmers/:id`) are mounted at `/api/admin` and verified live by `server/test/admin.e2e.cjs` (57/57, self-provisioning). Reports and settings screens remain planned. |
 | Farmer        | Implemented (backend, hardened + verified live) | auth (register/login/reset/upload/me), profile (`GET/PUT /me` + `/profile` alias, privileged columns filtered), read-only credit profile, dashboard, transactions (full CRUD, whitelisted updates, sign-convention amounts), loans (list/get/apply, pinned `pending`, shared lifecycle), notifications — mounted at `/api/farmer` and verified live with a 64-assertion E2E suite. Frontend API wiring remains open (contexts still local/mock). |
 | Field Officer | Implemented (core + loans) | Profile, assigned-farmer management/registration, verification history/update, field visits, and the loan-application workflow (draft → submit → verify → forward) are mounted at `/api/field-officer` and verified live. Frontend API wiring remains open. |
 | Bank Officer  | **Implemented (backend) — NOT live-verified (schema blocked)** | Profile (`GET/PUT /profile/me`), forwarded-application review queue, application detail, `pending → under_review`, and the `approved`/`rejected` decision are written, type-checked (`npm run build` passes) and mounted at `/api/bank-officer`. The 89-assertion E2E suite exists and has been **desk-checked line-by-line against the implementation** (routes, guards, state transitions, validation messages, cleanup ordering all match), but **has never been executed**: the `admin.sql` bank-officer columns are still absent from the connected Supabase project (Postgres `42703` on all 8 — re-probed this session, twice, 45s apart to rule out schema-cache lag). The owner is applying the block via the SQL editor; live verification resumes the moment the columns exist. Treat every behaviour below as *intended and reviewed*, not *proven*. Disbursement and repayment are out of scope. |
@@ -78,23 +78,41 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
 (UUID, text, signed-amount, category, installment-type, safe-error allowlist).
 
 **Admin module** (`modules/admin/*`, mounted at `/api/admin`):
-- `admin.routes.ts` — barrel: `/auth`, `/dashboard`, `/field-officers`, `/bank-officers`, `/audit`.
+- `admin.routes.ts` — barrel: `/auth`, `/dashboard`, `/field-officers`, `/bank-officers`,
+  `/users`, `/farmers`, `/audit`.
 - `auth/*` — `POST /login` (public, self-seeds admin), `POST /seed` (public, idempotent),
   `GET /me`, `POST /change-password` (guarded). Admin creds from `ADMIN_EMAIL`/`ADMIN_PASSWORD`.
-- `dashboard/*` — `GET /stats`, `/registration-trend`, `/loan-analytics`, `/recent-activity`,
-  `/overview` (guarded). Counts degrade to 0 on missing tables via `safeCount`.
+- `dashboard/*` — `GET /stats` (now including `totalBankOfficers`/`activeBankOfficers`),
+  `/registration-trend`, `/loan-analytics`, `/recent-activity`, `/overview` (guarded). Counts
+  degrade to 0 on missing tables via `safeCount` — which, until Milestone 6, silently returned
+  0 for *everything* (see the bugfix below).
 - `fieldOfficers/*` — `GET /` (list, paginated/search/filter), `GET /:id`, `POST /` (create),
   `PUT /:id`, `PATCH /:id/status`, `POST /:id/reset-password` (guarded). Creates a
   `field_officer` auth user + profile; edits via a field white-list.
-- `bankOfficers/*` — `GET /` (list + per-officer decision count), `POST /` (create),
-  `PATCH /:id/status` (guarded). Exists because the `bank_officer` role had **no** provisioning
-  path at all: without it `/api/bank-officer` is unreachable. Status changes are the admin's
-  kill switch for an officer who holds approval authority.
+- `bankOfficers/*` — `GET /` (list + per-officer decision count), `GET /:id` (role-scoped
+  detail; decision count degrades to 0 while the bank schema is parked), `POST /` (create —
+  blocked live by the parked schema), `PATCH /:id/status` (guarded). Exists because the
+  `bank_officer` role had **no** provisioning path at all: without it `/api/bank-officer`
+  is unreachable. Status changes are the admin's kill switch for an officer who holds
+  approval authority.
+- `users/*` — **Milestone 6.** Unified directory over `profiles` for ALL roles:
+  `GET /` (paginated; role/status filters; search on name/email/phone/farmer_id/employee_id,
+  with ilike-wildcards escaped), `GET /:id` (any role, full profile), and
+  `PATCH /:id/status` (active/inactive/suspended). Status changes are refused for
+  `admin` rows — the primary admin is env-configured and has no recovery path if locked
+  out. Directory rows deliberately exclude NID; bank-officer posting columns are resolved
+  per-record in detail views so the parked schema cannot break the whole listing.
+- `farmers/*` — **Milestone 6.** Read-only admin farmer directory: `GET /` (search on
+  name/phone/email/farmer_id/village/upazila; district, verification, status filters) and
+  `GET /:id` (full profile + last 20 officer verification records). No write path:
+  verification belongs to the field-officer flow and account status lives in `users/*`.
 - `officerAccounts.ts` — shared staff-provisioning primitives (`normalizePhone`, `shortHex`,
   `findOrphanAuthUser`, `createOfficerAuthUser`) so a second officer type cannot drift from the
   established behaviour. Currently used by `bankOfficers` only; migrating `fieldOfficers` onto it
   is backlog.
 - `audit/*` — `recordAuditLog` (best-effort insert) + `GET /` (paginated audit trail, guarded).
+  User-status changes are audited (`User status set to <status>`, module `Admin`,
+  target_type `user`).
 
 **Field Officer module** (`modules/fieldOfficer/*`, mounted at `/api/field-officer`):
 - `profile/*` — guarded `GET /profile/me` and `PUT /profile/me`; updates use a field white-list.
@@ -373,6 +391,93 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
   test tokens), `86d6a29` (dashboard contract).
 - **Next milestone:** Bank Officer Backend.
 
+### Milestone 6 — Admin backend (user directory, farmer directory, status enforcement)
+- **Status:** Complete and **verified live** — `npm run build` passes;
+  `node test/admin.e2e.cjs` **57/57** (run twice back-to-back, both green);
+  farmer regression `node test/farmer.e2e.cjs` **72/72**; DB verified back to
+  its exact baseline after cleanup.
+- **Architecture:** unchanged — Route → authenticateUser → adminOnly →
+  Controller → Service → Supabase. No new tables, **no DDL applied**
+  (the bank-officer schema remains parked by owner decision).
+- **Why a unified users module:** the admin could manage officers through two
+  role-specific routers but had no view of farmers or the account list as a
+  whole, and — worse — suspending an officer did not actually revoke API
+  access because `farmerOnly`/`fieldOfficerOnly` never read `profiles.status`.
+- **Implemented:**
+  1. **Status enforcement (the teeth):** `farmerOnly` and `fieldOfficerOnly`
+     now re-read `profiles.status` on every request, mirroring
+     `bankOfficerOnly`. `inactive`/`suspended` → 403 immediately, with the
+     token still cryptographically valid; `pending` still passes because it is
+     the farmer registration default. Verified live in both directions
+     (suspend → 403, reactivate → 200).
+  2. **User directory:** `GET /api/admin/users` (paginated; role
+     farmer/field_officer/bank_officer/admin; any-status filter; ilike search
+     with `%`/`_` escaped), `GET /api/admin/users/:id`,
+     `PATCH /api/admin/users/:id/status` (active/inactive/suspended only).
+     Status changes on `admin` rows are refused server-side — the primary
+     admin is env-configured with no lockout recovery path. Verified live.
+  3. **Farmer directory (read-only):** `GET /api/admin/farmers` (search on
+     name/phone/email/farmer_id/village/upazila; district + verification +
+     status filters) and `GET /api/admin/farmers/:id` (full profile + last 20
+     officer verification records). Role-scoped: another role's id → 404.
+     No write path by design — verification belongs to the field-officer
+     flow, account status lives in the users module.
+  4. **Bank-officer detail:** `GET /api/admin/bank-officers/:id` (role-scoped;
+     decision count degrades to 0 while the parked bank columns are absent).
+  5. **Dashboard:** `totalBankOfficers`/`activeBankOfficers` added to
+     `/stats` (role-scoped profile counts only — no parked-column dependency).
+- **Bug fixed (pre-existing, high impact — Milestone 1 vintage):**
+  `safeCount` received the query as a *thunk* and did `await query` — awaiting
+  an un-invoked function yields the function itself, so the destructured
+  `count`/`error` were both `undefined` and **every dashboard count silently
+  returned 0 since the dashboard was first written**. The old "verified live"
+  claims for `/stats` only ever checked HTTP 200, never the numbers. The fix
+  invokes the thunk (`await query()`); the E2E now asserts real numbers
+  against fixtures, so this class of silent-zero cannot regress unnoticed.
+  Caught when the new admin suite's `totalFarmers >= 1` assertion failed
+  against a database that demonstrably had farmers.
+- **Files created:** `server/src/modules/admin/users/{validation,users.service,users.controller,users.routes}.ts`,
+  `server/src/modules/admin/farmers/{farmers.service,farmers.controller,farmers.routes}.ts`,
+  `server/test/admin.e2e.cjs`.
+- **Files modified:** `server/src/middleware/{role,fieldOfficer}.middleware.ts`
+  (status enforcement), `server/src/modules/admin/admin.routes.ts` (mount
+  `/users`, `/farmers`), `server/src/modules/admin/bankOfficers/*` (detail),
+  `server/src/modules/admin/dashboard/dashboard.service.ts` (bank counts +
+  safeCount fix), `server/test/cleanup.cjs` (`admin-cleanup.tmp` support),
+  `README.md`, `AI_README.md`.
+- **API endpoints:** `GET /api/admin/users`, `GET /api/admin/users/:id`,
+  `PATCH /api/admin/users/:id/status`, `GET /api/admin/farmers`,
+  `GET /api/admin/farmers/:id`, `GET /api/admin/bank-officers/:id`; plus the
+  extended `GET /api/admin/dashboard/stats`.
+- **Authentication/authorization:** every new route sits behind
+  `authenticateUser` + `adminOnly`; roles are read server-side from
+  `profiles`, never from the client (the E2E injects `role: 'admin'` in a
+  status-change body and asserts it is ignored). Verified live: no token →
+  401; farmer/officer tokens → 403 on every admin route; suspended users →
+  403 on their own role routes.
+- **Validation:** shared `users/validation.ts` — UUIDs, positive pagination,
+  bounded+escaped search, role/status enums, per-role status transition rules
+  (`USER_STATUS_RULES`), safe-error mapping. Raw Supabase errors never reach
+  the client.
+- **Audit logging:** user-status changes write a best-effort
+  `audit_logs` row (`User status set to <status>`, `module: 'Admin'`,
+  `targetType: 'user'`, with previous/new status in `details`). The E2E
+  reads the trail back through `GET /api/admin/audit` to confirm.
+- **Tests:** `server/test/admin.e2e.cjs` — 57 assertions, self-provisioning
+  (admin token via `ADMIN_EMAIL`/`ADMIN_PASSWORD`; creates its own field
+  officer + farmer through the real APIs). Covers directory list/get/search/
+  filters/validation, status transitions + live enforcement on real tokens,
+  admin-lockout refusal, farmer directory + role-scoping, bank-officer
+  degraded paths, dashboard real numbers (the safeCount regression guard),
+  audit trail read-back, and cross-role authorization. Cleanup manifest
+  **merges** across runs so consecutive runs cannot orphan fixtures.
+- **Known limitations:** bank-officer *create* remains blocked by the parked
+  schema (list/detail/status verified on their degraded empty path); officer
+  `PUT`/reset-password live-mutation coverage still pending; admin reports and
+  settings screens not modelled; frontend not wired.
+- **Next milestone:** Frontend API Integration (pending owner decision), or
+  Bank Officer live verification once the schema is applied.
+
 ### Milestone 5 — Bank Officer backend (loan review & decision)
 - **Status:** ⚠️ **Implemented but NOT live-verified — blocked solely on schema
   application.** All code is written and `npm run build` (tsc) passes. **Zero Bank
@@ -541,6 +646,18 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
    now use throwaway clients; a repo-wide grep confirms no singleton `signInWithPassword`
    remains. Caught only because the farmer E2E suite stopped reading stale token files
    and started exercising login for real.
+15. ~~`safeCount` never executed its queries.~~ **Fixed (Milestone 6, commit `d180d56`)** —
+   `safeCount(query)` did `await query` on an un-invoked thunk, so the destructured
+   `count`/`error` were both `undefined` and **every dashboard statistic silently
+   returned 0 from the day the dashboard was written (Milestone 1)**. The "verified
+   live" notes for `/stats` had only ever checked the 200 status, never the numbers —
+   a documentation-accuracy failure as much as a code one. The admin E2E now asserts
+   real counts against fixtures so a silent zero fails loudly. Lesson recorded:
+   HTTP-status-only verification is not verification.
+16. ~~Suspension had no enforcement.~~ **Fixed (Milestone 6)** — admin status endpoints
+   existed but `farmerOnly`/`fieldOfficerOnly` never read `profiles.status`, so a
+   suspended officer kept full API access until token expiry. Both guards now re-read
+   the status per request, matching `bankOfficerOnly`; verified live both directions.
 
 ---
 
