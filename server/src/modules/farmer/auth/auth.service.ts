@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../../config/supabase';
 
 export interface RegisterInput {
@@ -240,9 +241,18 @@ export const loginFarmer = async (identifier: string, password: string) => {
   const isPhone = /^\+?\d[\d\s-]{6,}$/.test(rawIdentifier);
   const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawIdentifier);
 
+  // Sign-in runs on a throwaway client. Calling signInWithPassword on the
+  // shared singleton would install the user's session in memory, so every
+  // later service query would run under that user's JWT and hit RLS.
+  const throwawayClient = createClient(
+    process.env.SUPABASE_URL ?? '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+
   // Attempts a password sign-in with the given email and returns on success.
   const tryEmailLogin = async (email: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await throwawayClient.auth.signInWithPassword({ email, password });
     if (error) return null;
     if (!data?.session?.access_token || !data?.user) return null;
     return data;
@@ -250,7 +260,7 @@ export const loginFarmer = async (identifier: string, password: string) => {
 
   // Attempts a password sign-in with the given phone and returns on success.
   const tryPhoneLogin = async (phone: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ phone, password });
+    const { data, error } = await throwawayClient.auth.signInWithPassword({ phone, password });
     if (error) return null;
     if (!data?.session?.access_token || !data?.user) return null;
     return data;
