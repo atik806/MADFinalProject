@@ -106,22 +106,27 @@ export default function LoanApplicationsScreen() {
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [verifiedIds, setVerifiedIds] = useState<Set<string>>(new Set());
+  // Server-side verification state is authoritative after the API wiring;
+  // only the write-side dedup guard is still needed locally.
+  const [, setVerifiedIds] = useState<Set<string>>(new Set());
 
   const loadApplications = useCallback(async () => {
-    setLoadError(null);
     try {
       // The officer's OWN applications list — server-scoped to the officer's
       // active farmer assignments, with a farmer summary per row.
       const res = await api.get<any>('/api/field-officer/loans?pageSize=100');
       setApplications((res?.data?.items ?? []).map(mapOfficerLoanRow));
+      setLoadError(null);
     } catch (err: any) {
       setLoadError(err?.message ?? 'Could not load loan applications.');
     }
   }, []);
 
   useEffect(() => {
-    loadApplications();
+    // Data fetch on mount. The kickoff is deferred out of the effect body;
+    // state updates happen only after the fetch resolves.
+    const timer = setTimeout(() => void loadApplications(), 0);
+    return () => clearTimeout(timer);
   }, [loadApplications]);
 
   const filtered = filterApplications(applications, activeTab);

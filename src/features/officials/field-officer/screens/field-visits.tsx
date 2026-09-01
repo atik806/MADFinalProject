@@ -83,7 +83,6 @@ export default function FieldVisitsScreen() {
   const [showFarmerPicker, setShowFarmerPicker] = useState(false);
 
   const loadVisits = useCallback(async () => {
-    setLoadError(null);
     try {
       const [visitsRes, farmersRes] = await Promise.all([
         api.get<any>('/api/field-officer/visits?pageSize=100'),
@@ -96,13 +95,17 @@ export default function FieldVisitsScreen() {
       setAssignedFarmers(
         (farmersRes?.data?.items ?? []).map((f: any) => ({ id: String(f.id), name: f.name_en ?? f.name_bn ?? 'Farmer' })),
       );
+      setLoadError(null);
     } catch (err: any) {
       setLoadError(err?.message ?? 'Could not load your visits.');
     }
   }, []);
 
   useEffect(() => {
-    loadVisits();
+    // Data fetch on mount. The kickoff is deferred out of the effect body;
+    // state updates happen only after the fetch resolves.
+    const timer = setTimeout(() => void loadVisits(), 0);
+    return () => clearTimeout(timer);
   }, [loadVisits]);
 
   const bg = colors.dashboard.bg;

@@ -67,7 +67,6 @@ export default function FieldOfficerDashboardScreen() {
   const [scheduledVisits, setScheduledVisits] = useState<ScheduledVisit[]>([]);
 
   const loadDashboard = useCallback(async () => {
-    setLoadError(null);
     try {
       // Assigned farmers: the officer's own list (server-scoped by token).
       const farmersRes = await api.get<any>('/api/field-officer/farmers?pageSize=100');
@@ -76,6 +75,7 @@ export default function FieldOfficerDashboardScreen() {
       const visitsRes = await api.get<any>('/api/field-officer/visits?pageSize=100');
       const visitRows: any[] = visitsRes?.data?.items ?? [];
       setScheduledVisits(visitRows.filter((v) => ['scheduled', 'in-progress'].includes(String(v.status ?? ''))).map(visitFromRow));
+      setLoadError(null);
     } catch (err: any) {
       setLoadError(err?.message ?? 'Could not load your dashboard.');
     } finally {
@@ -84,7 +84,10 @@ export default function FieldOfficerDashboardScreen() {
   }, []);
 
   useEffect(() => {
-    loadDashboard();
+    // Data fetch on mount. The kickoff is deferred out of the effect body;
+    // state updates happen only after the fetch resolves.
+    const timer = setTimeout(() => void loadDashboard(), 0);
+    return () => clearTimeout(timer);
   }, [loadDashboard]);
 
   const onRefresh = useCallback(() => {
