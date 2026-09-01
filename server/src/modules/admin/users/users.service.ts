@@ -21,7 +21,12 @@ import {
 
 // Columns every account has that are safe to show in a directory listing.
 // NID and auth-internal values are deliberately excluded from list rows.
-const DIRECTORY_COLUMNS = 'id, role, status, name_en, name_bn, email, phone, district, village, is_verified, credit_score, farmer_id, employee_id, designation, bank_name, member_since, created_at';
+// NOTE: bank_name / branch_name / branch_code (bank-officer posting) are part
+// of the parked bank-officer schema and selecting them makes Postgres fail
+// the whole query with 42703 — they are resolved in the detail view instead,
+// where a missing column surfaces as a 404/500 on one record rather than
+// breaking the entire directory.
+const DIRECTORY_COLUMNS = 'id, role, status, name_en, name_bn, email, phone, district, village, is_verified, credit_score, farmer_id, employee_id, designation, member_since, created_at';
 
 export interface ListUsersFilters {
   role?: string;

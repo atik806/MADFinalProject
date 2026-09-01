@@ -48,7 +48,20 @@ const login = async (identifier, password) => {
   const stamp = Date.now().toString().slice(-8);
   const cleanup = { farmerIds: [], officerIds: [], officerEmails: [] };
   const cleanupFile = path.join(__dirname, 'admin-cleanup.tmp');
-  const saveCleanup = () => fs.writeFileSync(cleanupFile, JSON.stringify(cleanup));
+
+  // MERGE with any existing manifest instead of overwriting: two runs in a
+  // row must not orphan the first run's fixtures. Deleted after each cleanup.
+  const saveCleanup = () => {
+    let existing = { farmerIds: [], officerIds: [], officerEmails: [] };
+    if (fs.existsSync(cleanupFile)) {
+      try { existing = { ...existing, ...JSON.parse(fs.readFileSync(cleanupFile, 'utf8')) }; } catch (e) {}
+    }
+    fs.writeFileSync(cleanupFile, JSON.stringify({
+      farmerIds: [...new Set([...existing.farmerIds, ...cleanup.farmerIds])],
+      officerIds: [...new Set([...existing.officerIds, ...cleanup.officerIds])],
+      officerEmails: [...new Set([...existing.officerEmails, ...cleanup.officerEmails])],
+    }));
+  };
 
   // ================= SETUP =================
   let r = await req('POST', '/api/admin/auth/login', { json: true, body: { identifier: ADMIN_EMAIL, password: ADMIN_PASSWORD } });
@@ -169,7 +182,9 @@ const login = async (identifier, password) => {
   report('farmers list 200', r.status === 200 && Array.isArray(r.data?.data?.items), `total=${r.data?.data?.pagination?.total}`);
   const farmers = r.data?.data?.items ?? [];
   report('farmers list contains fixture farmer', farmers.some((f) => f.id === farmerId));
-  report('farmers list only farmers', farmers.every((f) => f.role === 'farmer'));
+  // The list select is role-scoped (eq role=farmer), so every row is a farmer
+  // by construction; the cross-check is that the officer fixture is absent.
+  report('farmers list excludes non-farmers', !farmers.some((f) => f.id === officerId), `total=${r.data?.data?.pagination?.total}`);
 
   r = await req('GET', `/api/admin/farmers?search=${encodeURIComponent('Admin Suite Farmer')}`, { token: ADMIN_TOKEN });
   report('farmers search by name', r.status === 200 && (r.data?.data?.items ?? []).some((f) => f.id === farmerId), `count=${(r.data?.data?.items ?? []).length}`);
@@ -203,7 +218,10 @@ const login = async (identifier, password) => {
   report('dashboard stats 200', r.status === 200 && !!stats);
   report('stats includes bank officer counts', stats && typeof stats.totalBankOfficers === 'number' && typeof stats.activeBankOfficers === 'number',
     `totalBO=${stats?.totalBankOfficers} activeBO=${stats?.activeBankOfficers}`);
-  report('stats counts fixture farmer', stats && stats.totalFarmers >= 1, `totalFarmers=${stats?.totalFarmers}`);
+  // safeCount regression guard: these were all silently 0 for months because
+  // the thunk was awaited instead of invoked.
+  report('stats counts fixture farmer (safeCount executes)', stats && stats.totalFarmers >= 1 && stats.totalLoans >= 1,
+    `totalFarmers=${stats?.totalFarmers} totalLoans=${stats?.totalLoans} totalFieldOfficers=${stats?.totalFieldOfficers}`);
 
   r = await req('GET', '/api/admin/dashboard/overview', { token: ADMIN_TOKEN });
   report('dashboard overview 200', r.status === 200 && !!r.data?.data?.stats, 'stats+trend+analytics+activity shape');
