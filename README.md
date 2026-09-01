@@ -146,9 +146,9 @@ Base URL: `http://localhost:3000`
 | *      | `/api/admin/field-officers` | admin  | Field-officer management |
 | GET    | `/api/admin/audit`          | admin  | Audit trail              |
 
-Field Officer endpoints are available for the current profile, farmer, verification, and visit
-workflow. Bank Officer endpoints are still in progress — see [AI_README.md](AI_README.md) for
-the detailed live status.
+Field Officer endpoints are available for the current profile, farmer, verification, visit,
+and loan-application workflows. Bank Officer endpoints are still in progress — see
+[AI_README.md](AI_README.md) for the detailed live status.
 
 ### Field Officer API
 
@@ -169,6 +169,17 @@ officer's active assignments/owned visits.
 | GET/PUT | `/api/field-officer/visits/:id` | Read/update an owned visit |
 | POST | `/api/field-officer/visits/:id/complete` | Mark an owned visit completed |
 | POST | `/api/field-officer/visits/:id/cancel` | Cancel an owned visit |
+| GET/POST | `/api/field-officer/loans` | List/create loan applications for assigned farmers (supports `status`, `verificationStatus`, `farmerId`, `page`, `pageSize`) |
+| GET/PUT | `/api/field-officer/loans/:id` | Read an authorized application / edit a draft |
+| POST | `/api/field-officer/loans/:id/submit` | Submit a draft (`draft` → `pending`) |
+| POST | `/api/field-officer/loans/:id/verify` | Record the officer verification verdict (`verified`/`rejected` + notes) |
+| POST | `/api/field-officer/loans/:id/forward` | Forward a field-verified application to the bank |
+
+Loan workflow notes: officers create applications as **drafts** for actively assigned
+farmers only, edit them while still drafts, then submit (`draft` → `pending`). After
+submission the officer records a verification verdict and, when verified, forwards the
+application to the bank (`forwarded_at`/`forwarded_by`). Bank-officer decisions
+(`under_review`/`approved`/`rejected`) are not writable through these endpoints.
 
 ---
 
@@ -193,20 +204,26 @@ Postgres (Supabase). Core tables in [`server/farmer_db.sql`](server/farmer_db.sq
 - Storage bucket `farmer-documents` for uploaded photos / documents.
 
 [`server/admin.sql`](server/admin.sql) adds the admin/officer surface: `audit_logs`,
-`field_officer_assignments`, `field_visits`, `farmer_verifications`, and admin/field-officer
-columns on `profiles`.
+`field_officer_assignments`, `field_visits`, `farmer_verifications`, admin/field-officer
+columns on `profiles`, and the loan review columns on `loan_applications`
+(`verification_status`, `verified_at`, `verification_notes`, `field_officer_id`,
+`forwarded_at`/`forwarded_by`, `recommended_amount`).
 
 ---
 
 ## Testing
 
 - Current: TypeScript build plus live Field Officer E2E coverage. From `server/`, run
-  `npm run build` and `node test/field-officer.e2e.cjs` against a running server. The E2E
-  harness needs fresh local bearer tokens in `server/scripts/token.tmp` and
-  `server/test/admin_token.tmp`; these files are test artifacts and must not be committed.
-- The live E2E suite covers successful requests, validation failures, duplicate registration,
-  assignment/ownership checks, unauthenticated access, and wrong-role access. Test-created
-  records should be removed after a run against a shared Supabase project.
+  `npm run build`, then `node test/field-officer.e2e.cjs` (profile/farmers/verification/visits)
+  and `node test/field-officer-loans.e2e.cjs` (loan workflow) against a running server.
+  The harnesses need fresh local bearer tokens in `server/scripts/token.tmp` (field
+  officer) and `server/test/admin_token.tmp` (admin); these files are test artifacts and
+  must not be committed. After a run, `node test/cleanup.cjs` and
+  `node test/cleanup-sweep.cjs` remove the test-created records.
+- The live E2E suites cover successful requests, validation failures, duplicate
+  registration, assignment/ownership checks (including cross-officer IDOR attempts),
+  invalid state transitions, unauthenticated access, and wrong-role access.
+  Test-created records should be removed after a run against a shared Supabase project.
 - Planned: automated unit/integration coverage for the Farmer, Bank Officer, and Admin modules.
 
 ---

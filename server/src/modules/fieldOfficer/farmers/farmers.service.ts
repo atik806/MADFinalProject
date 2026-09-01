@@ -60,8 +60,9 @@ export const assertAssigned = async (officerId: string, farmerId: string): Promi
 };
 
 // fetchAssignedFarmerIdSet: returns the set of farmer ids actively assigned to
-// this officer, used to scope list queries.
-const fetchAssignedFarmerIdSet = async (officerId: string): Promise<string[]> => {
+// this officer, used to scope list queries. Exported for reuse by the loans
+// module so every officer-scoped listing follows one assignment rule.
+export const fetchAssignedFarmerIdSet = async (officerId: string): Promise<string[]> => {
   const { data, error } = await supabase
     .from('field_officer_assignments')
     .select('farmer_id')

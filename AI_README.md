@@ -37,7 +37,7 @@ and `admin.sql` reproduce that schema for a fresh project.
 | ------------- | --------------------- | --------------------------------------------------------------------- |
 | Admin         | Implemented (core)    | auth (login/me/change-password/seed), dashboard (stats/trends/overview), audit trail, and field-officer **read** management are **mounted at `/api/admin` and verified live**. Field-officer **create/update/status/reset** are wired + schema-backed but not yet live-mutation-tested. Generic user management, reports, and settings still planned. |
 | Farmer        | Partially implemented | auth, profile, dashboard, loans, transactions, notifications modules exist; server boots and login round-trips to Supabase. Full per-endpoint DB behavior not re-verified this cycle. |
-| Field Officer | Implemented (core)    | Profile, assigned-farmer management/registration, verification history/update, and field visits are mounted at `/api/field-officer` and verified live. Loan-application officer workflow and frontend API wiring remain open. |
+| Field Officer | Implemented (core + loans) | Profile, assigned-farmer management/registration, verification history/update, field visits, and the loan-application workflow (draft → submit → verify → forward) are mounted at `/api/field-officer` and verified live. Frontend API wiring remains open. |
 | Bank Officer  | Planned               | Nothing yet (no middleware, routes, or services).                     |
 
 ---
@@ -84,6 +84,11 @@ and `admin.sql` reproduce that schema for a fresh project.
 - `visits/*` — guarded list/create/get/update plus complete/cancel transitions. Visit ownership
   is checked for every read/write; `scheduledDate` is accepted as a compatibility alias for
   `visitDate`.
+- `loans/*` — guarded loan-application workflow for assigned farmers: list (with
+  `status`/`verificationStatus`/`farmerId`/pagination filters), create as draft, get (with
+  timeline + farmer summary), edit draft fields, submit (`draft` → `pending`), record a
+  verification verdict, and forward to the bank. See the Milestone 3 log for the full
+  lifecycle and authorization rules.
 - `validation.ts` — shared UUID, date, pagination, bounded text, array, and boolean validation
   used by the Field Officer handlers/services.
 
@@ -181,6 +186,66 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 - **Next step:** implement the Field Officer loan-application portion only after confirming the
   existing loan schema/status design, then continue with Farmer backend endpoint verification.
 
+### Milestone 3 — Field Officer loan application workflow
+- **Status:** Complete (implemented and verified live; session recovered after an outage —
+  the interrupted session had only completed schema probing via `server/scripts/*-probe.cjs`,
+  no loan code existed yet).
+- **Implemented:** officer-side loan application lifecycle — create draft, list, get,
+  update draft, submit, verification verdict, forward to bank.
+- **Files created:** `server/src/modules/fieldOfficer/loans/{loans.routes,loans.controller,loans.service}.ts`,
+  `server/test/field-officer-loans.e2e.cjs`, `server/test/cleanup.cjs`,
+  `server/test/cleanup-sweep.cjs`.
+- **Files modified:** `server/src/modules/fieldOfficer/fieldOfficer.routes.ts` (mount `/loans`),
+  `server/src/modules/fieldOfficer/farmers/farmers.service.ts` (export
+  `fetchAssignedFarmerIdSet` for loan-list scoping), `server/src/modules/fieldOfficer/validation.ts`
+  (allow-list the loan business-rule messages), `server/src/modules/farmer/auth/auth.service.ts`
+  (login now uses a throwaway Supabase client — see bugfix below), `server/admin.sql`,
+  `README.md`, `AI_README.md`.
+- **Database:** no destructive migration. `admin.sql` now idempotently layers the officer
+  loan-review columns onto `loan_applications` (`field_officer_id`, `verified_at`,
+  `verification_notes`, `forwarded_by`, `recommended_amount`) plus farmer/status/verification
+  indexes; the live DB already had these columns from before the outage. No new tables.
+- **API endpoints:** `GET/POST /api/field-officer/loans`, `GET/PUT /api/field-officer/loans/:id`,
+  `POST /api/field-officer/loans/:id/submit`, `POST .../verify`, `POST .../forward`.
+- **Status lifecycle:** `draft` (officer-created) → `pending` (submitted by officer; the only
+  status transition an officer can perform) → bank-owned statuses (`under_review`, `approved`,
+  `rejected`, `active`, `completed`). Officer verification is tracked separately in
+  `verification_status` (`pending` → `verified`/`rejected`, `verified_at`, `verification_notes`);
+  only `verification_status='verified'` applications can be forwarded (`forwarded_at`,
+  `forwarded_by`). Re-verify/re-forward after forwarding is blocked — the application is in
+  the bank's domain. All transitions are validated server-side; invalid ones return 400.
+- **Authorization:** every route requires a valid Bearer token and server-resolved
+  `field_officer` role. `assertAssigned` gates create/read/update/submit/verify/forward to
+  the officer's active farmer assignments; lists are scoped via `fetchAssignedFarmerIdSet`.
+  A missing loan and a foreign-officer loan both 404 (no existence leak). Protected columns
+  (`farmer_id`, `field_officer_id`, `status`, `verification_status`, `forwarded_at/by`,
+  `verified_at`, `created_at`) are never client-writable. Verified live with a second
+  real officer account: cross-officer get/update/submit/verify/forward/create all 404, and
+  the second officer's list is scoped to their own (empty) assignments.
+- **Validation:** farmerId/loanId UUIDs, required text (title/duration/purpose) with length
+  caps, positive `amount`, non-negative `emi`/`interest`, ISO dates,
+  `installmentType` ∈ {monthly, seasonal}, status/verification filter enums, positive
+  pagination. Follows the existing native `validation.ts` helpers — no new library.
+- **Audit logging:** draft created/updated, submitted, verification verdict, and forward
+  all write a best-effort `audit_logs` row (`targetType: 'loan_application'`).
+- **Tests:** `npm run build` passes; live `node test/field-officer-loans.e2e.cjs` **44/44**
+  and regression `node test/field-officer.e2e.cjs` **31/31** (fresh tokens). Covers create/
+  list/get/update/submit/verify/forward success paths, validation failures, invalid state
+  transitions, IDOR scenarios, wrong-role and unauthenticated access, plus persistence
+  (timeline rows, `field_officer_id` stamping). Test-created farmers, officers, loans,
+  timelines, visits, and auth users were removed afterward (verified clean DB).
+- **Bugfix (pre-existing, blocking):** farmer/officer login (`POST /api/farmer/auth/login`)
+  called `signInWithPassword` on the shared `supabase` singleton, installing that user's
+  session in memory — every later service query then ran under the user's JWT and hit RLS
+  ("Forbidden: User role not found" cascade). Login now signs in on a throwaway client, so
+  the shared client keeps using the service-role key.
+- **Bonus verified live:** admin field-officer **create** and **reset-password** (previously
+  untested paths) were exercised during test setup and worked.
+- **Known limitations:** officer `date` field is stored as ISO string (UI uses formatted
+  strings); farmer-app-created applications start at `pending` with no officer draft step;
+  farmer-module response shapes remain inconsistent; frontend not wired.
+- **Next milestone:** Farmer backend (endpoint verification/response standardization).
+
 ---
 
 ## Audit findings (updated)
@@ -193,8 +258,13 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 6. **Security hardening absent.** No helmet, no rate limiting. *(open)*
 7. **`tsconfig` `types: []`.** `tsc --noEmit` can error on Node globals; runtime uses `--transpile-only`. *(open)*
 8. **Unused deps.** `jsonwebtoken`, `bcryptjs` unused (auth is Supabase-based). *(open)*
-9. **Field Officer loan workflow.** Officer-facing loan application review/forwarding is not yet
-   implemented; the current officer loan screen remains local/mock. *(open)*
+9. ~~Field Officer loan workflow.~~ **Fixed (Milestone 3)** — officer-facing loan application
+   create/list/get/update/submit/verify/forward is implemented and verified live; the
+   officer loan screen remains local/mock until frontend wiring. *(frontend part open)*
+10. ~~Shared-client session leak on farmer login.~~ **Fixed (Milestone 3)** —
+   `POST /api/farmer/auth/login` used to poison the shared Supabase client with the
+   logged-in user's session (later requests ran under the user's JWT and hit RLS).
+   Login now uses a throwaway client.
 
 ---
 
@@ -204,7 +274,7 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 - Add central request validation (Zod available).
 - Add security middleware: `helmet`, rate limiting, scoped CORS.
 - Admin: generic user management (all roles), bank-officer account creation, reports, settings.
-- Live-test the remaining Admin field-officer create/update/status/reset paths (with cleanup).
+- Live-test the remaining Admin field-officer update/status paths (create and reset-password were verified live in Milestone 3 setup).
 - Standardize/extend automated tests across Farmer, Bank Officer, and Admin APIs.
 - Remove the superseded JS `backend/` skeleton.
 

@@ -3,6 +3,7 @@ import profileRoutes from './profile/profile.routes';
 import farmersRoutes from './farmers/farmers.routes';
 import verificationRoutes from './verification/verification.routes';
 import visitsRoutes from './visits/visits.routes';
+import loansRoutes from './loans/loans.routes';
 
 const router = Router();
 
@@ -13,5 +14,6 @@ router.use('/profile', profileRoutes);
 router.use('/farmers', farmersRoutes);
 router.use('/verification', verificationRoutes);
 router.use('/visits', visitsRoutes);
+router.use('/loans', loansRoutes);
 
 export default router;

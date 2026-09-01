@@ -133,7 +133,23 @@ alter table if exists public.farmer_verifications
 create index if not exists field_visits_visit_date_idx on public.field_visits (visit_date);
 
 -- ---------- LOAN APPLICATIONS: review columns ----------
--- Used by the admin dashboard and (later) the bank-officer review flow.
+-- Used by the admin dashboard and the field-officer / bank-officer review
+-- flow. verification_status tracks the officer verdict; forwarded_at/by mark
+-- hand-off to the bank; recommended_amount is the officer's suggestion.
 alter table if exists public.loan_applications
   add column if not exists verification_status text default 'pending',
   add column if not exists forwarded_at timestamptz;
+
+-- Field-officer loan workflow columns. The officer who created the draft and
+-- the officer who verified it are recorded separately from the farmer so the
+-- bank can see exactly who handled the application in the field.
+alter table if exists public.loan_applications
+  add column if not exists field_officer_id uuid references public.profiles (id),
+  add column if not exists verified_at timestamptz,
+  add column if not exists verification_notes text,
+  add column if not exists forwarded_by uuid references public.profiles (id),
+  add column if not exists recommended_amount numeric;
+
+create index if not exists loan_applications_farmer_idx on public.loan_applications (farmer_id);
+create index if not exists loan_applications_status_idx on public.loan_applications (status);
+create index if not exists loan_applications_verification_status_idx on public.loan_applications (verification_status);
