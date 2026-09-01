@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidthWide } from '@/features/officials/shared/constants/layout';
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
+import { api } from '@/lib/api';
 
 type LogStatus = 'success' | 'pending' | 'failed';
 type LogModule = 'User' | 'Loan' | 'System';
@@ -17,18 +18,42 @@ type LogEntry = {
   status: LogStatus;
 };
 
-const MOCK_LOGS: LogEntry[] = [
-  { id: 'L001', user: 'Mohammad Rahim', action: 'Created new farmer profile', module: 'User', time: '2 mins ago', status: 'success' },
-  { id: 'L002', user: 'Ayesha Khatun', action: 'Approved loan application L-2024-0089', module: 'Loan', time: '15 mins ago', status: 'success' },
-  { id: 'L003', user: 'Shamim Reza', action: 'Updated system configuration', module: 'System', time: '1 hour ago', status: 'pending' },
-  { id: 'L004', user: 'Karim Ali', action: 'Uploaded document verification', module: 'User', time: '2 hours ago', status: 'success' },
-  { id: 'L005', user: 'Nasima Khatun', action: 'Loan disbursement failed', module: 'Loan', time: '3 hours ago', status: 'failed' },
-  { id: 'L006', user: 'Rafiq Hasan', action: 'Field visit report submitted', module: 'System', time: '5 hours ago', status: 'success' },
-  { id: 'L007', user: 'Jamal Uddin', action: 'Password change request', module: 'User', time: '1 day ago', status: 'pending' },
-  { id: 'L008', user: 'System Admin', action: 'Database backup completed', module: 'System', time: '1 day ago', status: 'success' },
-  { id: 'L009', user: 'Farida Begum', action: 'Applied for seasonal loan', module: 'Loan', time: '2 days ago', status: 'pending' },
-  { id: 'L010', user: 'Delwar Hossain', action: 'Profile deactivated', module: 'User', time: '3 days ago', status: 'failed' },
-];
+// Map a backend audit_logs row to the entry card the screen renders. The
+// backend writes module values like Auth / FieldOfficer / BankOfficer /
+// Admin — they collapse to the screen's three visual categories.
+const MODULE_TO_CATEGORY: Record<string, LogModule> = {
+  auth: 'User',
+  admin: 'User',
+  fieldofficer: 'Loan',
+  bankofficer: 'Loan',
+  loan: 'Loan',
+  system: 'System',
+};
+
+const timeAgo = (iso: string): string => {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return '';
+  const mins = Math.floor((Date.now() - then) / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} mins ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+};
+
+const logFromRow = (row: any): LogEntry => {
+  const rawStatus = String(row.status ?? 'success').toLowerCase();
+  const status: LogStatus = rawStatus === 'failure' || rawStatus === 'failed' ? 'failed' : rawStatus === 'pending' ? 'pending' : 'success';
+  return {
+    id: String(row.id),
+    user: row.actor_name ?? 'System',
+    action: row.action ?? '',
+    module: MODULE_TO_CATEGORY[String(row.module ?? '').replace(/[\s_-]/g, '').toLowerCase()] ?? 'System',
+    time: timeAgo(String(row.created_at ?? '')),
+    status,
+  };
+};
 
 const MODULE_FILTERS = ['All', 'User', 'Loan', 'System'] as const;
 type ModuleFilter = (typeof MODULE_FILTERS)[number];
@@ -63,8 +88,27 @@ export default function AuditLogsScreen() {
   const colors = useColors();
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<ModuleFilter>('All');
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const filtered = MOCK_LOGS.filter((log) => {
+  const loadLogs = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const res = await api.get<any>('/api/admin/audit?pageSize=100');
+      setLogs((res?.data?.items ?? []).map(logFromRow));
+    } catch (err: any) {
+      setLoadError(err?.message ?? 'Could not load audit logs.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadLogs();
+  }, [loadLogs]);
+
+  const filtered = logs.filter((log) => {
     const moduleMatch = activeFilter === 'All' || log.module === activeFilter;
     const searchMatch = !search ||
       log.user.toLowerCase().includes(search.toLowerCase()) ||
@@ -119,7 +163,19 @@ export default function AuditLogsScreen() {
           ))}
         </View>
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <View style={[styles.emptyIconWrap, { backgroundColor: colors.dashboard.cardBg, marginTop: 24, alignSelf: 'center' }]}>
+            <ActivityIndicator color={colors.greenLight} />
+          </View>
+        ) : loadError ? (
+          <View style={styles.emptyState}>
+            <View style={[styles.emptyIconWrap, { backgroundColor: colors.dashboard.cardBg }]}>
+              <Ionicons name="cloud-offline-outline" size={48} color={colors.dashboard.redDown} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.dashboard.textPrimary }]}>Could not load audit logs</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.dashboard.textSecondary }]}>{loadError}</Text>
+          </View>
+        ) : filtered.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={[styles.emptyIconWrap, { backgroundColor: colors.dashboard.cardBg }]}>
               <Ionicons name="document-lock-outline" size={48} color={colors.dashboard.textSecondary} />

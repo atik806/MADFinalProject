@@ -13,6 +13,7 @@ import { ScreenHeader } from '@/features/officials/shared/components/screen-head
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidthWide } from '@/features/officials/shared/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
 
 export default function AdminDashboardScreen() {
   const router = useRouter();
@@ -21,45 +22,69 @@ export default function AdminDashboardScreen() {
   const { width } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<any>(null);
+  const [registrationData, setRegistrationData] = useState<{ label: string; value: number }[]>([]);
+  const [loanData, setLoanData] = useState<{ label: string; values: { key: string; value: number; color: string }[] }[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const isCompact = width < 480;
   const isTablet = width >= 768;
 
+  const loadDashboard = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const [statsRes, trendRes, analyticsRes] = await Promise.all([
+        api.get<any>('/api/admin/dashboard/stats'),
+        api.get<any>('/api/admin/dashboard/registration-trend?months=6'),
+        api.get<any>('/api/admin/dashboard/loan-analytics?months=6'),
+      ]);
+      setStats(statsRes?.data ?? null);
+      setRegistrationData((trendRes?.data ?? []).map((p: any) => ({ label: p.label, value: p.value })));
+      setLoanData(
+        (analyticsRes?.data ?? []).map((p: any) => ({
+          label: p.label,
+          values: [
+            { key: 'approved', value: p.approved, color: colors.greenLight },
+            { key: 'pending', value: p.pending, color: '#F59E0B' },
+          ],
+        })),
+      );
+    } catch (err: any) {
+      setLoadError(err?.message ?? 'Could not load dashboard statistics.');
+    } finally {
+      setLoading(false);
+    }
+  }, [colors.greenLight]);
+
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+    loadDashboard();
+  }, [loadDashboard]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+    loadDashboard().finally(() => setRefreshing(false));
+  }, [loadDashboard]);
+
+  // Real platform statistics from /api/admin/dashboard/stats. The hero cards
+  // show total farmers, total loans, approval rate, and active users
+  // (field + bank officers with active status).
+  const totalLoans = Number(stats?.totalLoans ?? 0);
+  const approvedLoans = Number(stats?.approvedLoans ?? 0);
+  const approvalRate = totalLoans > 0 ? Math.round((approvedLoans / totalLoans) * 100) : 0;
+  const activeOfficers = Number(stats?.activeFieldOfficers ?? 0) + Number(stats?.activeBankOfficers ?? 0);
 
   const heroStats = [
-    { icon: 'leaf' as const, iconBg: '#A78BFA', value: '510', label: 'Total Farmers', trend: '+48', trendLabel: 'this month' },
-    { icon: 'wallet' as const, iconBg: '#60A5FA', value: '234', label: 'Total Loans', sub: '৳4.2 Crore total' },
-    { icon: 'checkmark-circle' as const, iconBg: '#34D399', value: '72%', label: 'Approval Rate', trend: '+5%', trendLabel: 'vs last month' },
-    { icon: 'people' as const, iconBg: '#F472B6', value: '89', label: 'Active Users', sub: 'Field + Bank Officers' },
+    { icon: 'leaf' as const, iconBg: '#A78BFA', value: String(stats?.totalFarmers ?? 0), label: 'Total Farmers' },
+    { icon: 'wallet' as const, iconBg: '#60A5FA', value: String(totalLoans), label: 'Total Loans' },
+    { icon: 'checkmark-circle' as const, iconBg: '#34D399', value: `${approvalRate}%`, label: 'Approval Rate' },
+    { icon: 'people' as const, iconBg: '#F472B6', value: String(activeOfficers), label: 'Active Users', sub: 'Field + Bank Officers' },
   ];
 
-  const registrationData = [
-    { label: 'Jan', value: 120 },
-    { label: 'Feb', value: 250 },
-    { label: 'Mar', value: 380 },
-    { label: 'Apr', value: 520 },
-    { label: 'May', value: 480 },
-    { label: 'Jun', value: 560 },
-  ];
-
-  const loanData = [
-    { label: 'Apr', values: [{ key: 'approved' as const, value: 45, color: colors.greenLight }, { key: 'pending' as const, value: 20, color: '#F59E0B' }] },
-    { label: 'May', values: [{ key: 'approved' as const, value: 62, color: colors.greenLight }, { key: 'pending' as const, value: 15, color: '#F59E0B' }] },
-    { label: 'Jun', values: [{ key: 'approved' as const, value: 78, color: colors.greenLight }, { key: 'pending' as const, value: 12, color: '#F59E0B' }] },
-  ];
-
+  // Risk distribution is derived from verified/unverified farmer counts —
+  // the closest schema-backed aggregate to the original Low/Medium/High card.
   const creditData = [
-    { label: 'Low Risk', value: 42, color: '#22C55E' },
-    { label: 'Medium', value: 35, color: '#F59E0B' },
-    { label: 'High Risk', value: 23, color: '#EF4444' },
+    { label: 'Verified', value: Number(stats?.verifiedFarmers ?? 0), color: '#22C55E' },
+    { label: 'Pending', value: Number(stats?.pendingFarmers ?? 0), color: '#F59E0B' },
+    { label: 'Rejected Loans', value: Number(stats?.rejectedLoans ?? 0), color: '#EF4444' },
   ];
 
   const actions = [
@@ -94,6 +119,13 @@ export default function AdminDashboardScreen() {
         style={styles.container}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.greenLight} />}>
+        {loadError ? (
+          <View style={[styles.chartCard, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.redDown }]}>
+            <Text style={[styles.chartTitle, { color: colors.dashboard.redDown }]}>Could not load statistics</Text>
+            <Text style={{ color: colors.dashboard.textSecondary }}>{loadError}</Text>
+            <Text style={{ color: colors.dashboard.textSecondary, marginTop: 4 }}>Pull down to retry.</Text>
+          </View>
+        ) : null}
         <LinearGradient
           colors={colors.purpleGradient}
           start={{ x: 0, y: 0 }}

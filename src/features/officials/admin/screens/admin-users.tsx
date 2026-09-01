@@ -19,6 +19,7 @@ import { UserCard } from '@/features/officials/admin/components/user-card';
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidth } from '@/features/officials/shared/constants/layout';
+import { api } from '@/lib/api';
 
 type User = {
   id: string;
@@ -29,31 +30,44 @@ type User = {
   status: 'verified' | 'pending' | 'rejected';
 };
 
-const initialUsers: User[] = [
-  { id: 'U001', name: 'Mohammad Rahim', role: 'Farmer', location: 'Bhola', crop: 'Rice', status: 'verified' },
-  { id: 'U002', name: 'Farida Begum', role: 'Farmer', location: 'Noakhali', crop: 'Shrimp', status: 'pending' },
-  { id: 'U003', name: 'Karim Ali', role: 'Farmer', location: 'Sirajganj', crop: 'Jute', status: 'rejected' },
-  { id: 'U004', name: 'Nasima Khatun', role: 'Farmer', location: 'Faridpur', crop: 'Vegetables', status: 'verified' },
-  { id: 'U005', name: 'Jamal Uddin', role: 'Farmer', location: 'Sylhet', crop: 'Tea', status: 'pending' },
-  { id: 'U006', name: 'Shamim Reza', role: 'Field Officer', location: 'Dhaka', crop: 'Field Operations', status: 'verified' },
-  { id: 'U007', name: 'Ayesha Khatun', role: 'Bank Officer', location: 'Chittagong', crop: 'Credit & Loans', status: 'verified' },
-  { id: 'U008', name: 'Rafiq Hasan', role: 'Field Officer', location: 'Rajshahi', crop: 'Field Operations', status: 'pending' },
-  { id: 'U009', name: 'Sultana Khan', role: 'Bank Officer', location: 'Mymensingh', crop: 'Credit & Loans', status: 'rejected' },
-  { id: 'U010', name: 'Delwar Hossain', role: 'Farmer', location: 'Khulna', crop: 'Jute', status: 'verified' },
-  { id: 'U011', name: 'Shahida Parvin', role: 'Farmer', location: 'Bogra', crop: 'Potato', status: 'verified' },
-  { id: 'U012', name: 'Abdur Rahman', role: 'Field Officer', location: 'Barisal', crop: 'Field Operations', status: 'rejected' },
-];
+// Backend directory row → the card the screen renders. Role text and the
+// status badge keep the screen's existing visual language: bank/field
+// officers show verified/pending by account status; farmers by is_verified.
+const ROLE_FROM_BACKEND: Record<string, User['role']> = {
+  farmer: 'Farmer',
+  field_officer: 'Field Officer',
+  bank_officer: 'Bank Officer',
+};
+
+const userFromRow = (row: any): User => {
+  const role = ROLE_FROM_BACKEND[String(row.role ?? '').toLowerCase()] ?? 'Farmer';
+  const status = String(row.status ?? '').toLowerCase();
+  const badgeStatus: User['status'] =
+    status === 'active'
+      ? 'verified'
+      : status === 'inactive' || status === 'suspended'
+        ? 'rejected'
+        : 'pending';
+  return {
+    id: String(row.id),
+    name: row.name_en ?? row.name_bn ?? 'Unnamed',
+    role,
+    location: [row.district, row.village].filter(Boolean).join(', ') || '—',
+    crop: role === 'Farmer'
+      ? (row.farmer_id ?? '—')
+      : (row.designation ?? row.employee_id ?? '—'),
+    status: role === 'Farmer' && row.is_verified === true ? 'verified' : badgeStatus,
+  };
+};
+
+const ROLE_FILTER: Record<Tab, string> = {
+  Farmers: 'farmer',
+  'Field Officers': 'field_officer',
+  'Bank Officers': 'bank_officer',
+};
 
 const TABS = ['Farmers', 'Field Officers', 'Bank Officers'] as const;
 type Tab = (typeof TABS)[number];
-
-const ROLE_MAP: Record<Tab, User['role']> = {
-  Farmers: 'Farmer',
-  'Field Officers': 'Field Officer',
-  'Bank Officers': 'Bank Officer',
-};
-
-const ROLES: User['role'][] = ['Farmer', 'Field Officer', 'Bank Officer'];
 
 const SKELETON_OPACITY = 0.3;
 function SkeletonCard() {
@@ -108,7 +122,10 @@ export default function AdminUsersScreen() {
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
 
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [viewUser, setViewUser] = useState<User | null>(null);
@@ -116,34 +133,52 @@ export default function AdminUsersScreen() {
   const [formModalVisible, setFormModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formName, setFormName] = useState('');
-  const [formRole, setFormRole] = useState<User['role']>('Farmer');
   const [formLocation, setFormLocation] = useState('');
   const [formCrop, setFormCrop] = useState('');
+  const [formNid, setFormNid] = useState('');
+  const [formPhone, setFormPhone] = useState('');
+  const [formPassword, setFormPassword] = useState('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  const [rolePickerVisible, setRolePickerVisible] = useState(false);
+  const loadUsers = useCallback(
+    async (tab: Tab, searchTerm: string) => {
+      setLoadError(null);
+      try {
+        const params = new URLSearchParams({
+          role: ROLE_FILTER[tab],
+          pageSize: '100',
+        });
+        if (searchTerm.trim()) {
+          params.set('search', searchTerm.trim());
+        }
+        const res = await api.get<any>(`/api/admin/users?${params.toString()}`);
+        setUsers((res?.data?.items ?? []).map(userFromRow));
+      } catch (err: any) {
+        setUsers([]);
+        setLoadError(err?.message ?? 'Could not load users.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1200);
+    setLoading(true);
+    loadUsers(activeTab, search);
+    // Debounce so typing in search does not fire a request per keystroke.
+    const timer = setTimeout(() => loadUsers(activeTab, search), 300);
     return () => clearTimeout(timer);
-  }, []);
+  }, [activeTab, search, loadUsers]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+    loadUsers(activeTab, search).finally(() => setRefreshing(false));
+  }, [activeTab, search, loadUsers]);
 
-  const filtered = users.filter((u) => {
-    const roleMatch = u.role === ROLE_MAP[activeTab];
-    const searchMatch =
-      !search ||
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.location.toLowerCase().includes(search.toLowerCase()) ||
-      u.crop.toLowerCase().includes(search.toLowerCase());
-    return roleMatch && searchMatch;
-  });
+  const filtered = users;
 
-  const totalByTab = (tab: Tab) => users.filter((u) => u.role === ROLE_MAP[tab]).length;
+  const totalByTab = (tab: Tab) => (tab === activeTab ? users.length : 0);
 
   const openViewModal = (user: User) => {
     setViewUser(user);
@@ -153,9 +188,11 @@ export default function AdminUsersScreen() {
   const openAddModal = () => {
     setEditingUser(null);
     setFormName('');
-    setFormRole('Farmer');
     setFormLocation('');
     setFormCrop('');
+    setFormNid('');
+    setFormPhone('');
+    setFormPassword('');
     setFormErrors({});
     setFormModalVisible(true);
   };
@@ -163,9 +200,11 @@ export default function AdminUsersScreen() {
   const openEditModal = (user: User) => {
     setEditingUser(user);
     setFormName(user.name);
-    setFormRole(user.role);
-    setFormLocation(user.location);
-    setFormCrop(user.crop);
+    setFormLocation(user.location === '—' ? '' : user.location);
+    setFormCrop(user.crop === '—' ? '' : user.crop);
+    setFormNid('');
+    setFormPhone('');
+    setFormPassword('');
     setFormErrors({});
     setFormModalVisible(true);
   };
@@ -173,55 +212,89 @@ export default function AdminUsersScreen() {
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
     if (!formName.trim()) errors.name = 'Name is required';
-    if (!formLocation.trim()) errors.location = 'Location is required';
-    if (!formCrop.trim()) errors.crop = 'Crop is required';
+    if (!editingUser) {
+      // Creating a field officer requires identity + contact + credentials.
+      if (!formNid.trim()) errors.nid = 'NID is required';
+      if (!formPhone.trim()) errors.phone = 'Phone is required';
+      if (formPassword.trim().length < 6) errors.password = 'Password must be at least 6 characters';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (!validateForm()) return;
-
-    if (editingUser) {
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === editingUser.id
-            ? { ...u, name: formName.trim(), role: formRole, location: formLocation.trim(), crop: formCrop.trim() }
-            : u,
-        ),
-      );
+  const handleSubmit = async () => {
+    if (!validateForm() || submitting) return;
+    setSubmitting(true);
+    try {
+      if (editingUser) {
+        // Officer detail edit: only the designation/district/phone fields the
+        // backend's update white-list accepts. Role/location edits beyond
+        // that are not supported by the API for this row type.
+        await api.put<any>(`/api/admin/field-officers/${editingUser.id}`, {
+          name_en: formName.trim(),
+          designation: formCrop.trim() || undefined,
+          supervised_district: formLocation.trim() || undefined,
+        });
+        Alert.alert('Success', `${formName.trim()} has been updated.`);
+      } else {
+        // Create: the only staff role the backend can provision today.
+        const res = await api.post<any>('/api/admin/field-officers', {
+          nameEn: formName.trim(),
+          nid: formNid.trim(),
+          phone: formPhone.trim(),
+          password: formPassword.trim(),
+          designation: formCrop.trim() || undefined,
+          supervisedDistrict: formLocation.trim() || undefined,
+        });
+        const created = res?.data?.profile;
+        Alert.alert(
+          'Success',
+          `${created?.name_en ?? formName.trim()} has been added as a Field Officer.`,
+        );
+      }
       setFormModalVisible(false);
-      Alert.alert('Success', `${formName.trim()} has been updated.`);
-    } else {
-      const newId = `U${String(users.length + 1).padStart(3, '0')}`;
-      const newUser: User = {
-        id: newId,
-        name: formName.trim(),
-        role: formRole,
-        location: formLocation.trim(),
-        crop: formCrop.trim(),
-        status: 'pending',
-      };
-      setUsers((prev) => [...prev, newUser]);
-      setFormModalVisible(false);
-      Alert.alert('Success', `${formName.trim()} has been added successfully.`);
+      // Newly created officers land in the Field Officers tab; refresh it.
+      setActiveTab('Field Officers');
+      setLoading(true);
+      await loadUsers('Field Officers', search);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message ?? 'The request failed. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDeactivate = (user: User) => {
+    const isActive = user.status === 'verified';
     Alert.alert(
-      'Deactivate User',
-      `Are you sure? This action can be reversed.`,
+      isActive ? 'Deactivate User' : 'Reactivate User',
+      isActive
+        ? `Suspend ${user.name}'s account? They will lose API access immediately. This action can be reversed.`
+        : `Reactivate ${user.name}'s account?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Confirm',
-          style: 'destructive',
-          onPress: () => {
-            setUsers((prev) =>
-              prev.map((u) => (u.id === user.id ? { ...u, status: 'rejected' as const } : u)),
-            );
-            Alert.alert('Done', `${user.name} has been deactivated.`);
+          style: isActive ? 'destructive' : 'default',
+          onPress: async () => {
+            if (statusUpdatingId) return;
+            setStatusUpdatingId(user.id);
+            try {
+              await api.patch<any>(`/api/admin/users/${user.id}/status`, {
+                status: isActive ? 'suspended' : 'active',
+              });
+              setUsers((prev) =>
+                prev.map((u) =>
+                  u.id === user.id ? { ...u, status: isActive ? 'rejected' : 'verified' } : u,
+                ),
+              );
+              Alert.alert('Done', `${user.name} has been ${isActive ? 'suspended' : 'reactivated'}.`);
+            } catch (err: any) {
+              // Includes the backend's admin-row refusal — surfaced verbatim.
+              Alert.alert('Error', err?.message ?? 'Could not update the account status.');
+            } finally {
+              setStatusUpdatingId(null);
+            }
           },
         },
       ],
@@ -282,6 +355,15 @@ export default function AdminUsersScreen() {
             <SkeletonCard />
             <SkeletonCard />
           </>
+        ) : loadError ? (
+          <View style={styles.emptyState}>
+            <View style={[styles.emptyIconWrap, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.redDown }]}>
+              <Ionicons name="cloud-offline-outline" size={48} color={colors.dashboard.redDown} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.dashboard.textPrimary }]}>Could not load users</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.dashboard.textSecondary }]}>{loadError}</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.dashboard.textSecondary }]}>Pull down to retry.</Text>
+          </View>
         ) : filtered.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={[styles.emptyIconWrap, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.userBorder }]}>
@@ -421,24 +503,59 @@ export default function AdminUsersScreen() {
                 {formErrors.name ? <Text style={[styles.fieldError, { color: colors.dashboard.redDown }]}>{formErrors.name}</Text> : null}
 
                 <Text style={[styles.fieldLabel, { color: colors.dashboard.textSecondary }]}>Role</Text>
-                <Pressable
-                  onPress={() => setRolePickerVisible(!rolePickerVisible)}
-                  style={[styles.fieldInput, { backgroundColor: colors.dashboard.bg, borderColor: colors.userBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
-                  <Text style={{ color: colors.dashboard.textPrimary }}>{formRole}</Text>
-                  <Ionicons name={rolePickerVisible ? 'chevron-up' : 'chevron-down'} size={18} color={colors.dashboard.textSecondary} />
-                </Pressable>
-                {rolePickerVisible && (
-                  <View style={[styles.pickerDropdown, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.userBorder }]}>
-                    {ROLES.map((r) => (
-                      <Pressable
-                        key={r}
-                        onPress={() => { setFormRole(r); setRolePickerVisible(false); }}
-                        style={[styles.pickerOption, { borderBottomColor: colors.userBorder }, r === formRole && { backgroundColor: colors.deepGreen + '15' }]}>
-                        <Text style={[styles.pickerOptionText, { color: colors.dashboard.textPrimary }, r === formRole && { color: colors.deepGreen, fontWeight: '700' }]}>{r}</Text>
-                        {r === formRole && <Ionicons name="checkmark" size={18} color={colors.deepGreen} />}
-                      </Pressable>
-                    ))}
-                  </View>
+                {/* Officer provisioning: the backend only supports creating
+                    field officers today (bank-officer create requires the
+                    parked schema; farmers self-register). The role is fixed
+                    rather than picked, so the form cannot promise a role the
+                    API will refuse. */}
+                <View style={[styles.fieldInput, { backgroundColor: colors.dashboard.bg, borderColor: colors.userBorder, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
+                  <Text style={{ color: colors.dashboard.textPrimary }}>Field Officer</Text>
+                  <Ionicons name="shield-checkmark" size={16} color={colors.deepGreen} />
+                </View>
+
+                {!editingUser && (
+                  <>
+                    <Text style={[styles.fieldLabel, { color: colors.dashboard.textSecondary }]}>NID</Text>
+                    <TextInput
+                      style={[
+                        styles.fieldInput,
+                        { color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.bg, borderColor: formErrors.nid ? colors.dashboard.redDown : colors.userBorder },
+                      ]}
+                      placeholder="National ID number"
+                      placeholderTextColor={colors.dashboard.textSecondary}
+                      value={formNid}
+                      onChangeText={(t) => { setFormNid(t); setFormErrors((p) => ({ ...p, nid: '' })); }}
+                    />
+                    {formErrors.nid ? <Text style={[styles.fieldError, { color: colors.dashboard.redDown }]}>{formErrors.nid}</Text> : null}
+
+                    <Text style={[styles.fieldLabel, { color: colors.dashboard.textSecondary }]}>Phone</Text>
+                    <TextInput
+                      style={[
+                        styles.fieldInput,
+                        { color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.bg, borderColor: formErrors.phone ? colors.dashboard.redDown : colors.userBorder },
+                      ]}
+                      placeholder="e.g. 01712345678"
+                      placeholderTextColor={colors.dashboard.textSecondary}
+                      value={formPhone}
+                      keyboardType="phone-pad"
+                      onChangeText={(t) => { setFormPhone(t); setFormErrors((p) => ({ ...p, phone: '' })); }}
+                    />
+                    {formErrors.phone ? <Text style={[styles.fieldError, { color: colors.dashboard.redDown }]}>{formErrors.phone}</Text> : null}
+
+                    <Text style={[styles.fieldLabel, { color: colors.dashboard.textSecondary }]}>Temporary Password</Text>
+                    <TextInput
+                      style={[
+                        styles.fieldInput,
+                        { color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.bg, borderColor: formErrors.password ? colors.dashboard.redDown : colors.userBorder },
+                      ]}
+                      placeholder="At least 6 characters"
+                      placeholderTextColor={colors.dashboard.textSecondary}
+                      value={formPassword}
+                      secureTextEntry
+                      onChangeText={(t) => { setFormPassword(t); setFormErrors((p) => ({ ...p, password: '' })); }}
+                    />
+                    {formErrors.password ? <Text style={[styles.fieldError, { color: colors.dashboard.redDown }]}>{formErrors.password}</Text> : null}
+                  </>
                 )}
 
                 <Text style={[styles.fieldLabel, { color: colors.dashboard.textSecondary }]}>Location</Text>
@@ -469,8 +586,9 @@ export default function AdminUsersScreen() {
 
                 <Pressable
                   onPress={handleSubmit}
-                  style={[styles.submitBtn, { backgroundColor: colors.deepGreen }]}>
-                  <Text style={styles.submitBtnText}>{editingUser ? 'Update User' : 'Add User'}</Text>
+                  disabled={submitting}
+                  style={[styles.submitBtn, { backgroundColor: colors.deepGreen }, submitting && { opacity: 0.6 }]}>
+                  <Text style={styles.submitBtnText}>{submitting ? 'Saving…' : editingUser ? 'Update User' : 'Add User'}</Text>
                 </Pressable>
               </ScrollView>
             </Pressable>
