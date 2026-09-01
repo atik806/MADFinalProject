@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useMemo, useReducer } from 'react';
+import { createContext, useCallback, useContext, useMemo, useReducer, type ReactNode } from 'react';
 import type { Href } from 'expo-router';
+import { api, ApiError, setAuthToken } from '../lib/api';
 
 export type UserRole = 'farmer' | 'admin' | 'bank-officer' | 'field-officer';
 
@@ -28,28 +29,34 @@ type AuthContextValue = AuthState & {
   logout: () => void;
 };
 
-const DEMO_USERS: { identifier: string; password: string; user: User }[] = [
-  {
-    identifier: '01302228993',
-    password: '123456',
-    user: { id: 'f1', name: 'Mohammad Rahim', phone: '01302228993', role: 'farmer' },
-  },
-  {
-    identifier: 'admin@gmail.com',
-    password: '123456',
-    user: { id: '1', name: 'System Administrator', email: 'admin@gmail.com', role: 'admin' },
-  },
-  {
-    identifier: 'bank@gmail.com',
-    password: '123456',
-    user: { id: '2', name: 'Ayesha Khatun', email: 'bank@gmail.com', role: 'bank-officer' },
-  },
-  {
-    identifier: 'field@gmail.com',
-    password: '123456',
-    user: { id: '3', name: 'Shamim Reza', email: 'field@gmail.com', role: 'field-officer' },
-  },
-];
+// Backend profiles.role values → the frontend's role union used for routing.
+// The mapping is one-way here; the backend remains authoritative for every
+// authorization decision (its role guards read profiles server-side).
+const BACKEND_ROLE_MAP: Record<string, UserRole> = {
+  farmer: 'farmer',
+  admin: 'admin',
+  bank_officer: 'bank-officer',
+  'bank-officer': 'bank-officer',
+  field_officer: 'field-officer',
+  'field-officer': 'field-officer',
+};
+
+export const toUserRole = (backendRole: unknown): UserRole =>
+  BACKEND_ROLE_MAP[String(backendRole ?? '').trim().toLowerCase()] ?? 'farmer';
+
+// Builds the frontend User from a login response. The role always comes from
+// the server-resolved profile — never from anything the client submitted.
+const userFromLogin = (payload: any): User => ({
+  id: String(payload?.user?.id ?? payload?.profile?.id ?? ''),
+  name:
+    payload?.profile?.name_en ??
+    payload?.profile?.name_bn ??
+    payload?.user?.user_metadata?.full_name ??
+    'SOFOL User',
+  email: payload?.user?.email ?? payload?.profile?.email ?? undefined,
+  phone: payload?.user?.phone ?? payload?.profile?.phone ?? undefined,
+  role: toUserRole(payload?.profile?.role),
+});
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
@@ -73,27 +80,51 @@ const initialAuthState: AuthState = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+// All staff (field officer / bank officer) and farmer accounts use the shared
+// login endpoint: it resolves the identifier (email / NID / phone) to the
+// account and returns the profile with its server-side role. The admin uses
+// its own endpoint with different credential semantics.
+const trySharedLogin = (identifier: string, password: string) =>
+  api.post<any>('/api/farmer/auth/login', { identifier, password });
+
+const tryAdminLogin = (identifier: string, password: string) =>
+  api.post<any>('/api/admin/auth/login', { identifier, password });
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialAuthState);
 
   const login = useCallback(async (identifier: string, password: string): Promise<User> => {
     dispatch({ type: 'LOGIN_START' });
-    await new Promise((resolve) => setTimeout(resolve, 1200));
 
-    const found = DEMO_USERS.find(
-      (u) => u.identifier === identifier && u.password === password,
-    );
-
-    if (!found) {
-      dispatch({ type: 'LOGIN_ERROR' });
-      throw new Error('Invalid credentials');
+    // Officer/farmer accounts never collide with admin credentials (staff
+    // emails are synthetic nid@sofol.local), but a wrong-role identifier
+    // must not lock the admin out, so both doors are tried. Only a definitive
+    // credential rejection (401) falls through to the admin endpoint —
+    // network/server failures surface immediately.
+    let payload: any = null;
+    try {
+      payload = await trySharedLogin(identifier, password);
+    } catch (err) {
+      const credentialsRejected = err instanceof ApiError && err.status === 401;
+      if (!credentialsRejected) throw err;
+      payload = await tryAdminLogin(identifier, password);
     }
 
-    dispatch({ type: 'LOGIN_SUCCESS', user: found.user });
-    return found.user;
+    if (!payload?.token) {
+      dispatch({ type: 'LOGIN_ERROR' });
+      throw new Error('Login did not return a session token');
+    }
+
+    // Token first, then state: any later request carries the right header.
+    setAuthToken(payload.token);
+    const user = userFromLogin(payload);
+    dispatch({ type: 'LOGIN_SUCCESS', user });
+    return user;
   }, []);
 
   const logout = useCallback(() => {
+    // Clear the token BEFORE the user so no in-flight request keeps it.
+    setAuthToken(null);
     dispatch({ type: 'LOGOUT' });
   }, []);
 
