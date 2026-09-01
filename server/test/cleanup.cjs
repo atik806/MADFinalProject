@@ -149,5 +149,45 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
     fs.unlinkSync(bankFile);
   }
 
+  const adminFile = path.join(__dirname, 'admin-cleanup.tmp');
+  if (fs.existsSync(adminFile)) {
+    const { farmerIds, officerIds } = JSON.parse(fs.readFileSync(adminFile, 'utf8'));
+
+    for (const fid of farmerIds ?? []) {
+      await supabase.from('field_officer_assignments').delete().eq('farmer_id', fid);
+      await supabase.from('farmer_verifications').delete().eq('farmer_id', fid);
+      await supabase.from('transactions').delete().eq('farmer_id', fid);
+      await supabase.from('notifications').delete().eq('user_id', fid);
+      const { data: loans } = await supabase.from('loan_applications').select('id').eq('farmer_id', fid);
+      for (const loan of loans ?? []) {
+        const { error: tlErr } = await supabase.from('loan_timeline').delete().eq('loan_application_id', loan.id);
+        if (!tlErr) removed.timeline += 1;
+        const { error: lErr } = await supabase.from('loan_applications').delete().eq('id', loan.id);
+        if (!lErr) removed.loans += 1;
+      }
+      const { data: farmerProfile } = await supabase.from('profiles').select('id').eq('id', fid).maybeSingle();
+      if (farmerProfile) {
+        const { error: pErr } = await supabase.from('profiles').delete().eq('id', fid);
+        if (!pErr) removed.farmers += 1;
+        const { error: aErr } = await supabase.auth.admin.deleteUser(fid);
+        if (!aErr) removed.authUsers += 1;
+      }
+    }
+
+    for (const oid of officerIds ?? []) {
+      await supabase.from('field_officer_assignments').delete().eq('field_officer_id', oid);
+      await supabase.from('field_visits').delete().eq('field_officer_id', oid);
+      const { data: officerProfile } = await supabase.from('profiles').select('id').eq('id', oid).maybeSingle();
+      if (officerProfile) {
+        const { error: pErr } = await supabase.from('profiles').delete().eq('id', oid);
+        if (!pErr) removed.officers += 1;
+        const { error: aErr } = await supabase.auth.admin.deleteUser(oid);
+        if (!aErr) removed.authUsers += 1;
+      }
+    }
+
+    fs.unlinkSync(adminFile);
+  }
+
   console.log('CLEANUP_DONE', JSON.stringify(removed));
 })();
