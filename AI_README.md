@@ -22,8 +22,9 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
 **Request flow:** Route → Middleware (`authenticate` → role guard) → Controller → Service → Supabase.
 
 **Response contract:** target is `{ success, message, data }`.
-> The **admin** module already returns `{ success, message, data }`. The **farmer** module
-> still returns `{ message, ... }`. Standardizing farmer handlers is a cross-cutting task.
+> The **admin** module already returns `{ success, message, data }`. As of Milestone 4 the
+> **farmer** module's data endpoints also return `{ success, message, data }` (GET `/me`
+> now included); `dashboard` still returns a bare payload object.
 
 **Live database note:** the connected Supabase project already has the admin/officer schema
 applied (audit_logs, admin/field-officer columns, etc. exist live, with prior data). `farmer_db.sql`
@@ -36,7 +37,7 @@ and `admin.sql` reproduce that schema for a fresh project.
 | Role          | Status                | Notes                                                                 |
 | ------------- | --------------------- | --------------------------------------------------------------------- |
 | Admin         | Implemented (core)    | auth (login/me/change-password/seed), dashboard (stats/trends/overview), audit trail, and field-officer **read** management are **mounted at `/api/admin` and verified live**. Field-officer **create/update/status/reset** are wired + schema-backed but not yet live-mutation-tested. Generic user management, reports, and settings still planned. |
-| Farmer        | Partially implemented | auth, profile, dashboard, loans, transactions, notifications modules exist; server boots and login round-trips to Supabase. Full per-endpoint DB behavior not re-verified this cycle. |
+| Farmer        | Implemented (backend, hardened + verified live) | auth (register/login/reset/upload/me), profile (`GET/PUT /me` + `/profile` alias, privileged columns filtered), read-only credit profile, dashboard, transactions (full CRUD, whitelisted updates, sign-convention amounts), loans (list/get/apply, pinned `pending`, shared lifecycle), notifications — mounted at `/api/farmer` and verified live with a 64-assertion E2E suite. Frontend API wiring remains open (contexts still local/mock). |
 | Field Officer | Implemented (core + loans) | Profile, assigned-farmer management/registration, verification history/update, field visits, and the loan-application workflow (draft → submit → verify → forward) are mounted at `/api/field-officer` and verified live. Frontend API wiring remains open. |
 | Bank Officer  | Planned               | Nothing yet (no middleware, routes, or services).                     |
 
@@ -59,8 +60,10 @@ and `admin.sql` reproduce that schema for a fresh project.
   `fieldOfficer.middleware.ts` — role guards; read role from `profiles`, self-heal, fall back
   to auth metadata, `403` otherwise. `adminOnly` also short-circuits for the env `ADMIN_EMAIL`.
 
-**Farmer module** (`modules/farmer/*`): mounts `/auth`, `/profile`, `/dashboard`, `/loans`,
-`/transactions`, `/notifications`.
+**Farmer module** (`modules/farmer/*`): mounts `/auth`, `/me` (alias of `/profile`), `/profile`,
+`/credit`, `/dashboard`, `/loans`, `/transactions`, `/notifications`; all data routes behind
+`authenticateUser` + `farmerOnly`. `validation.ts` holds the shared farmer validation helpers
+(UUID, text, signed-amount, category, installment-type, safe-error allowlist).
 
 **Admin module** (`modules/admin/*`, mounted at `/api/admin`):
 - `admin.routes.ts` — barrel: `/auth`, `/dashboard`, `/field-officers`, `/audit`.
@@ -246,12 +249,64 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
   farmer-module response shapes remain inconsistent; frontend not wired.
 - **Next milestone:** Farmer backend (endpoint verification/response standardization).
 
+### Milestone 4 — Farmer backend (hardening, credit profile, verification)
+- **Status:** Complete (all farmer data endpoints hardened, validated, ownership-scoped,
+  and verified live; no destructive DB change).
+- **Implemented:** farmer profile `GET/PUT /api/farmer/me` (+ `/profile` alias) with the
+  response contract standardized to `{ success, message, data }`; a read-only farmer
+  credit-profile endpoint; hardened transactions (validation, whitelisted update columns,
+  sign-convention amounts); hardened loan apply (validation, pinned `pending` status,
+  audit logging); safe error mapping (no raw Supabase/PGRST errors leak).
+- **Files created:** `server/src/modules/farmer/validation.ts`,
+  `server/src/modules/farmer/credit/{credit.service,credit.controller,credit.routes}.ts`,
+  `server/test/farmer.e2e.cjs`.
+- **Files modified:** farmer `profile/`, `transactions/`, `loans/` controllers+services,
+  `farmer.routes.ts` (mounts `/me`, `/credit`), `test/cleanup.cjs` (farmer-milestone
+  records), `README.md`, `AI_README.md`.
+- **Database:** unchanged — reuses `profiles`, `transactions`, `loan_applications`,
+  `loan_timeline`, `notifications`, `farmer_verifications` as-is. No migration needed.
+- **API endpoints:** `GET/PUT /api/farmer/me` (alias `/profile`), `GET /api/farmer/credit`,
+  plus the pre-existing (now hardened) `GET/POST /api/farmer/transactions`,
+  `GET/PUT/DELETE /api/farmer/transactions/:id`, `GET/POST /api/farmer/loans`,
+  `GET /api/farmer/loans/:id`.
+- **Authentication:** Bearer Supabase token via `authenticateUser` (unchanged).
+- **Authorization:** every farmer data route runs behind `farmerOnly`; `farmer_id` is
+  always derived from the token — a client-supplied `farmerId`/`farmer_id` is ignored on
+  create and update. Reads/updates/deletes are scoped by `farmer_id`, so a foreign row is
+  indistinguishable from a missing one (404). Verified live with two real farmers: A→A
+  allowed, A→B rejected (404) on transactions and loans; lists never leak cross-farmer
+  rows. Wrong-role (officer token) access is 403.
+- **Validation:** UUIDs (transaction/loan ids), required text with length caps, positive
+  loan amounts, non-negative emi/interest, `installmentType ∈ {monthly, seasonal}`,
+  `category ∈ {income, expense}` with the signed-amount convention (income > 0,
+  expense < 0), required transaction dates (display-string format per frontend
+  convention). Business-rule failures → 400, missing/foreign → 404, auth → 401/403.
+- **Business rules:** privileged profile columns (`is_verified`, `credit_score`,
+  `farmer_id`, `role`, `status`, `member_since`) are filtered out of farmer updates
+  (mass-assignment guard, verified live); loan `status`/`verification_status` from the
+  client are ignored — applications enter as `pending` in the shared lifecycle; officer
+  verification and bank decisions are only writable through their own role endpoints; the
+  credit profile is strictly read-only (no write route exists).
+- **Tests:** `npm run build` passes; live `node test/farmer.e2e.cjs` **64/64** with
+  regressions `field-officer.e2e.cjs` **31/31** and `field-officer-loans.e2e.cjs`
+  **44/44** (fresh tokens). Covers profile read/update + mass-assignment guards,
+  transactions CRUD + validation + IDOR, loans list/get/apply + status pinning + IDOR,
+  credit profile structure + verified-field protection + IDOR, dashboard regression, and
+  401/403 auth guards. Test-created farmers, transactions, loans, timelines, and auth
+  users removed afterward (verified clean DB).
+- **Known limitations:** `dashboard` still returns a bare payload (not the full contract);
+  transaction `date` is a display string ("18 Jun 2024") per the existing frontend
+  convention — ISO normalization is a future cross-cutting change; frontend contexts
+  (Profile/Transaction/Loan/Notification) still use local mock data.
+- **Next milestone:** Bank Officer Backend.
+
 ---
 
 ## Audit findings (updated)
 
 1. **Two backends existed.** TS `server/` adopted; JS `backend/` superseded — recommend removal. *(open)*
-2. **Response contract mismatch.** Farmer returns `{ message }`; admin returns `{ success, message, data }`. *(open)*
+2. ~~Response contract mismatch.~~ **Mostly fixed (Milestone 4)** — farmer data endpoints
+   now return `{ success, message, data }`; farmer `dashboard` still returns a bare payload. *(nearly closed)*
 3. ~~Admin routes not mounted.~~ **Fixed (Milestone 1)** — mounted at `/api/admin`.
 4. ~~Missing admin schema / audit module.~~ **Fixed (Milestone 1)** — `admin.sql` + `audit/` added.
 5. **CORS is `*`.** Must be scoped before production. *(open)*

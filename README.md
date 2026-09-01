@@ -136,7 +136,8 @@ Base URL: `http://localhost:3000`
 | ------ | --------------------------- | ------ | ------------------------ |
 | GET    | `/`                         | none   | Health check             |
 | *      | `/api/farmer/auth`          | mixed  | Register / login / reset |
-| *      | `/api/farmer/profile`       | farmer | Profile read / update    |
+| GET/PUT | `/api/farmer/me`           | farmer | Own profile (`/profile` alias) |
+| GET    | `/api/farmer/credit`        | farmer | Read-only credit profile |
 | *      | `/api/farmer/dashboard`     | farmer | Dashboard aggregates     |
 | *      | `/api/farmer/transactions`  | farmer | Income / expense records |
 | *      | `/api/farmer/loans`         | farmer | Loan applications        |
@@ -149,6 +150,28 @@ Base URL: `http://localhost:3000`
 Field Officer endpoints are available for the current profile, farmer, verification, visit,
 and loan-application workflows. Bank Officer endpoints are still in progress — see
 [AI_README.md](AI_README.md) for the detailed live status.
+
+### Farmer API
+
+All farmer data endpoints require a Bearer token with the `farmer` role. Every query is
+scoped to the authenticated farmer: farmers can only read and write their own profile,
+transactions, loans, notifications, and credit data.
+
+- `auth/*` — register, login (email/phone/NID), demo password reset, document upload.
+- `GET/PUT /me` (alias `/profile`) — own profile. PUT filters privileged columns
+  (`is_verified`, `credit_score`, `farmer_id`, `role`, `status`, `member_since`) so they can
+  never be set through the farmer API.
+- `GET /credit` — read-only credit profile: verified information (officer verification
+  history, `is_verified`, `credit_score`), declared farmer-provided financial data, and
+  system-derived loan aggregates. No write path exists.
+- `dashboard` — profile + recent transactions/loans + counts.
+- `loans` — list/get own applications (with timeline) and apply for new ones. New
+  applications enter the shared pipeline as `pending`; status decisions, officer
+  verification, and forwarding are not writable here.
+- `transactions` — full income/expense CRUD. Amounts follow the frontend sign convention
+  (income positive, expense negative); `farmer_id` is always derived from the token, never
+  the client. Updates are limited to whitelisted columns.
+- `notifications` — list/mark-read/delete own notifications.
 
 ### Field Officer API
 
@@ -213,9 +236,10 @@ columns on `profiles`, and the loan review columns on `loan_applications`
 
 ## Testing
 
-- Current: TypeScript build plus live Field Officer E2E coverage. From `server/`, run
-  `npm run build`, then `node test/field-officer.e2e.cjs` (profile/farmers/verification/visits)
-  and `node test/field-officer-loans.e2e.cjs` (loan workflow) against a running server.
+- Current: TypeScript build plus live E2E coverage. From `server/`, run
+  `npm run build`, then `node test/farmer.e2e.cjs` (profile/credit/transactions/loans),
+  `node test/field-officer.e2e.cjs` (profile/farmers/verification/visits), and
+  `node test/field-officer-loans.e2e.cjs` (loan workflow) against a running server.
   The harnesses need fresh local bearer tokens in `server/scripts/token.tmp` (field
   officer) and `server/test/admin_token.tmp` (admin); these files are test artifacts and
   must not be committed. After a run, `node test/cleanup.cjs` and
