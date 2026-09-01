@@ -1,5 +1,7 @@
-// Cleanup for test-created loan workflow records (loan-cleanup.tmp) and
-// milestone-2 records (cleanup.tmp). Safe to re-run; reports what it removed.
+// Cleanup for test-created loan workflow records (loan-cleanup.tmp),
+// milestone-2 records (cleanup.tmp), farmer records (farmer-cleanup.tmp) and
+// bank-officer review records (bank-cleanup.tmp).
+// Safe to re-run; reports what it removed.
 require('dotenv').config({ path: __dirname + '/../.env' });
 const fs = require('fs');
 const path = require('path');
@@ -87,6 +89,51 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
       }
     }
     fs.unlinkSync(farmerFile);
+  }
+
+  const bankFile = path.join(__dirname, 'bank-cleanup.tmp');
+  if (fs.existsSync(bankFile)) {
+    const { farmerIds, officerIds, loanIds } = JSON.parse(fs.readFileSync(bankFile, 'utf8'));
+
+    // Loan children first: loan_timeline has no cascade from a profile delete.
+    for (const loanId of loanIds ?? []) {
+      const { error: tlErr } = await supabase.from('loan_timeline').delete().eq('loan_application_id', loanId);
+      if (!tlErr) removed.timeline += 1;
+      const { error: lErr } = await supabase.from('loan_applications').delete().eq('id', loanId);
+      if (!lErr) removed.loans += 1;
+    }
+
+    for (const fid of farmerIds ?? []) {
+      await supabase.from('field_officer_assignments').delete().eq('farmer_id', fid);
+      await supabase.from('farmer_verifications').delete().eq('farmer_id', fid);
+      await supabase.from('transactions').delete().eq('farmer_id', fid);
+      const { error: nErr } = await supabase.from('notifications').delete().eq('user_id', fid);
+      if (!nErr) removed.notifications += 1;
+      const { data: farmerProfile } = await supabase.from('profiles').select('id').eq('id', fid).maybeSingle();
+      if (farmerProfile) {
+        const { error: pErr } = await supabase.from('profiles').delete().eq('id', fid);
+        if (!pErr) removed.farmers += 1;
+        const { error: aErr } = await supabase.auth.admin.deleteUser(fid);
+        if (!aErr) removed.authUsers += 1;
+      }
+    }
+
+    // Officers (field + bank) created by the suite. loan_applications carries
+    // FK references to them (field_officer_id / forwarded_by / bank_officer_id)
+    // so the loans above must be gone first.
+    for (const oid of officerIds ?? []) {
+      await supabase.from('field_officer_assignments').delete().eq('field_officer_id', oid);
+      await supabase.from('field_visits').delete().eq('field_officer_id', oid);
+      const { data: officerProfile } = await supabase.from('profiles').select('id').eq('id', oid).maybeSingle();
+      if (officerProfile) {
+        const { error: pErr } = await supabase.from('profiles').delete().eq('id', oid);
+        if (!pErr) removed.officers += 1;
+        const { error: aErr } = await supabase.auth.admin.deleteUser(oid);
+        if (!aErr) removed.authUsers += 1;
+      }
+    }
+
+    fs.unlinkSync(bankFile);
   }
 
   console.log('CLEANUP_DONE', JSON.stringify(removed));
