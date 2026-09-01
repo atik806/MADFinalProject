@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -15,12 +16,14 @@ import {
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
 import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/shared/constants/layout';
 import { useColors } from '@/features/officials/shared/constants/theme';
+import { api } from '@/lib/api';
 
 type VisitStatus = 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
 
 type FieldVisit = {
   id: string;
   farmerName: string;
+  farmerId: string | null;
   location: string;
   date: string;
   purpose: string;
@@ -28,58 +31,23 @@ type FieldVisit = {
   notes: string;
 };
 
-const UPCOMING_VISITS: FieldVisit[] = [
-  {
-    id: 'VIS-001',
-    farmerName: 'Abdul Karim',
-    location: 'Char Fasson',
-    date: '05 Jul 2026',
-    purpose: 'Boro Rice Inspection',
-    status: 'scheduled',
-    notes: 'Check irrigation system and crop health. Farmer reported pest issues.',
-  },
-  {
-    id: 'VIS-002',
-    farmerName: 'Rafiqul Islam',
-    location: 'Osmanganj',
-    date: '06 Jul 2026',
-    purpose: 'Land Verification',
-    status: 'scheduled',
-    notes: 'Verify land documents for new loan application. Measure total cultivated area.',
-  },
-  {
-    id: 'VIS-003',
-    farmerName: 'Jahangir Alam',
-    location: 'Khaser Hat',
-    date: '07 Jul 2026',
-    purpose: 'Shrimp Farm Assessment',
-    status: 'scheduled',
-    notes: 'Assess shrimp pond condition and production capacity for loan eligibility.',
-  },
-];
-
-const COMPLETED_VISITS: FieldVisit[] = [
-  {
-    id: 'VIS-004',
-    farmerName: 'Shahinur Begum',
-    location: 'Dular Hat',
-    date: '28 Jun 2026',
-    purpose: 'Jute Field Inspection',
-    status: 'completed',
-    notes: 'Jute crop in good condition. Yield expected to be above average.',
-  },
-  {
-    id: 'VIS-005',
-    farmerName: 'Mizanur Rahman',
-    location: 'Char Kukri',
-    date: '25 Jun 2026',
-    purpose: 'Maize Crop Assessment',
-    status: 'completed',
-    notes: 'Maize ready for harvest. Farmer advised on market prices.',
-  },
-];
-
-const FARMER_OPTIONS = ['Abdul Karim', 'Rafiqul Islam', 'Jahangir Alam', 'Shahinur Begum', 'Mizanur Rahman'];
+// Backend visit row → the card the screen renders. Farmer name comes from
+// the farmer summary the officer-visits endpoint embeds.
+const visitFromRow = (row: any): FieldVisit => ({
+  id: String(row.id),
+  farmerName: row.farmer?.name_en ?? row.farmer?.name_bn ?? 'Farmer',
+  farmerId: row.farmer_id ?? null,
+  location: row.location ?? '—',
+  date: (() => {
+    const d = new Date(String(row.visit_date ?? row.created_at ?? ''));
+    return Number.isFinite(d.getTime())
+      ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      : '—';
+  })(),
+  purpose: row.purpose ?? '—',
+  status: String(row.status ?? 'scheduled') as VisitStatus,
+  notes: row.notes ?? '',
+});
 
 function getStatusConfig(status: VisitStatus) {
   switch (status) {
@@ -99,8 +67,13 @@ export default function FieldVisitsScreen() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'completed'>('upcoming');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [upcoming, setUpcoming] = useState<FieldVisit[]>(UPCOMING_VISITS);
-  const [completed] = useState<FieldVisit[]>(COMPLETED_VISITS);
+  const [upcoming, setUpcoming] = useState<FieldVisit[]>([]);
+  const [completed, setCompleted] = useState<FieldVisit[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  // Assigned farmers from the officer's own list — used both for the visit
+  // cards' context and the schedule-visit farmer picker.
+  const [assignedFarmers, setAssignedFarmers] = useState<{ id: string; name: string }[]>([]);
 
   // Form state
   const [formFarmer, setFormFarmer] = useState('');
@@ -108,6 +81,29 @@ export default function FieldVisitsScreen() {
   const [formPurpose, setFormPurpose] = useState('');
   const [formNotes, setFormNotes] = useState('');
   const [showFarmerPicker, setShowFarmerPicker] = useState(false);
+
+  const loadVisits = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const [visitsRes, farmersRes] = await Promise.all([
+        api.get<any>('/api/field-officer/visits?pageSize=100'),
+        api.get<any>('/api/field-officer/farmers?pageSize=100'),
+      ]);
+      const rows: any[] = visitsRes?.data?.items ?? [];
+      const mapped = rows.map(visitFromRow);
+      setUpcoming(mapped.filter((v) => v.status === 'scheduled' || v.status === 'in-progress'));
+      setCompleted(mapped.filter((v) => v.status === 'completed' || v.status === 'cancelled'));
+      setAssignedFarmers(
+        (farmersRes?.data?.items ?? []).map((f: any) => ({ id: String(f.id), name: f.name_en ?? f.name_bn ?? 'Farmer' })),
+      );
+    } catch (err: any) {
+      setLoadError(err?.message ?? 'Could not load your visits.');
+    }
+  }, []);
+
+  useEffect(() => {
+    loadVisits();
+  }, [loadVisits]);
 
   const bg = colors.dashboard.bg;
   const cardBg = colors.dashboard.cardBg;
@@ -117,25 +113,33 @@ export default function FieldVisitsScreen() {
 
   const visits = activeTab === 'upcoming' ? upcoming : completed;
 
-  const handleScheduleVisit = () => {
-    if (!formFarmer || !formDate || !formPurpose) return;
+  const handleScheduleVisit = async () => {
+    if (!formFarmer || !formDate || !formPurpose || submitting) return;
 
-    const newVisit: FieldVisit = {
-      id: `VIS-${String(Date.now()).slice(-6)}`,
-      farmerName: formFarmer,
-      location: 'TBD',
-      date: formDate,
-      purpose: formPurpose,
-      status: 'scheduled',
-      notes: formNotes || 'No additional notes.',
-    };
+    const farmer = assignedFarmers.find((f) => f.name === formFarmer);
+    if (!farmer) return;
 
-    setUpcoming((prev) => [newVisit, ...prev]);
-    setModalVisible(false);
-    setFormFarmer('');
-    setFormDate('');
-    setFormPurpose('');
-    setFormNotes('');
+    setSubmitting(true);
+    try {
+      // visitDate accepts an ISO date; the backend validates and scopes the
+      // visit to the officer's assignment for that farmer.
+      await api.post<any>('/api/field-officer/visits', {
+        farmerId: farmer.id,
+        visitDate: formDate,
+        purpose: formPurpose,
+        notes: formNotes,
+      });
+      setModalVisible(false);
+      setFormFarmer('');
+      setFormDate('');
+      setFormPurpose('');
+      setFormNotes('');
+      await loadVisits();
+    } catch (err: any) {
+      Alert.alert('Schedule Visit', err?.message ?? 'Could not schedule the visit.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -165,7 +169,15 @@ export default function FieldVisitsScreen() {
         </View>
 
         {/* Visit List */}
-        {visits.length === 0 ? (
+        {loadError ? (
+          <View style={[styles.card, { backgroundColor: cardBg, borderColor: colors.dashboard.redDown }]}>
+            <View style={styles.emptyInner}>
+              <Ionicons name="cloud-offline-outline" size={48} color={colors.dashboard.redDown} />
+              <Text style={[styles.emptyTitle, { color: textPrimary }]}>Could not load visits</Text>
+              <Text style={[styles.emptySubtitle, { color: textSecondary }]}>{loadError}</Text>
+            </View>
+          </View>
+        ) : visits.length === 0 ? (
           <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
             <View style={styles.emptyInner}>
               <Ionicons
@@ -284,20 +296,20 @@ export default function FieldVisitsScreen() {
               </Pressable>
               {showFarmerPicker && (
                 <View style={[styles.pickerDropdown, { backgroundColor: cardBg, borderColor: border }]}>
-                  {FARMER_OPTIONS.map((name) => (
+                  {assignedFarmers.map((f) => (
                     <Pressable
-                      key={name}
+                      key={f.id}
                       onPress={() => {
-                        setFormFarmer(name);
+                        setFormFarmer(f.name);
                         setShowFarmerPicker(false);
                       }}
                       style={({ pressed }) => [
                         styles.pickerItem,
                         pressed && styles.pressed,
-                        formFarmer === name && { backgroundColor: colors.greenLight + '10' },
+                        formFarmer === f.name && { backgroundColor: colors.greenLight + '10' },
                       ]}>
-                      <Text style={[styles.pickerItemText, { color: textPrimary }]}>{name}</Text>
-                      {formFarmer === name && (
+                      <Text style={[styles.pickerItemText, { color: textPrimary }]}>{f.name}</Text>
+                      {formFarmer === f.name && (
                         <Ionicons name="checkmark" size={18} color={colors.greenLight} />
                       )}
                     </Pressable>

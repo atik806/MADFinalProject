@@ -1,13 +1,67 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
 import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/shared/constants/layout';
 import { useColors } from '@/features/officials/shared/constants/theme';
-import { useLoans, type LoanApplication } from '@/contexts/LoanContext';
+import { api } from '@/lib/api';
 
 type Tab = 'all' | 'pending' | 'verified' | 'forwarded';
+
+// The officer-side application card: the farmer summary is embedded by the
+// officer loans endpoint (never a client-supplied name).
+type LoanApplication = {
+  id: string;
+  title: string;
+  date: string;
+  status: 'pending' | 'under_review' | 'approved' | 'rejected';
+  amount: number;
+  duration: string;
+  purpose: string;
+  installmentType: 'monthly' | 'seasonal';
+  emi: number;
+  verificationStatus: 'pending' | 'verified' | 'rejected';
+  timeline: { label: string; date: string; status: 'done' | 'current' | 'pending' | 'failed' }[];
+  farmerName: string;
+  forwarded: boolean;
+};
+
+const formatDate = (value: string): string => {
+  const d = new Date(value);
+  if (!Number.isFinite(d.getTime())) return value;
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, ' ');
+};
+
+const mapOfficerLoanRow = (row: any): LoanApplication => {
+  const status = String(row.status ?? 'pending') as LoanApplication['status'];
+  const verificationStatus = String(row.verification_status ?? 'pending') as LoanApplication['verificationStatus'];
+  const submittedAt = formatDate(String(row?.application_date ?? row?.created_at ?? ''));
+
+  // Officer-relevant pipeline steps, derived from the row's own stamps.
+  const timeline = [
+    { label: 'Application Submitted', date: submittedAt, status: 'done' as const },
+    { label: 'Field Officer Verified', date: row.verified_at ? formatDate(String(row.verified_at)) : '', status: verificationStatus === 'verified' ? ('done' as const) : verificationStatus === 'rejected' ? ('failed' as const) : ('pending' as const) },
+    { label: 'Forwarded to Bank', date: row.forwarded_at ? formatDate(String(row.forwarded_at)) : '', status: row.forwarded_at ? ('done' as const) : ('pending' as const) },
+    { label: 'Bank Decision', date: row.decision_at ? formatDate(String(row.decision_at)) : '', status: status === 'approved' ? ('done' as const) : status === 'rejected' ? ('failed' as const) : ('pending' as const) },
+  ];
+
+  return {
+    id: String(row.id),
+    title: row.title ?? '',
+    date: submittedAt,
+    status,
+    amount: Number(row.amount ?? 0),
+    duration: row.duration ?? '',
+    purpose: row.purpose ?? '',
+    installmentType: row.installment_type === 'seasonal' ? 'seasonal' : 'monthly',
+    emi: Number(row.emi ?? 0),
+    verificationStatus,
+    timeline,
+    farmerName: row.farmer?.name_en ?? row.farmer?.name_bn ?? 'Unknown Farmer',
+    forwarded: Boolean(row.forwarded_at),
+  };
+};
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -15,13 +69,6 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'verified', label: 'Verified' },
   { key: 'forwarded', label: 'Forwarded to Bank' },
 ];
-
-const FARMER_NAMES: Record<string, string> = {
-  'L-2024-001': 'Abdul Karim',
-  'L-2024-002': 'Rafiqul Islam',
-  'L-2024-003': 'Shahinur Begum',
-  'L-2024-004': 'Jahangir Alam',
-};
 
 function getLoanStatusInfo(status: LoanApplication['status']) {
   switch (status) {
@@ -36,14 +83,17 @@ function getLoanStatusInfo(status: LoanApplication['status']) {
   }
 }
 
+// Tab semantics with real pipeline data: "Pending Verification" = submitted
+// and not yet verified by the officer; "Verified" = verified but not yet
+// forwarded; "Forwarded to Bank" = handed to the bank (forwarded_at set).
 function filterApplications(apps: LoanApplication[], tab: Tab): LoanApplication[] {
   switch (tab) {
     case 'pending':
-      return apps.filter((a) => a.status === 'pending');
+      return apps.filter((a) => a.verificationStatus === 'pending');
     case 'verified':
-      return apps.filter((a) => a.status === 'under_review');
+      return apps.filter((a) => a.verificationStatus === 'verified' && !a.forwarded);
     case 'forwarded':
-      return apps.filter((a) => a.status === 'approved');
+      return apps.filter((a) => a.forwarded);
     default:
       return apps;
   }
@@ -51,10 +101,28 @@ function filterApplications(apps: LoanApplication[], tab: Tab): LoanApplication[
 
 export default function LoanApplicationsScreen() {
   const colors = useColors();
-  const { applications } = useLoans();
+  const [applications, setApplications] = useState<LoanApplication[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [verifiedIds, setVerifiedIds] = useState<Set<string>>(new Set());
+
+  const loadApplications = useCallback(async () => {
+    setLoadError(null);
+    try {
+      // The officer's OWN applications list — server-scoped to the officer's
+      // active farmer assignments, with a farmer summary per row.
+      const res = await api.get<any>('/api/field-officer/loans?pageSize=100');
+      setApplications((res?.data?.items ?? []).map(mapOfficerLoanRow));
+    } catch (err: any) {
+      setLoadError(err?.message ?? 'Could not load loan applications.');
+    }
+  }, []);
+
+  useEffect(() => {
+    loadApplications();
+  }, [loadApplications]);
 
   const filtered = filterApplications(applications, activeTab);
 
@@ -64,11 +132,24 @@ export default function LoanApplicationsScreen() {
   const textSecondary = colors.dashboard.textSecondary;
   const border = colors.dashboard.border;
 
-  const handleVerify = (id: string) => {
-    setVerifiedIds((prev) => new Set(prev).add(id));
+  const handleVerify = async (id: string) => {
+    if (verifyingId) return;
+    setVerifyingId(id);
+    try {
+      // Record the officer verification verdict; the server transitions the
+      // application's verification_status and stamps verified_at.
+      await api.post<any>(`/api/field-officer/loans/${id}/verify`, {
+        status: 'verified',
+        notes: 'Verified by field officer from mobile app.',
+      });
+      setVerifiedIds((prev) => new Set(prev).add(id));
+      await loadApplications();
+    } catch (err: any) {
+      Alert.alert('Verify Application', err?.message ?? 'Could not record the verification.');
+    } finally {
+      setVerifyingId(null);
+    }
   };
-
-  const isVerified = (id: string) => verifiedIds.has(id);
 
   return (
     <View style={[styles.screen, { backgroundColor: bg }]}>
@@ -92,7 +173,15 @@ export default function LoanApplicationsScreen() {
         </View>
 
         {/* List */}
-        {filtered.length === 0 ? (
+        {loadError ? (
+          <View style={[styles.card, { backgroundColor: cardBg, borderColor: colors.dashboard.redDown }]}>
+            <View style={styles.emptyInner}>
+              <Ionicons name="cloud-offline-outline" size={48} color={colors.dashboard.redDown} />
+              <Text style={[styles.emptyTitle, { color: textPrimary }]}>Could not load applications</Text>
+              <Text style={[styles.emptySubtitle, { color: textSecondary }]}>{loadError}</Text>
+            </View>
+          </View>
+        ) : filtered.length === 0 ? (
           <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
             <View style={styles.emptyInner}>
               <Ionicons name="document-text-outline" size={48} color={textSecondary} />
@@ -108,8 +197,7 @@ export default function LoanApplicationsScreen() {
           filtered.map((app) => {
             const expanded = expandedId === app.id;
             const statusInfo = getLoanStatusInfo(app.status);
-            const farmerName = FARMER_NAMES[app.id] || 'Unknown Farmer';
-            const isLocalVerified = isVerified(app.id);
+            const farmerName = app.farmerName;
 
             return (
               <View key={app.id} style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
@@ -190,19 +278,24 @@ export default function LoanApplicationsScreen() {
                         <Text style={[styles.docText, { color: textPrimary }]}>Bank Account Statement</Text>
                       </View>
 
-                      {/* Verify button */}
-                      {app.status === 'pending' && !isLocalVerified && (
+                      {/* Verify button: visible while the application awaits
+                          this officer's verdict AND is still with the officer
+                          (forwarded applications belong to the bank now). */}
+                      {app.verificationStatus === 'pending' && !app.forwarded && (
                         <Pressable
                           onPress={() => handleVerify(app.id)}
-                          style={[styles.verifyBtn, { backgroundColor: colors.greenLight }]}>
+                          disabled={verifyingId === app.id}
+                          style={[styles.verifyBtn, { backgroundColor: colors.greenLight }, verifyingId === app.id && { opacity: 0.6 }]}>
                           <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
-                          <Text style={styles.verifyBtnText}>Verify Application</Text>
+                          <Text style={styles.verifyBtnText}>{verifyingId === app.id ? 'Verifying…' : 'Verify Application'}</Text>
                         </Pressable>
                       )}
-                      {(app.status !== 'pending' || isLocalVerified) && (
+                      {(app.verificationStatus === 'verified' || app.verificationStatus === 'rejected' || app.forwarded) && (
                         <View style={[styles.verifyBtn, styles.verifyBtnDisabled, { backgroundColor: colors.greenLight + '20' }]}>
-                          <Ionicons name="checkmark-circle" size={18} color={colors.greenLight} />
-                          <Text style={[styles.verifyBtnText, { color: colors.greenLight }]}>Verified</Text>
+                          <Ionicons name={app.verificationStatus === 'rejected' ? 'close-circle' : 'checkmark-circle'} size={18} color={colors.greenLight} />
+                          <Text style={[styles.verifyBtnText, { color: colors.greenLight }]}>
+                            {app.verificationStatus === 'rejected' ? 'Rejected' : app.forwarded ? 'Forwarded to Bank' : 'Verified'}
+                          </Text>
                         </View>
                       )}
                     </View>
