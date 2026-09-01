@@ -7,10 +7,15 @@ const isoDaysAgo = (days: number): string => {
 };
 
 const safeCount = async (
-  query: any,
+  query: () => any,
 ): Promise<number> => {
   try {
-    const { count, error } = await query;
+    // Invoke the thunk. `await query` on the un-invited function used to
+    // destructure { count, error } off the function object itself —
+    // undefined/undefined, no error path — so every dashboard count silently
+    // returned 0 since the dashboard was written. The call sites all pass
+    // lazy thunks so the query builder is only executed here, inside try.
+    const { count, error } = await query();
     if (error) {
       console.error('safeCount error:', error);
       return 0;
