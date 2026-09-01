@@ -3,6 +3,7 @@ import authRoutes from './auth/auth.routes';
 import dashboardRoutes from './dashboard/dashboard.routes';
 import fieldOfficerRoutes from './fieldOfficers/fieldOfficers.routes';
 import bankOfficerRoutes from './bankOfficers/bankOfficers.routes';
+import usersRoutes from './users/users.routes';
 import auditRoutes from './audit/audit.routes';
 
 const router = Router();
@@ -14,6 +15,7 @@ router.use('/auth', authRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/field-officers', fieldOfficerRoutes);
 router.use('/bank-officers', bankOfficerRoutes);
+router.use('/users', usersRoutes);
 router.use('/audit', auditRoutes);
 
 export default router;
