@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 import { supabase, supabaseAdmin } from '../../../config/supabase';
 import { config } from 'dotenv';
 
@@ -161,8 +162,22 @@ export const loginAdmin = async (identifier: string, password: string) => {
     throw new Error('Invalid admin credentials');
   }
 
+  // Sign-in runs on a throwaway client, never the shared `supabase` singleton.
+  // Calling signInWithPassword on the singleton installs the admin's session in
+  // memory, so every later service query in the process runs under the admin's
+  // JWT instead of the service-role key and starts failing RLS ("new row
+  // violates row-level security policy for table profiles" on farmer
+  // registration). This is the same defect that was fixed for the farmer login
+  // in Milestone 3; the admin path was missed because the E2E suites read a
+  // pre-generated token instead of calling this endpoint.
+  const throwawayClient = createClient(
+    process.env.SUPABASE_URL ?? '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+
   // Try the standard Supabase password sign-in first.
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await throwawayClient.auth.signInWithPassword({
     email: adminEmail,
     password: adminPassword,
   });
@@ -175,7 +190,7 @@ export const loginAdmin = async (identifier: string, password: string) => {
       throw new Error(seedErr?.message ?? error?.message ?? 'Admin login failed');
     }
 
-    const retry = await supabase.auth.signInWithPassword({
+    const retry = await throwawayClient.auth.signInWithPassword({
       email: adminEmail,
       password: adminPassword,
     });
