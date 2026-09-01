@@ -219,6 +219,45 @@ export const listBankOfficers = async (filters: ListBankOfficersFilters) => {
   };
 };
 
+// getBankOfficerById: one bank officer's admin-visible profile. Scoped by
+// both id AND role so an id belonging to another role is a 404, not a leak.
+export const getBankOfficerById = async (id: string) => {
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .select('*')
+    .eq('id', id)
+    .eq('role', 'bank_officer')
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error('Bank officer not found');
+  }
+
+  // Decisions handled by this officer. bank_officer_id is one of the parked
+  // bank-officer columns; until admin.sql is applied this query fails with
+  // 42703 and the count degrades to 0 — the detail view stays usable.
+  let handledApplications = 0;
+  try {
+    const { count, error: cError } = await supabaseAdmin
+      .from('loan_applications')
+      .select('*', { count: 'exact', head: true })
+      .eq('bank_officer_id', id);
+    if (!cError) {
+      handledApplications = count ?? 0;
+    }
+  } catch {
+    // column absent — leave at 0
+  }
+
+  return {
+    ...data,
+    handled_applications: handledApplications,
+  };
+};
+
 export const BANK_OFFICER_STATUSES = ['active', 'inactive', 'suspended'] as const;
 export type BankOfficerStatus = (typeof BANK_OFFICER_STATUSES)[number];
 

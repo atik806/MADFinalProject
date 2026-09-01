@@ -45,6 +45,28 @@ export const create = async (req: Request, res: Response) => {
   }
 };
 
+export const getById = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: 'Bank officer id is required' });
+    }
+    const data = await service.getBankOfficerById(String(id));
+    return res.status(200).json({
+      success: true,
+      message: 'Bank officer fetched successfully',
+      data,
+    });
+  } catch (error: any) {
+    const message = error?.message ?? 'Failed to fetch bank officer';
+    const status = /not found/i.test(message) ? 404 : 500;
+    return res.status(status).json({ message: status === 404 ? message : 'Failed to fetch bank officer' });
+  }
+};
+
 export const setStatus = async (req: Request, res: Response) => {
   try {
     if (!req.user) {

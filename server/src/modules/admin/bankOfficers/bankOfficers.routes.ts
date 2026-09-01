@@ -10,6 +10,7 @@ const router = Router();
 router.use(authenticateUser, adminOnly);
 
 router.get('/', controller.list);
+router.get('/:id', controller.getById);
 router.post('/', controller.create);
 router.patch('/:id/status', controller.setStatus);
 
