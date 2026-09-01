@@ -218,3 +218,45 @@ export const listBankOfficers = async (filters: ListBankOfficersFilters) => {
     },
   };
 };
+
+export const BANK_OFFICER_STATUSES = ['active', 'inactive', 'suspended'] as const;
+export type BankOfficerStatus = (typeof BANK_OFFICER_STATUSES)[number];
+
+// setBankOfficerStatus: the admin's kill switch. A bank officer holds
+// loan-approval authority, so the ability to deactivate one has to exist
+// independently of deleting the account. bankOfficerOnly re-reads this value on
+// every request, so a suspended officer loses access immediately rather than
+// when their token expires.
+export const setBankOfficerStatus = async (
+  id: string,
+  status: BankOfficerStatus,
+  adminContext: { id: string; name: string | null },
+) => {
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .update({ status })
+    .eq('id', id)
+    .eq('role', 'bank_officer')
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error('Bank officer not found');
+  }
+
+  void recordAuditLog({
+    actorId: adminContext.id,
+    actorRole: 'admin',
+    actorName: adminContext.name ?? 'Administrator',
+    action: `Bank officer status set to ${status}`,
+    module: 'BankOfficer',
+    targetId: id,
+    targetType: 'bank_officer',
+    status: 'success',
+  });
+
+  return data;
+};

@@ -44,3 +44,35 @@ export const create = async (req: Request, res: Response) => {
     return res.status(status).json({ message });
   }
 };
+
+export const setStatus = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: 'Bank officer id is required' });
+    }
+    const { status } = req.body ?? {};
+    if (!service.BANK_OFFICER_STATUSES.includes(status)) {
+      return res.status(400).json({
+        message: `Invalid status. Allowed: ${service.BANK_OFFICER_STATUSES.join(', ')}`,
+      });
+    }
+    const profile = (req as any).profile ?? null;
+    const data = await service.setBankOfficerStatus(String(id), status, {
+      id: req.user.id,
+      name: profile?.name_en ?? req.user.user_metadata?.full_name ?? null,
+    });
+    return res.status(200).json({
+      success: true,
+      message: `Bank officer status set to ${status}`,
+      data,
+    });
+  } catch (error: any) {
+    const message = error?.message ?? 'Failed to update bank officer status';
+    const httpStatus = /not found/i.test(message) ? 404 : 500;
+    return res.status(httpStatus).json({ message: httpStatus === 404 ? message : 'Failed to update bank officer status' });
+  }
+};
