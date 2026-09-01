@@ -30,12 +30,11 @@ export default function AdminDashboardScreen() {
   const isTablet = width >= 768;
 
   const loadDashboard = useCallback(async () => {
-    setLoadError(null);
     try {
       const [statsRes, trendRes, analyticsRes] = await Promise.all([
         api.get<any>('/api/admin/dashboard/stats'),
-        api.get<any>('/api/admin/dashboard/registration-trend?months=6'),
-        api.get<any>('/api/admin/dashboard/loan-analytics?months=6'),
+        api.get<any>(`/api/admin/dashboard/registration-trend?months=6`),
+        api.get<any>(`/api/admin/dashboard/loan-analytics?months=6`),
       ]);
       setStats(statsRes?.data ?? null);
       setRegistrationData((trendRes?.data ?? []).map((p: any) => ({ label: p.label, value: p.value })));
@@ -48,6 +47,7 @@ export default function AdminDashboardScreen() {
           ],
         })),
       );
+      setLoadError(null);
     } catch (err: any) {
       setLoadError(err?.message ?? 'Could not load dashboard statistics.');
     } finally {
@@ -56,7 +56,10 @@ export default function AdminDashboardScreen() {
   }, [colors.greenLight]);
 
   useEffect(() => {
-    loadDashboard();
+    // Data fetch on mount. The kickoff is deferred out of the effect body;
+    // state updates happen only after the fetch resolves.
+    const timer = setTimeout(() => void loadDashboard(), 0);
+    return () => clearTimeout(timer);
   }, [loadDashboard]);
 
   const onRefresh = useCallback(() => {

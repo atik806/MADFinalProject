@@ -142,7 +142,6 @@ export default function AdminUsersScreen() {
 
   const loadUsers = useCallback(
     async (tab: Tab, searchTerm: string) => {
-      setLoadError(null);
       try {
         const params = new URLSearchParams({
           role: ROLE_FILTER[tab],
@@ -153,6 +152,7 @@ export default function AdminUsersScreen() {
         }
         const res = await api.get<any>(`/api/admin/users?${params.toString()}`);
         setUsers((res?.data?.items ?? []).map(userFromRow));
+        setLoadError(null);
       } catch (err: any) {
         setUsers([]);
         setLoadError(err?.message ?? 'Could not load users.');
@@ -164,10 +164,13 @@ export default function AdminUsersScreen() {
   );
 
   useEffect(() => {
-    setLoading(true);
-    loadUsers(activeTab, search);
     // Debounce so typing in search does not fire a request per keystroke.
-    const timer = setTimeout(() => loadUsers(activeTab, search), 300);
+    // The kickoff is deferred out of the effect body; state updates happen
+    // only after fetches resolve.
+    const timer = setTimeout(() => {
+      setLoading(true);
+      void loadUsers(activeTab, search);
+    }, 300);
     return () => clearTimeout(timer);
   }, [activeTab, search, loadUsers]);
 

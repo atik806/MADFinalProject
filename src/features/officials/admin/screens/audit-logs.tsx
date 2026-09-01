@@ -93,10 +93,10 @@ export default function AuditLogsScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadLogs = useCallback(async () => {
-    setLoadError(null);
     try {
       const res = await api.get<any>('/api/admin/audit?pageSize=100');
       setLogs((res?.data?.items ?? []).map(logFromRow));
+      setLoadError(null);
     } catch (err: any) {
       setLoadError(err?.message ?? 'Could not load audit logs.');
     } finally {
@@ -105,7 +105,10 @@ export default function AuditLogsScreen() {
   }, []);
 
   useEffect(() => {
-    loadLogs();
+    // Data fetch on mount. The kickoff is deferred out of the effect body;
+    // state updates happen only after the fetch resolves.
+    const timer = setTimeout(() => void loadLogs(), 0);
+    return () => clearTimeout(timer);
   }, [loadLogs]);
 
   const filtered = logs.filter((log) => {
