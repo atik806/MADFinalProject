@@ -22,9 +22,9 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
 **Request flow:** Route → Middleware (`authenticate` → role guard) → Controller → Service → Supabase.
 
 **Response contract:** target is `{ success, message, data }`.
-> The **admin** module already returns `{ success, message, data }`. As of Milestone 4 the
-> **farmer** module's data endpoints also return `{ success, message, data }` (GET `/me`
-> now included); `dashboard` still returns a bare payload object. The **field officer** and
+> The **admin** module already returns `{ success, message, data }`. The **farmer** module's
+> data endpoints all return `{ success, message, data }` — `dashboard` was the last hold-out
+> and was standardized in the Milestone 4 follow-up. The **field officer** and
 > **bank officer** modules follow the contract throughout.
 
 **Live database note:** the connected Supabase project has the admin/officer schema applied
@@ -330,10 +330,47 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
   credit profile structure + verified-field protection + IDOR, dashboard regression, and
   401/403 auth guards. Test-created farmers, transactions, loans, timelines, and auth
   users removed afterward (verified clean DB).
-- **Known limitations:** `dashboard` still returns a bare payload (not the full contract);
-  transaction `date` is a display string ("18 Jun 2024") per the existing frontend
-  convention — ISO normalization is a future cross-cutting change; frontend contexts
-  (Profile/Transaction/Loan/Notification) still use local mock data.
+- **Known limitations:** ~~`dashboard` still returns a bare payload~~ *(closed in the
+  follow-up below)*; transaction `date` is a display string ("18 Jun 2024") per the
+  existing frontend convention — ISO normalization is a future cross-cutting change;
+  frontend contexts (Profile/Transaction/Loan/Notification) still use local mock data.
+
+### Milestone 4 follow-up — dashboard contract + admin-auth session leak
+- **Status:** Complete and verified live (72/72).
+- **Why:** a re-run of the Farmer milestone surfaced two real defects the earlier suites
+  could not catch, because they read pre-generated token files instead of exercising the
+  login endpoints.
+- **Defect 1 (high severity, pre-existing):** `loginAdmin` called `signInWithPassword` on
+  the shared `supabase` singleton — the exact session-poisoning class fixed for the farmer
+  login in Milestone 3, but missed on the admin path. After any admin login, every later
+  service query in the process ran under the admin's JWT instead of the service-role key
+  and failed RLS, breaking farmer registration (`new row violates row-level security
+  policy for table "profiles"`) server-wide until a restart. Fixed with the same
+  throwaway-client pattern (`admin/auth/auth.service.ts`); verified live by logging in as
+  admin and then registering a farmer in the same server process (201).
+- **Defect 2:** `GET /api/farmer/dashboard` was the one farmer endpoint off the
+  `{ success, message, data }` contract; it also passed `error.message` through raw and
+  mapped a missing user to 500 instead of 401. Controller now mirrors the credit
+  controller (contract, 401/404/500 mapping via `safeErrorMessage`); the service takes a
+  required farmer id, scopes by role `farmer`, uses `maybeSingle` and throws a clean
+  `Farmer profile not found`.
+- **Files modified:** `server/src/modules/admin/auth/auth.service.ts`,
+  `server/src/modules/farmer/dashboard/{dashboard.controller,dashboard.service}.ts`,
+  `server/test/farmer.e2e.cjs`, `server/test/cleanup.cjs`.
+- **Test hardening:** the farmer suite no longer depends on
+  `scripts/token.tmp`/`test/admin_token.tmp`. It resolves its field-officer token lazily:
+  a working token file is reused; otherwise a throwaway field officer is provisioned via
+  the admin API and removed by `cleanup.cjs`. The cleanup manifest is written eagerly so
+  an early abort can no longer leak a provisioned officer (one leaked officer from the
+  first aborted run was removed by hand and the leak fixed).
+- **Tests:** `npm run build` passes; live `node test/farmer.e2e.cjs` **72/72** (dashboard
+  contract, ownership scoping, 401/403, plus all prior coverage). Admin surface
+  regression after the auth change: login `/me`, `dashboard/stats`, `dashboard/overview`,
+  `audit`, `field-officers`, `bank-officers` all 200; unauthenticated 401. DB verified
+  back to its pre-run baseline after cleanup (only the standing admin/officer/farmer
+  records remain).
+- **Commits:** `1347f2a` (admin-auth poisoning fix), `7dcc85d` (self-provisioning
+  test tokens), `86d6a29` (dashboard contract).
 - **Next milestone:** Bank Officer Backend.
 
 ### Milestone 5 — Bank Officer backend (loan review & decision)
@@ -444,8 +481,9 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 ## Audit findings (updated)
 
 1. **Two backends existed.** TS `server/` adopted; JS `backend/` superseded — recommend removal. *(open)*
-2. ~~Response contract mismatch.~~ **Mostly fixed (Milestone 4)** — farmer data endpoints
-   now return `{ success, message, data }`; farmer `dashboard` still returns a bare payload. *(nearly closed)*
+2. ~~Response contract mismatch.~~ **Fixed** — every farmer, field-officer and bank-officer
+   data endpoint now returns `{ success, message, data }`; the last hold-out
+   (`GET /api/farmer/dashboard`) was standardized in the Milestone 4 follow-up. *(closed)*
 3. ~~Admin routes not mounted.~~ **Fixed (Milestone 1)** — mounted at `/api/admin`.
 4. ~~Missing admin schema / audit module.~~ **Fixed (Milestone 1)** — `admin.sql` + `audit/` added.
 5. **CORS is `*`.** Must be scoped before production. *(open)*
@@ -472,6 +510,15 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
    `supabase/migrations/` directory and nothing records which project is at which
    revision. Milestone 5 is the first time this caused a hard stop. Adopting the
    Supabase CLI with real migrations would remove the manual step. *(open)*
+14. ~~Admin login poisoned the shared Supabase client.~~ **Fixed (Milestone 4 follow-up,
+   commit `1347f2a`)** — `loginAdmin` called `signInWithPassword` on the shared singleton,
+   the same defect class fixed for the farmer login in Milestone 3. Until the fix, any
+   admin login left every later service query running under the admin's JWT, failing RLS
+   until a server restart (symptom: farmer registration returning
+   `new row violates row-level security policy for table "profiles"`). Both login paths
+   now use throwaway clients; a repo-wide grep confirms no singleton `signInWithPassword`
+   remains. Caught only because the farmer E2E suite stopped reading stale token files
+   and started exercising login for real.
 
 ---
 
@@ -490,8 +537,11 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
   `normalizePhone` / `findOrphanAuthUser` exist once instead of twice.
 - Live-test the remaining Admin field-officer update/status paths (create and reset-password were verified live in Milestone 3 setup).
 - Standardize/extend automated tests across Farmer, Bank Officer, and Admin APIs.
-- Backport the self-provisioning token approach from `bank-officer.e2e.cjs` to the older
-  suites so they stop depending on stale `*.tmp` bearer tokens.
+- ~~Backport the self-provisioning token approach to the older suites so they stop
+  depending on stale `*.tmp` bearer tokens.~~ **Done for `farmer.e2e.cjs`** (Milestone 4
+  follow-up) — it now provisions its own throwaway field officer when no working token
+  file exists. Still outstanding for `field-officer.e2e.cjs` and
+  `field-officer-loans.e2e.cjs`.
 - Remove the superseded JS `backend/` skeleton.
 
 ---

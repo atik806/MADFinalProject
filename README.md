@@ -187,7 +187,8 @@ transactions, loans, notifications, and credit data.
 - `GET /credit` — read-only credit profile: verified information (officer verification
   history, `is_verified`, `credit_score`), declared farmer-provided financial data, and
   system-derived loan aggregates. No write path exists.
-- `dashboard` — profile + recent transactions/loans + counts.
+- `dashboard` — profile + recent transactions/loans + counts, on the shared
+  `{ success, message, data }` contract like every other farmer endpoint.
 - `loans` — list/get own applications (with timeline) and apply for new ones. New
   applications enter the shared pipeline as `pending`; status decisions, officer
   verification, and forwarding are not writable here.
@@ -311,19 +312,23 @@ in the lifecycle for disbursement and repayment, which are **not yet implemented
 ## Testing
 
 - Current: TypeScript build plus live E2E coverage. From `server/`, run
-  `npm run build`, then `node test/farmer.e2e.cjs` (profile/credit/transactions/loans),
-  `node test/field-officer.e2e.cjs` (profile/farmers/verification/visits), and
+  `npm run build`, then `node test/farmer.e2e.cjs` (profile/credit/transactions/loans/
+  dashboard), `node test/field-officer.e2e.cjs` (profile/farmers/verification/visits), and
   `node test/field-officer-loans.e2e.cjs` (loan workflow) against a running server.
-  The harnesses need fresh local bearer tokens in `server/scripts/token.tmp` (field
-  officer) and `server/test/admin_token.tmp` (admin); these files are test artifacts and
-  must not be committed. After a run, `node test/cleanup.cjs` and
-  `node test/cleanup-sweep.cjs` remove the test-created records.
+- `node test/farmer.e2e.cjs` is **self-provisioning**: it registers its own farmers
+  through the public endpoints and resolves a field-officer token by itself — it reuses
+  `server/scripts/token.tmp` if that file holds a still-valid token, otherwise it
+  provisions a throwaway field officer through the admin API using
+  `ADMIN_EMAIL`/`ADMIN_PASSWORD` from `server/.env`. No manual token setup is needed.
+- `field-officer.e2e.cjs` and `field-officer-loans.e2e.cjs` still need fresh local bearer
+  tokens in `server/scripts/token.tmp` (field officer) and `server/test/admin_token.tmp`
+  (admin); these files are test artifacts and must not be committed.
 - `node test/bank-officer.e2e.cjs` (bank officer profile + loan review/decision) is
-  **self-provisioning**: it needs no token files at all. It logs in through the public
-  admin endpoint using `ADMIN_EMAIL`/`ADMIN_PASSWORD` from `server/.env`, then creates its
-  own field officer, bank officers and farmer, and drives the whole pipeline. Requires the
-  bank-officer columns to be applied first (see [Supabase setup](#supabase-setup)).
-  **This suite has not yet been executed** — the schema is still outstanding.
+  also self-provisioning but requires the bank-officer columns to be applied first
+  (see [Supabase setup](#supabase-setup)). **This suite has not yet been executed** —
+  the schema is still outstanding.
+- After any run, `node test/cleanup.cjs` and `node test/cleanup-sweep.cjs` remove the
+  test-created records (including any officer the farmer suite provisioned).
 - The live E2E suites cover successful requests, validation failures, duplicate
   registration, assignment/ownership checks (including cross-officer IDOR attempts),
   invalid state transitions, unauthenticated access, and wrong-role access.
