@@ -209,7 +209,7 @@ export function LoanProvider({ children }: { children: ReactNode }) {
 
   // Exposed for the detail screen to swap the status-derived timeline for
   // the server's real timeline rows once the specific loan is loaded.
-  const [currentDetailIndex, setCurrentDetailIndex] = useState<number | null>(null);
+  const [, setCurrentDetailIndex] = useState<number | null>(null);
   const applyDetailTimeline = useCallback((loanId: string, row: any) => {
     setApplications((prev) => prev.map((a) => (a.id === loanId ? { ...a, timeline: timelineFor(row) } : a)));
     setCurrentDetailIndex(firstCurrentIndex(timelineFor(row)));

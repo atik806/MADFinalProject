@@ -31,7 +31,7 @@ const statusColors: Record<string, { color: string; bg: string }> = {
 export default function ApplicationDetailScreen() {
   const colors = useColors();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { applications, refreshApplications, applyDetailTimeline } = useLoans();
+  const { applications, applyDetailTimeline } = useLoans();
   const { t } = useTranslation();
   const app = applications.find((a) => a.id === id);
 
