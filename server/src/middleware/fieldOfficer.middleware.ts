@@ -13,12 +13,12 @@ export const fieldOfficerOnly = async (req: Request, res: Response, next: NextFu
             .trim()
             .toLowerCase();
 
-        // Use maybeSingle so a missing profile is distinguishable from a real
+        // maybeSingle so a missing profile is distinguishable from a real
         // DB error. single() raises PGRST116 when the row is missing, which
         // would otherwise be conflated with a genuine "row not found" 403.
         const { data: profile, error } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, status')
             .eq('id', req.user.id)
             .maybeSingle();
 
@@ -54,6 +54,15 @@ export const fieldOfficerOnly = async (req: Request, res: Response, next: NextFu
 
         const normalizedRole = String(profile.role ?? '').trim().toLowerCase();
         if (normalizedRole === 'field_officer') {
+            // Re-read the account status on every request rather than trusting
+            // the JWT: an admin suspending an officer must take effect
+            // immediately, while the officer's token is still valid.
+            // 'pending' and 'active' both pass — officer accounts are
+            // admin-created as active, and pending is the self-heal default.
+            const normalizedStatus = String(profile.status ?? '').trim().toLowerCase();
+            if (normalizedStatus === 'inactive' || normalizedStatus === 'suspended') {
+                return res.status(403).json({ message: 'Forbidden: Field officer account is not active' });
+            }
             return next();
         }
 

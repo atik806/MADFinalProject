@@ -14,12 +14,12 @@ export const farmerOnly = async (req: Request, res: Response, next: NextFunction
             .trim()
             .toLowerCase();
 
-        // Use maybeSingle so a missing profile is distinguishable from a real
+        // maybeSingle so a missing profile is distinguishable from a real
         // DB error. single() raises PGRST116 when the row is missing, which
         // would otherwise be conflated with a genuine "row not found" 403.
         const { data: profile, error } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, status')
             .eq('id', req.user.id)
             .maybeSingle();
 
@@ -55,6 +55,14 @@ export const farmerOnly = async (req: Request, res: Response, next: NextFunction
 
         const normalizedRole = String(profile.role ?? '').trim().toLowerCase();
         if (normalizedRole === 'farmer') {
+            // Re-read the account status per request so an admin deactivating
+            // a farmer takes effect immediately. 'pending' must still pass —
+            // it is the status every farmer registration starts with; only
+            // 'inactive'/'suspended' (set by an admin) block access.
+            const normalizedStatus = String(profile.status ?? '').trim().toLowerCase();
+            if (normalizedStatus === 'inactive' || normalizedStatus === 'suspended') {
+                return res.status(403).json({ message: 'Forbidden: Farmer account is not active' });
+            }
             return next();
         }
 
