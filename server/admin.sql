@@ -27,7 +27,12 @@ alter table if exists public.profiles
   add column if not exists office_address text,
   add column if not exists joining_date text,
   add column if not exists supervised_district text,
-  add column if not exists supervised_upazila text;
+  add column if not exists supervised_upazila text,
+  -- bank-officer-specific (employee_id / designation / joining_date above are
+  -- shared with field officers; these describe the bank posting)
+  add column if not exists bank_name text,
+  add column if not exists branch_name text,
+  add column if not exists branch_code text;
 
 -- ---------- AUDIT LOGS ----------
 -- Who did what, when, to which target. Deliberately has NO foreign keys on
@@ -153,3 +158,27 @@ alter table if exists public.loan_applications
 create index if not exists loan_applications_farmer_idx on public.loan_applications (farmer_id);
 create index if not exists loan_applications_status_idx on public.loan_applications (status);
 create index if not exists loan_applications_verification_status_idx on public.loan_applications (verification_status);
+
+-- ---------- LOAN APPLICATIONS: bank-officer decision columns ----------
+-- The bank officer picks up ONLY applications a field officer has forwarded
+-- (forwarded_at is not null). These columns record the bank side of the
+-- handoff and are kept separate from the officer's verification_* columns so
+-- the two verdicts are never conflated:
+--   bank_officer_id  — the officer who took the decision
+--   reviewed_at      — when the application was moved to 'under_review'
+--   decision_at      — when 'approved' / 'rejected' was recorded
+--   decision_notes   — the bank's reasoning (officer notes stay in
+--                      verification_notes)
+--   approved_amount  — the sanctioned amount, which may be lower than the
+--                      requested amount and never exceeds it
+alter table if exists public.loan_applications
+  add column if not exists bank_officer_id uuid references public.profiles (id),
+  add column if not exists reviewed_at timestamptz,
+  add column if not exists decision_at timestamptz,
+  add column if not exists decision_notes text,
+  add column if not exists approved_amount numeric;
+
+-- The bank queue is "everything that has been forwarded, newest first", so
+-- forwarded_at carries the filter and the ordering.
+create index if not exists loan_applications_forwarded_at_idx on public.loan_applications (forwarded_at desc);
+create index if not exists loan_applications_bank_officer_idx on public.loan_applications (bank_officer_id);
