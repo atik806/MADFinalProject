@@ -28,6 +28,8 @@ export interface DashboardStats {
   pendingFarmers: number;
   totalFieldOfficers: number;
   activeFieldOfficers: number;
+  totalBankOfficers: number;
+  activeBankOfficers: number;
   totalLoans: number;
   pendingLoans: number;
   approvedLoans: number;
@@ -49,6 +51,8 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     pendingFarmers,
     totalFieldOfficers,
     activeFieldOfficers,
+    totalBankOfficers,
+    activeBankOfficers,
     totalLoans,
     pendingLoans,
     approvedLoans,
@@ -88,6 +92,19 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('role', 'field_officer')
+        .eq('status', 'active'),
+    ),
+    safeCount(() =>
+      supabaseAdmin
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'bank_officer'),
+    ),
+    safeCount(() =>
+      supabaseAdmin
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'bank_officer')
         .eq('status', 'active'),
     ),
     safeCount(() => supabaseAdmin.from('loan_applications').select('*', { count: 'exact', head: true })),
@@ -164,6 +181,8 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     pendingFarmers,
     totalFieldOfficers,
     activeFieldOfficers,
+    totalBankOfficers,
+    activeBankOfficers,
     totalLoans,
     pendingLoans,
     approvedLoans,
