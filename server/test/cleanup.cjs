@@ -13,7 +13,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
   const loanFile = path.join(__dirname, 'loan-cleanup.tmp');
   if (fs.existsSync(loanFile)) {
-    const { farmerId, officerBId, loanIds } = JSON.parse(fs.readFileSync(loanFile, 'utf8'));
+    const { farmerId, officerBId, loanIds, officerAId } = JSON.parse(fs.readFileSync(loanFile, 'utf8'));
     for (const loanId of loanIds ?? []) {
       const { error: tlErr } = await supabase.from('loan_timeline').delete().eq('loan_application_id', loanId);
       if (!tlErr) removed.timeline += 1;
@@ -32,13 +32,17 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
       const { error: aErr } = await supabase.auth.admin.deleteUser(farmerId);
       if (!aErr) removed.authUsers += 1;
     }
-    // officer B (profile + auth user)
-    if (officerBId) {
-      const { data: officerProfile } = await supabase.from('profiles').select('id').eq('id', officerBId).maybeSingle();
+    // Officers A and B (profiles + auth users). loan_applications holds FK
+    // references to both (field_officer_id / forwarded_by), so the loans
+    // above must already be gone.
+    for (const oid of [officerAId, officerBId].filter(Boolean)) {
+      await supabase.from('field_officer_assignments').delete().eq('field_officer_id', oid);
+      await supabase.from('field_visits').delete().eq('field_officer_id', oid);
+      const { data: officerProfile } = await supabase.from('profiles').select('id').eq('id', oid).maybeSingle();
       if (officerProfile) {
-        const { error: pErr } = await supabase.from('profiles').delete().eq('id', officerBId);
+        const { error: pErr } = await supabase.from('profiles').delete().eq('id', oid);
         if (!pErr) removed.officers += 1;
-        const { error: aErr } = await supabase.auth.admin.deleteUser(officerBId);
+        const { error: aErr } = await supabase.auth.admin.deleteUser(oid);
         if (!aErr) removed.authUsers += 1;
       }
     }
@@ -47,7 +51,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
   const m2File = path.join(__dirname, 'cleanup.tmp');
   if (fs.existsSync(m2File)) {
-    const { farmerId, visitId } = JSON.parse(fs.readFileSync(m2File, 'utf8'));
+    const { farmerId, visitId, officerId } = JSON.parse(fs.readFileSync(m2File, 'utf8'));
     if (visitId) {
       const { error } = await supabase.from('field_visits').delete().eq('id', visitId);
       if (!error) removed.visits += 1;
@@ -55,12 +59,31 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
     if (farmerId) {
       await supabase.from('field_officer_assignments').delete().eq('farmer_id', farmerId);
       await supabase.from('notifications').delete().eq('user_id', farmerId);
+      const { data: loans } = await supabase.from('loan_applications').select('id').eq('farmer_id', farmerId);
+      for (const loan of loans ?? []) {
+        await supabase.from('loan_timeline').delete().eq('loan_application_id', loan.id);
+        await supabase.from('loan_applications').delete().eq('id', loan.id);
+        removed.loans += 1;
+      }
       const { data: farmerProfile } = await supabase.from('profiles').select('id').eq('id', farmerId).maybeSingle();
       if (farmerProfile) {
         await supabase.from('farmer_verifications').delete().eq('farmer_id', farmerId);
         const { error: pErr } = await supabase.from('profiles').delete().eq('id', farmerId);
         if (!pErr) removed.farmers += 1;
         const { error: aErr } = await supabase.auth.admin.deleteUser(farmerId);
+        if (!aErr) removed.authUsers += 1;
+      }
+    }
+    // Throwaway field officer provisioned by the self-provisioning suite
+    // (Milestone 8). Deleted after the farmer so no FK is dangling.
+    if (officerId) {
+      await supabase.from('field_officer_assignments').delete().eq('field_officer_id', officerId);
+      await supabase.from('field_visits').delete().eq('field_officer_id', officerId);
+      const { data: officerProfile } = await supabase.from('profiles').select('id').eq('id', officerId).maybeSingle();
+      if (officerProfile) {
+        const { error: pErr } = await supabase.from('profiles').delete().eq('id', officerId);
+        if (!pErr) removed.officers += 1;
+        const { error: aErr } = await supabase.auth.admin.deleteUser(officerId);
         if (!aErr) removed.authUsers += 1;
       }
     }
