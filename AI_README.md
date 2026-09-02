@@ -11,8 +11,10 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
 ## Project architecture
 
 - **Frontend** — Expo (SDK 56) / React Native / TypeScript at the repo root (`src/`).
-  File-based routing (`expo-router`), state in React Context, mock/local data in `src/data/`.
-  Currently runs on local state; not yet wired to the backend.
+  File-based routing (`expo-router`), state in React Context. Farmer, field-officer and
+  admin screens run on the real backend through the typed client in `src/lib/api.ts`
+  with response contracts in `src/lib/api-types.ts`; bank-officer screens remain
+  local/mock (parked schema).
 - **Backend** — Express 5 + TypeScript in `server/`. Modular:
   `server/src/modules/<role>/<feature>/{controller,routes,service}`. All business logic and
   the only Supabase access live here.
@@ -43,8 +45,8 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
 | Role          | Status                | Notes                                                                 |
 | ------------- | --------------------- | --------------------------------------------------------------------- |
 | Admin         | Implemented (core) — **verified live this milestone (57/57)** | auth (login/me/change-password/seed), dashboard (stats incl. bank-officer counts/trends/loan-analytics/recent-activity/overview), audit trail, field-officer management (list/get/create/update/status/reset — create + status now live-tested), bank-officer management (list/get/create/status — create blocked by parked schema), and the **unified user directory** (`GET /users`, `GET /users/:id`, `PATCH /users/:id/status`) plus **farmer directory** (`GET /farmers`, `GET /farmers/:id`) are mounted at `/api/admin` and verified live by `server/test/admin.e2e.cjs` (57/57, self-provisioning). Reports and settings screens remain planned. |
-| Farmer        | Implemented (backend, hardened + verified live) | auth (register/login/reset/upload/me), profile (`GET/PUT /me` + `/profile` alias, privileged columns filtered), read-only credit profile, dashboard, transactions (full CRUD, whitelisted updates, sign-convention amounts), loans (list/get/apply, pinned `pending`, shared lifecycle), notifications — mounted at `/api/farmer` and verified live with a 64-assertion E2E suite. Frontend API wiring remains open (contexts still local/mock). |
-| Field Officer | Implemented (core + loans) | Profile, assigned-farmer management/registration, verification history/update, field visits, and the loan-application workflow (draft → submit → verify → forward) are mounted at `/api/field-officer` and verified live. Frontend API wiring remains open. |
+| Farmer        | Implemented (backend + frontend, verified live) | auth (register/login/reset/upload/me), profile (`GET/PUT /me` + `/profile` alias, privileged columns filtered), read-only credit profile, dashboard, transactions (full CRUD, whitelisted updates, sign-convention amounts), loans (list/get/apply, pinned `pending`, shared lifecycle), notifications — mounted at `/api/farmer` and verified live (farmer E2E 72/72). Frontend wired (typed contexts, loading/error/retry states, double-submit guards, session-scoped caches). |
+| Field Officer | Implemented (core + loans, backend + frontend) | Profile, assigned-farmer management/registration, verification history/update, field visits, and the loan-application workflow (draft → submit → verify → forward) are mounted at `/api/field-officer` and verified live (50/50 + 48/48). Frontend wired (dashboard with real counts/officer profile, visits with farmer-name resolution, applications with verify/forward). |
 | Bank Officer  | **Implemented (backend) — NOT live-verified (schema blocked)** | Profile (`GET/PUT /profile/me`), forwarded-application review queue, application detail, `pending → under_review`, and the `approved`/`rejected` decision are written, type-checked (`npm run build` passes) and mounted at `/api/bank-officer`. The 89-assertion E2E suite exists and has been **desk-checked line-by-line against the implementation** (routes, guards, state transitions, validation messages, cleanup ordering all match), but **has never been executed**: the `admin.sql` bank-officer columns are still absent from the connected Supabase project (Postgres `42703` on all 8 — re-probed this session, twice, 45s apart to rule out schema-cache lag). The owner is applying the block via the SQL editor; live verification resumes the moment the columns exist. Treat every behaviour below as *intended and reviewed*, not *proven*. Disbursement and repayment are out of scope. |
 
 ---
@@ -618,6 +620,113 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
   schema (owner action) → run `bank-officer.e2e.cjs` → wire the Bank
   Officer frontend.
 
+### Milestone 8b — Frontend quality, API contract, testing & codebase cleanup
+- **Status:** Complete. Frontend `npm run typecheck` and `npm run lint` are
+  **both fully clean** (the two long-standing web CSS-module type errors are
+  fixed by `src/css-modules.d.ts`; the one remaining lint warning lives in an
+  untracked scratch file outside the repo). Backend untouched except tests:
+  `npm run build` passes; all five runnable E2E suites pass live
+  (admin 71/71, farmer 72/72, field-officer 50/50,
+  field-officer-loans 48/48, security 25/25) with every fixture cleaned via
+  `node test/cleanup.cjs` after each run. **Zero schema, DDL, or SQL
+  changes. Bank Officer schema remains parked** (untouched; not attempted).
+- **API type contract (`src/lib/api-types.ts`, new):** centralized types for
+  the backend's real response envelopes and row shapes — `ApiResponse<T>`,
+  `ListResult<T>`, the legacy `NotificationsEnvelope`, login/profile/
+  transaction/loan/notification/visit/audit/stats rows. Every
+  `api.get/post/put/patch/del<any>` call site across the contexts and the
+  admin/field-officer screens now uses the typed contracts. The chain is:
+  backend contract → typed client → typed context/service → typed screen.
+  No speculative types — every field in the file maps to a column a
+  controller actually returns.
+- **Error model (`src/lib/api.ts`):** `ApiError` extended with 409 (duplicate)
+  and 429 (rate limit) handling; 401 on **any** authenticated request now
+  clears the token and notifies `AuthContext` (registered handler), so the
+  app can never remain falsely authenticated after a token dies mid-session.
+  The login screen distinguishes 401 (inline "invalid credentials") from
+  everything else (suspended 403 / network / timeout surfaced verbatim
+  instead of being misreported as bad credentials).
+- **Session lifecycle:** sessions stay in-memory by design (documented).
+  Logout clears the token before user state; a 401 anywhere clears both.
+  **Account switching is now session-scoped:** every farmer context
+  (profile, transactions, loans, notifications) tracks the authenticated
+  user id and drops its cached data when it changes (login switch or
+  401-driven logout) — User B never inherits User A's rows. Reset uses the
+  render-phase derived-state pattern (not effects) so the repo's
+  `react-hooks/set-state-in-effect` rule stays clean.
+- **Contract fixes found by the audit (all frontend-side):**
+  - `field-visits.tsx` read `row.farmer.name_en` but the visits endpoint
+    never embeds a farmer summary — names now resolve from the officer's
+    own assigned-farmer list (the loans endpoint embeds `farmer`; visits
+    does not).
+  - `fo-dashboard.tsx` read a nonexistent `scheduledDate` column from
+    visit rows (removed); the hero now shows the officer's real
+    name/designation from `GET /api/field-officer/profile/me` instead of
+    the literal "Field Officer".
+  - `fo-dashboard.tsx` overview tiles showed hardcoded mock numbers
+    (12/5/3/8) — replaced with real counts derived from the same
+    server-scoped lists rendered below.
+  - `admin-reports.tsx` showed hardcoded mock stats (510/234/72%/89) —
+    now reads the live `/api/admin/dashboard/stats`.
+  - `reset-password.tsx` faked a successful reset with no API call — the
+    final step now calls the real `POST /api/farmer/auth/reset-password`
+    and surfaces failures (the OTP steps remain UI-only until an SMS/email
+    provider exists; documented as a limitation, not hidden).
+  - No other method/URL/param/body mismatches were found; every integrated
+    call was checked against its backend route.
+- **State consistency:** farmer mutation forms (add-transaction, apply-loan,
+  edit-profile) gained double-submit guards (the optimistic contexts insert
+  immediately, so a second tap duplicated rows). Admin user-management
+  re-fetches the directory after an **edit** (previously only after create),
+  so the list reflects the server's truth. FO verify/visit mutations already
+  reload from the server (verified in the M7 wiring).
+- **UX states:** farmer screens (transactions, loans, notifications,
+  dashboard, profile) previously rendered errors as empty lists and had no
+  first-load spinner. Each now renders explicit LOADING / ERROR+RETRY /
+  EMPTY states; the dashboard aggregates its four feeds into one error
+  banner with a retry; the profile's verified badge now reflects the real
+  `is_verified` (previously always "verified"). New translation keys
+  `loading` / `retry` added. No visual redesign — same layout language.
+- **Security regression suite (`server/test/security.e2e.cjs`, new, 25
+  assertions):** missing/empty/garbage/jwt-shaped/wrong-scheme tokens all
+  401 (never 500); client-supplied `role` in login AND register bodies is
+  ignored (registered account is a farmer, its token gets 403 on admin
+  routes); admin lockout attempts (officer creds on admin login, wrong
+  passwords) 401; IDOR via `/api/admin/users/:id` with farmer/officer
+  tokens 403; suspension enforced on officer AND admin routes with the
+  same still-valid token, self-reactivation refused, reactivation restores
+  access; error bodies stay minimal (no Supabase/Postgres internals).
+  Fixtures cleaned via `security-cleanup.tmp` (merge-safe manifest, new
+  handler in `cleanup.cjs`).
+- **Officer mutation coverage (`field-officer.e2e.cjs`, +7 assertions):**
+  visit cancel transition on a fresh scheduled visit (plus cancel/update on
+  nonexistent → 404, invalid UUID → 400, empty update body → 400) close the
+  last gaps in the visit lifecycle.
+- **Cleanup:** the superseded JS `backend/` skeleton (documented as
+  "slated for removal" since M1) is **deleted** — nothing referenced it
+  and both docs already said `server/` is the backend. Root
+  `.env.example` (new) documents `EXPO_PUBLIC_API_URL` for the frontend;
+  secrets audit confirmed `server/.env` ignored, no tokens/credentials
+  tracked, `.env.example` files contain placeholders only.
+- **Files created:** `src/lib/api-types.ts`, `src/css-modules.d.ts`,
+  `.env.example`, `server/test/security.e2e.cjs`.
+- **Files modified:** `src/lib/api.ts`, all five contexts, login /
+  reset-password / farmer dashboard / profile / edit-profile / add-transaction /
+  loans / transactions / notifications / application-detail screens,
+  FO dashboard + field-visits + loan-applications, admin users + dashboard +
+  reports + audit-logs, `src/constants/translations.ts`,
+  `server/test/field-officer.e2e.cjs`, `server/test/cleanup.cjs`,
+  `README.md`, `AI_README.md`.
+- **Known limitations:** the reset-password OTP steps are UI-only (no
+  provider); active-loans (disbursement) UI stays empty by design;
+  bank-officer screens remain local/mock pending the parked schema; the
+  untracked scratch files (`src/data/`, `src/config/api.ts`,
+  `server/scripts/*`, `*.tmp`, notes) predate this milestone and were
+  deliberately left untouched.
+- **Next milestone (recommendation, not started):** apply the Bank Officer
+  schema (owner action) → run `bank-officer.e2e.cjs` → wire the Bank
+  Officer frontend.
+
 ### Milestone 5 — Bank Officer backend (loan review & decision)
 - **Status:** ⚠️ **Implemented but NOT live-verified — blocked solely on schema
   application.** All code is written and `npm run build` (tsc) passes. **Zero Bank
@@ -742,7 +851,8 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 
 ## Audit findings (updated)
 
-1. **Two backends existed.** TS `server/` adopted; JS `backend/` superseded — recommend removal. *(open)*
+1. ~~Two backends existed.~~ **Fixed (Milestone 8b)** — the superseded JS `backend/`
+   skeleton was removed from the repo; the TypeScript `server/` is the only backend. *(closed)*
 2. ~~Response contract mismatch.~~ **Fixed** — every farmer, field-officer and bank-officer
    data endpoint now returns `{ success, message, data }`; the last hold-out
    (`GET /api/farmer/dashboard`) was standardized in the Milestone 4 follow-up. *(closed)*
@@ -830,7 +940,12 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
   8)** — helmet headers, tiered per-IP rate limits (auth + admin mutations),
   1 MiB body cap. In-memory limiter state noted as a limitation for
   multi-instance deployments.
-- Remove the superseded JS `backend/` skeleton.
+- ~~Remove the superseded JS `backend/` skeleton.~~ **Done (Milestone 8b)** —
+  deleted; nothing referenced it.
+- ~~Standardize `{ success, message, data }` across farmer handlers.~~ Long-closed
+  (Milestone 4 follow-up); the one deliberate legacy hold-out is
+  `GET /api/farmer/notifications` returning `{ notifications, success }` — accepted
+  and handled by the frontend's `NotificationsEnvelope` type.
 
 ---
 

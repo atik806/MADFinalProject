@@ -57,8 +57,8 @@ Request flow: **Route → Middleware (authenticate → requireRole) → Controll
 └── AI_README.md         # detailed technical status / project memory
 ```
 
-> **Note:** `backend/` (JavaScript) is a superseded early skeleton. The active backend is
-> the TypeScript `server/`. `backend/` is slated for removal.
+> **Note:** The early JavaScript `backend/` skeleton was removed in Milestone 8 —
+> the active backend is the TypeScript `server/`.
 
 ---
 
@@ -141,17 +141,24 @@ npx expo start
 ```
 
 Open on an Android emulator, iOS simulator, Expo Go, or the web. The app talks to the
-backend via `src/config/api.ts` (`http://localhost:3000`, or `http://10.0.2.2:3000` on the
-Android emulator). Override with `EXPO_PUBLIC_API_URL` in a root `.env`.
+backend via `src/lib/api.ts` (`http://localhost:3000`, or `http://10.0.2.2:3000` on the
+Android emulator). Override with `EXPO_PUBLIC_API_URL` in a root `.env` (see
+[`.env.example`](.env.example)).
 
-> **Milestone 7 — Frontend API integration (current state):** all screens run on the
-> real backend through the authenticated client in `src/lib/api.ts` (Bearer token from
-> the auth context, normalized errors, 401 → logout). Farmer flows (profile,
-> transactions, loans, notifications, dashboard, registration/login), field-officer
-> flows (dashboard, field visits, loan applications incl. verify/forward), and admin
-> flows (dashboard stats/trends, user directory + status changes, field-officer
-> creation, audit logs) are wired to their respective `/api/*` endpoints. Bank-officer
-> screens remain local/mock — that role's backend schema is still parked.
+> **Milestone 8 — Frontend quality & API contract (current state):** all API
+> call sites are typed against the centralized backend contracts in
+> `src/lib/api-types.ts`; the API client normalizes every failure mode
+> (400/401/403/404/409/429/5xx/network) into `ApiError`, and a 401 on any
+> authenticated request clears the session so the app cannot stay falsely
+> authenticated. Farmer screens (transactions, loans, notifications,
+> dashboard, profile) render explicit loading / error + retry / empty states;
+> mutation forms have double-submit guards. The Field Officer dashboard shows
+> real server-scoped counts and the officer's own profile; visit cards resolve
+> farmer names from the officer's assigned-farmer list. Admin reports read
+> live dashboard statistics. Password reset calls the real
+> `/api/farmer/auth/reset-password` endpoint (the OTP steps remain UI-only
+> until an SMS/email provider exists). Bank-officer screens remain
+> local/mock — that role's backend schema is still parked.
 
 ---
 
@@ -318,6 +325,31 @@ Notes:
 - **Roles are never trusted from the client.** The `authenticate` middleware resolves the
   user, then role guards (e.g. `farmerOnly`) read the role from the `profiles` table server-side.
 - Roles: `farmer`, `field_officer`, `bank_officer`, `admin`.
+- The frontend maps the server-resolved profile role to its routing union once, at login
+  (`BACKEND_ROLE_MAP` in `src/contexts/AuthContext.tsx`); a client-supplied role field
+  never influences routing or access.
+- Sessions are in-memory by design (no storage dependency): the token lives in module
+  state inside `src/lib/api.ts` and is cleared on logout, on login of a different
+  account, and on any 401 response (stale/expired session). Closing the app ends the
+  session — documented behavior for this milestone.
+- Account switching is session-scoped: the farmer contexts (profile, transactions,
+  loans, notifications) drop their cached data when the authenticated user changes, so
+  User B never inherits User A's state.
+
+### Frontend error model
+
+Every API failure surfaces as an `ApiError` (`src/lib/api.ts`) with an optional HTTP
+`status` and user-safe message:
+
+| Failure | Behavior |
+| ------- | -------- |
+| 400 validation | Backend's field-validation message shown on the form |
+| 401 unauthorized | Token + session cleared; "session expired" message |
+| 403 forbidden / suspended | Backend's "not active"/"not an admin" message; request never faked as success |
+| 404 not found | "requested item was not found" |
+| 409 duplicate | Backend's duplicate-registration message |
+| 429 rate limited | "Too many requests" with retry guidance |
+| 5xx / network / timeout | Generic server/network message — Supabase, SQL, and stack traces never leak |
 
 ---
 
@@ -380,9 +412,12 @@ in the lifecycle for disbursement and repayment, which are **not yet implemented
 
 - Current: TypeScript build plus live E2E coverage. From `server/`, run
   `npm run build`, then `node test/farmer.e2e.cjs` (profile/credit/transactions/loans/
-  dashboard), `node test/field-officer.e2e.cjs` (profile/farmers/verification/visits), and
-  `node test/field-officer-loans.e2e.cjs` (loan workflow) against a running server.
-- **All four runnable suites are self-provisioning** (Milestone 8): each one logs in the
+  dashboard), `node test/field-officer.e2e.cjs` (profile/farmers/verification/visits),
+  `node test/field-officer-loans.e2e.cjs` (loan workflow), `node test/admin.e2e.cjs`
+  (user directory/status enforcement/officer management/dashboard/audit), and
+  `node test/security.e2e.cjs` (cross-cutting auth guards) against a running server.
+- Frontend: `npm run typecheck` and `npm run lint` from the repo root (both clean).
+- **All five runnable suites are self-provisioning**: each one logs in the
   admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `server/.env`, provisions its own throwaway
   officers/farmers through the public and admin APIs, and cleans up every fixture via
   `node test/cleanup.cjs`. No manual token files are needed anymore — the old
@@ -395,15 +430,18 @@ in the lifecycle for disbursement and repayment, which are **not yet implemented
   (see [Supabase setup](#supabase-setup)). **This suite has not yet been executed** —
   the schema is still outstanding; it has been desk-checked against the implementation
   and is ready to run the moment the columns exist.
-- `node test/admin.e2e.cjs` (user directory, farmer directory, status enforcement,
-  dashboard, audit, authorization) is self-provisioning like the farmer suite and needs
-  no token files. Its cleanup manifest **merges across runs** so consecutive runs cannot
-  orphan fixtures.
+- The admin suite's cleanup manifest **merges across runs** so consecutive runs cannot
+  orphan fixtures; the security suite's manifest does the same.
 - After any run, `node test/cleanup.cjs` and `node test/cleanup-sweep.cjs` remove the
-  test-created records (including any officer the farmer/admin suites provisioned).
+  test-created records (including any officer the farmer/admin/security suites provisioned).
 - The live E2E suites cover successful requests, validation failures, duplicate
   registration, assignment/ownership checks (including cross-officer IDOR attempts),
-  invalid state transitions, unauthenticated access, and wrong-role access.
+  invalid state transitions, unauthenticated access, wrong-role access, malformed and
+  missing tokens (of several shapes — all 401, never a 500 or leak), client-supplied
+  role fields in login/register bodies (ignored), admin lockout attempts (officer
+  credentials against the admin endpoint, wrong passwords), suspension enforcement on
+  officer AND admin routes with reactivation recovery, visit cancel/update/complete
+  transitions, and minimal error bodies (no Supabase/Postgres internals).
   Test-created records should be removed after a run against a shared Supabase project.
 - Planned: automated unit/integration coverage for the Farmer, Bank Officer, and Admin modules.
 
