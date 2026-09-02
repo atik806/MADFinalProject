@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { api, ApiError } from '../lib/api';
 import type { ApiResponse, NotificationRow, NotificationsEnvelope } from '../lib/api-types';
+import { useAuth } from './AuthContext';
 
 export type Notification = {
   id: string;
@@ -74,9 +75,20 @@ const rowsFromResponse = (res: NotificationsEnvelope & { data?: NotificationRow[
   Array.isArray(res?.notifications) ? res.notifications : Array.isArray(res?.data) ? res.data : [];
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Tracks which session the cached notifications belong to. On account
+  // switch or logout the stale list is dropped rather than shown to the
+  // next user.
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  if (user?.id !== sessionUserId) {
+    setSessionUserId(user?.id ?? null);
+    setNotifications([]);
+    setError(null);
+    setLoading(true);
+  }
 
   const refreshNotifications = useCallback(async () => {
     setError(null);

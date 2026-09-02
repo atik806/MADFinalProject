@@ -13,10 +13,12 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, getRouteForRole } from '../../contexts/AuthContext';
+import { ApiError } from '../../lib/api';
 import { useTranslation } from '../../hooks/use-translation';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useColors } from '../../features/officials/shared/constants/theme';
@@ -73,9 +75,17 @@ export default function LoginScreen() {
     try {
       await login(data.identifier, data.password);
       setShouldRedirect(true);
-    } catch {
-      setError('identifier', { message: t('invalidCredentials') });
-      setError('password', { message: '' });
+    } catch (err: any) {
+      // Wrong credentials (401 from both login doors) show the inline
+      // form error. Anything else — suspended account (403), unreachable
+      // server, timeout — is surfaced verbatim instead of pretending the
+      // credentials were wrong.
+      if (err instanceof ApiError && err.isAuthError) {
+        setError('identifier', { message: t('invalidCredentials') });
+        setError('password', { message: '' });
+      } else {
+        Alert.alert(t('loginTitle'), err?.message ?? t('invalidCredentials'));
+      }
     }
   };
 

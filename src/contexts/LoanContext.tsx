@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { api, ApiError } from '../lib/api';
 import type { ApiResponse, LoanRow, LoanTimelineStep } from '../lib/api-types';
+import { useAuth } from './AuthContext';
 
 export type LoanStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'active' | 'completed';
 
@@ -162,10 +163,21 @@ export function LoanProvider({ children }: { children: ReactNode }) {
   // NOTE: activeLoans (disbursed loans with repayment progress) have no
   // backend flow yet — disbursement is deferred. The list stays empty rather
   // than being faked from application rows.
+  const { user } = useAuth();
   const [applications, setApplications] = useState<LoanApplication[]>([]);
   const [activeLoans] = useState<ActiveLoan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Tracks which session the cached applications belong to. On account
+  // switch or logout the stale list is dropped rather than shown to the
+  // next user.
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  if (user?.id !== sessionUserId) {
+    setSessionUserId(user?.id ?? null);
+    setApplications([]);
+    setError(null);
+    setLoading(true);
+  }
 
   const refreshApplications = useCallback(async () => {
     setError(null);

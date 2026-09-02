@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { api, ApiError } from '../lib/api';
 import type { ApiResponse, TransactionRow } from '../lib/api-types';
+import { useAuth } from './AuthContext';
 
 export type Transaction = {
   id: string;
@@ -38,9 +39,19 @@ const errorMessage = (err: unknown): string =>
   err instanceof ApiError ? err.message : 'Something went wrong. Please try again.';
 
 export function TransactionProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Tracks which session the cached rows belong to. On account switch or
+  // logout the stale rows are dropped rather than shown to the next user.
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  if (user?.id !== sessionUserId) {
+    setSessionUserId(user?.id ?? null);
+    setTransactions([]);
+    setError(null);
+    setLoading(true);
+  }
 
   const refreshTransactions = useCallback(async () => {
     setError(null);

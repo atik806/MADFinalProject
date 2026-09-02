@@ -1,6 +1,6 @@
-import { createContext, useCallback, useContext, useMemo, useReducer, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 import type { Href } from 'expo-router';
-import { api, ApiError, setAuthToken } from '../lib/api';
+import { api, ApiError, setAuthToken, setUnauthorizedHandler } from '../lib/api';
 import type { LoginResponse } from '../lib/api-types';
 
 export type UserRole = 'farmer' | 'admin' | 'bank-officer' | 'field-officer';
@@ -93,6 +93,14 @@ const tryAdminLogin = (identifier: string, password: string) =>
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialAuthState);
+
+  // Any authenticated request that answers 401 invalidates the session.
+  // The API client clears the token itself; this clears the user state so
+  // the app cannot remain falsely authenticated.
+  useEffect(() => {
+    setUnauthorizedHandler(() => dispatch({ type: 'LOGOUT' }));
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   const login = useCallback(async (identifier: string, password: string): Promise<User> => {
     dispatch({ type: 'LOGIN_START' });

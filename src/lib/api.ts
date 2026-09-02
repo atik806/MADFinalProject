@@ -49,10 +49,28 @@ export class ApiError extends Error {
     return this.status === 400;
   }
 
+  get isConflict() {
+    return this.status === 409;
+  }
+
+  get isRateLimited() {
+    return this.status === 429;
+  }
+
   get isNetwork() {
     return this.status === undefined;
   }
 }
+
+// Registered by AuthContext on mount. When any authenticated request comes
+// back 401 the session is definitively dead (invalid/expired token), so the
+// auth state must be cleared instead of leaving the app falsely
+// authenticated with every subsequent request failing.
+let unauthorizedHandler: (() => void) | null = null;
+
+export const setUnauthorizedHandler = (handler: (() => void) | null) => {
+  unauthorizedHandler = handler;
+};
 
 let authToken: string | null = null;
 
@@ -79,6 +97,12 @@ const normalizeError = (data: any, status?: number): ApiError => {
   }
   if (status === 400) {
     return new ApiError(backendMessage ?? 'Please check the entered information and try again.', status);
+  }
+  if (status === 409) {
+    return new ApiError(backendMessage ?? 'This record already exists. Please review and try again.', status);
+  }
+  if (status === 429) {
+    return new ApiError('Too many requests. Please wait a moment and try again.', status);
   }
   if (status !== undefined && status >= 500) {
     return new ApiError('The server could not complete the request. Please try again.', status);
@@ -125,7 +149,15 @@ export async function apiFetch<T = any>(path: string, options: RequestInit = {})
   }
 
   if (!res.ok) {
-    throw normalizeError(data, res.status);
+    const normalized = normalizeError(data, res.status);
+    // A 401 on any authenticated request means the token is dead. Clear the
+    // stale token immediately so the app cannot stay falsely authenticated
+    // and re-dispatch the login state via the registered handler.
+    if (res.status === 401) {
+      authToken = null;
+      unauthorizedHandler?.();
+    }
+    throw normalized;
   }
   return data as T;
 }

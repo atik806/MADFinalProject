@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { api, ApiError } from '../lib/api';
 import type { ApiResponse, ProfileRow } from '../lib/api-types';
+import { useAuth } from './AuthContext';
 
 export type FarmerProfile = {
   nameBn: string;
@@ -167,9 +168,20 @@ const EDITABLE_KEYS: (keyof FarmerProfile)[] = [
 ];
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<FarmerProfile>(defaultProfile);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Tracks which session the cached data belongs to. When the authenticated
+  // user changes (login switch or 401-driven logout) the stale profile is
+  // dropped instead of leaking into the next session.
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  if (user?.id !== sessionUserId) {
+    setSessionUserId(user?.id ?? null);
+    setProfile(defaultProfile);
+    setError(null);
+    setLoading(true);
+  }
 
   const refreshProfile = useCallback(async () => {
     setError(null);
