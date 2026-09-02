@@ -207,7 +207,40 @@ async function req(method, url, opts = {}) {
 
   // 24. Complete the visit
   r = await req('POST', `/api/field-officer/visits/${visitId}/complete`, { token: TOKEN });
-  report('visits complete 200', r.status === 200 && r.data?.data?.status === 'completed', `status=${r.data?.data?.status ?? '?'}`);
+  report('visits complete 200', r.status === 200 && r.data?.data?.status === 'completed', `status=${r.data?.data?.status}`);
+
+  // 24b. Cancel a nonexistent visit -> 404
+  r = await req('POST', '/api/field-officer/visits/00000000-0000-0000-0000-000000000000/cancel', { token: TOKEN });
+  report('visits cancel nonexistent 404', r.status === 404, `msg=${r.data?.message ?? '?'}`);
+
+  // 24c. Cancel an invalid UUID -> 400
+  r = await req('POST', '/api/field-officer/visits/not-a-uuid/cancel', { token: TOKEN });
+  report('visits cancel invalid uuid 400', r.status === 400, `msg=${r.data?.message ?? '?'}`);
+
+  // 24d. Update a nonexistent visit -> 404
+  r = await req('PUT', '/api/field-officer/visits/00000000-0000-0000-0000-000000000000', { token: TOKEN, json: true, body: { purpose: 'X' } });
+  report('visits update nonexistent 404', r.status === 404, `msg=${r.data?.message ?? '?'}`);
+
+  // 24e. Update an invalid UUID -> 400
+  r = await req('PUT', '/api/field-officer/visits/not-a-uuid', { token: TOKEN, json: true, body: { purpose: 'X' } });
+  report('visits update invalid uuid 400', r.status === 400, `msg=${r.data?.message ?? '?'}`);
+
+  // 24f. Update with no updatable fields -> 400
+  r = await req('PUT', `/api/field-officer/visits/${visitId}`, { token: TOKEN, json: true, body: {} });
+  report('visits update empty body 400', r.status === 400, `msg=${r.data?.message ?? '?'}`);
+
+  // 24g. Schedule a second visit, then cancel it — the cancel transition
+  // needs a live scheduled visit (the first one is completed by now).
+  r = await req('POST', '/api/field-officer/visits', { token: TOKEN, json: true, body: { farmerId, scheduledDate: '2026-09-10T09:00:00Z', purpose: 'Follow-up inspection' } });
+  const cancelVisitId = r.data?.data?.id;
+  if (cancelVisitId) {
+    manifest.visitId = cancelVisitId; // cleanup also removes all visits by officer id
+    saveCleanup();
+  }
+  report('visits create second 201', r.status === 201 && !!cancelVisitId, `visit=${cancelVisitId}`);
+
+  r = await req('POST', `/api/field-officer/visits/${cancelVisitId}/cancel`, { token: TOKEN });
+  report('visits cancel 200', r.status === 200 && r.data?.data?.status === 'cancelled', `status=${r.data?.data?.status}`);
 
   // 25. Complete already-completed -> 400/409
   r = await req('POST', `/api/field-officer/visits/${visitId}/complete`, { token: TOKEN });
