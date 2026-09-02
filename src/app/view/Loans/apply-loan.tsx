@@ -57,6 +57,10 @@ export default function ApplyLoanScreen() {
     previousLoanStatement: false,
   });
 
+  // Double-submit guard: a second tap on the final step would create a
+  // duplicate application.
+  const [submitting, setSubmitting] = useState(false);
+
   const annualRate = 9;
   const emi = calculateEMI(amount, durationMonths, annualRate);
   const totalRepayment = emi * durationMonths;
@@ -87,7 +91,9 @@ export default function ApplyLoanScreen() {
   };
 
   const handleSubmit = async () => {
+    if (submitting) return;
     const monthsLabel = durationMonths === 1 ? '1 month' : `${durationMonths} months`;
+    setSubmitting(true);
     try {
       await addApplication({
         title: purpose,
@@ -101,6 +107,8 @@ export default function ApplyLoanScreen() {
       // Backend validation (amount > 0, required text, installmentType enum)
       // is surfaced instead of silently dropping the application.
       Alert.alert(t('applyLoan'), err?.message ?? 'Could not submit the application.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -203,12 +211,13 @@ export default function ApplyLoanScreen() {
         )}
         {step === 3 && (
           <TouchableOpacity
-            style={[styles.primaryBtn, { backgroundColor: colors.deepGreen }]}
+            style={[styles.primaryBtn, { backgroundColor: colors.deepGreen }, submitting && { opacity: 0.6 }]}
             onPress={handleSubmit}
+            disabled={submitting}
             activeOpacity={0.8}
           >
             <Ionicons name="checkmark-circle" size={18} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={styles.primaryBtnText}>{t('submitApplication')}</Text>
+            <Text style={styles.primaryBtnText}>{submitting ? 'Submitting…' : t('submitApplication')}</Text>
           </TouchableOpacity>
         )}
       </View>

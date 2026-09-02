@@ -27,8 +27,12 @@ export default function AddTransactionScreen() {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<'Income' | 'Expense'>('Expense');
+  // Double-submit guard: the optimistic row is already in the list once
+  // save starts, so a second tap would duplicate it.
+  const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    if (saving) return;
     if (!title.trim() || !amount.trim()) return;
     const numericAmount = parseFloat(amount.replace(/,/g, ''));
     if (isNaN(numericAmount) || numericAmount <= 0) return;
@@ -40,6 +44,7 @@ export default function AddTransactionScreen() {
       year: 'numeric',
     }).replace(/ /g, ' ');
 
+    setSaving(true);
     try {
       await addTransaction({
         title: title.trim(),
@@ -53,10 +58,12 @@ export default function AddTransactionScreen() {
       // Backend validation (sign convention, required fields) surfaces here;
       // staying on the form keeps the user's input intact.
       Alert.alert(t('addTransactionTitle'), err?.message ?? 'Could not save the transaction.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const canSave = title.trim().length > 0 && amount.trim().length > 0;
+  const canSave = title.trim().length > 0 && amount.trim().length > 0 && !saving;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>

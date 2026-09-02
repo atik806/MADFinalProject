@@ -44,6 +44,9 @@ export default function EditProfileScreen() {
   const [loanAmount, setLoanAmount] = useState(profile.hasLoan ? String(profile.loanAmount) : '');
   const [loanPurpose, setLoanPurpose] = useState(profile.hasLoan ? profile.loanPurpose : '');
   const [loanSource, setLoanSource] = useState(profile.hasLoan ? profile.loanSource : '');
+  // Double-submit guard: updateProfile applies optimistically, so a second
+  // tap while the first PUT is in flight would duplicate the request.
+  const [saving, setSaving] = useState(false);
 
   const toggleCrop = (crop: string) => {
     setSelectedCrops((prev) =>
@@ -58,6 +61,8 @@ export default function EditProfileScreen() {
   };
 
   const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       await updateProfile({
         nameBn,
@@ -88,6 +93,8 @@ export default function EditProfileScreen() {
       // Backend validation / network failure: stay on the form with the
       // user's input intact and explain what went wrong.
       Alert.alert(t('editProfile'), err?.message ?? 'Could not save your profile.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -396,7 +403,7 @@ export default function EditProfileScreen() {
           </>
         )}
 
-        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.deepGreen }]} onPress={handleSave} activeOpacity={0.8}>
+        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.deepGreen }, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving} activeOpacity={0.8}>
           <Ionicons name="checkmark-circle" size={22} color="#fff" />
           <Text style={styles.saveBtnText}>{t('saveChanges')}</Text>
         </TouchableOpacity>
