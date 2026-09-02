@@ -144,8 +144,14 @@ Open on an Android emulator, iOS simulator, Expo Go, or the web. The app talks t
 backend via `src/config/api.ts` (`http://localhost:3000`, or `http://10.0.2.2:3000` on the
 Android emulator). Override with `EXPO_PUBLIC_API_URL` in a root `.env`.
 
-> Frontend↔backend integration is a later, deliberate phase; the committed frontend currently
-> runs on local/mock state.
+> **Milestone 7 — Frontend API integration (current state):** all screens run on the
+> real backend through the authenticated client in `src/lib/api.ts` (Bearer token from
+> the auth context, normalized errors, 401 → logout). Farmer flows (profile,
+> transactions, loans, notifications, dashboard, registration/login), field-officer
+> flows (dashboard, field visits, loan applications incl. verify/forward), and admin
+> flows (dashboard stats/trends, user directory + status changes, field-officer
+> creation, audit logs) are wired to their respective `/api/*` endpoints. Bank-officer
+> screens remain local/mock — that role's backend schema is still parked.
 
 ---
 

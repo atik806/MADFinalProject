@@ -478,6 +478,61 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 - **Next milestone:** Frontend API Integration (pending owner decision), or
   Bank Officer live verification once the schema is applied.
 
+### Milestone 7 — Frontend API integration (all wired roles onto the real backend)
+- **Status:** Implemented; frontend typecheck and lint at their pre-milestone
+  baseline (two long-standing web-only CSS-module errors and one warning in an
+  unrelated untracked file remain; they predate this milestone and were verified
+  failing at the baseline commit too). Backend untouched: `npm run build` passes,
+  `admin.e2e.cjs` 57/57 and `farmer.e2e.cjs` 72/72 against the running server,
+  fixtures cleaned afterwards. No DB/SQL change of any kind.
+- **API client (`src/lib/api.ts`):** thin `fetch` wrapper — injects the Bearer
+  token from the auth context, prefixes the configured base URL, normalizes the
+  backend's `{ success, message, data }` envelope and non-2xx bodies into a
+  single `ApiError` with status + message, and on 401 clears the session and
+  routes to login (a second guard behind the auth context's own expiry check).
+- **Authentication (`AuthContext`):** real login against the role login routes,
+  server-side role mapping, persisted session, logout clears tokens; expired or
+  revoked tokens surface the API's message instead of a generic failure.
+- **Farmer workflows:** profile/credit/transactions/loans/notifications/
+  dashboard contexts and screens replaced mock arrays with live calls
+  (`LoanContext` owns the loan pipeline incl. timeline rows; `ProfileContext`
+  powers read + edit; `TransactionContext` adds/list; `NotificationContext`
+  list/read). Apply-loan posts to the API; application detail swaps the
+  status-derived timeline for the server's real timeline once loaded.
+- **Field Officer workflows:** dashboard (assigned farmers + scheduled visits),
+  field visits (list + record outcomes), loan applications (list, verify, forward
+  — the officer's own scoped queue). All officer writes hit the real endpoints
+  and reload the affected list from the server on success.
+- **Admin workflows:** dashboard (stats/registration-trend/loan-analytics via
+  one parallel fetch), user directory (role-tabbed, server-side search debounced
+  300 ms, status suspend/reactivate), field-officer provisioning (create is
+  fixed to the only role the backend can provision — NID/phone/temporary
+  password required), and audit logs (module values collapsed to the screen's
+  three categories, relative timestamps computed client-side). The admin users
+  form cannot promise a role the API refuses (bank-officer create is blocked by
+  the parked schema; farmers self-register).
+- **Deliberately unchanged:** bank-officer screens (schema parked); no endpoint
+  was modified server-side; no schema, no DDL, no seed data. Screens keep
+  loading skeletons, pull-to-refresh, and now explicit load-error states with
+  retry-on-refresh instead of silently empty lists.
+- **Frontend conventions adopted:** all data-fetch effects defer their kickoff
+  (debounce/timeout) so no `setState` runs synchronously in an effect body —
+  `react-hooks/set-state-in-effect` is clean; loaders set terminal state only
+  after the fetch resolves.
+- **Files created:** `src/lib/api.ts`.
+- **Files modified (contexts):** `AuthContext`, `LoanContext`, `NotificationContext`,
+  `ProfileContext`, `TransactionContext`.
+- **Files modified (screens):** farmer dashboard, loans list, apply-loan,
+  application-detail, transactions, add-transaction, notifications, profile,
+  edit-profile; field-officer dashboard, field-visits, loan-applications; admin
+  dashboard, admin-users, audit-logs.
+- **Known limitations:** field-officer and field-officer-loans E2E suites remain
+  blocked on their stale-token dependency (pre-existing backlog); Bank Officer
+  frontend remains local/mock pending the parked schema; officer edit maps only
+  the fields the backend's update white-list accepts.
+- **Next step:** Bank Officer schema application + live verification (owner
+  action), then the Bank Officer frontend wiring as its own milestone.
+
 ### Milestone 5 — Bank Officer backend (loan review & decision)
 - **Status:** ⚠️ **Implemented but NOT live-verified — blocked solely on schema
   application.** All code is written and `npm run build` (tsc) passes. **Zero Bank
@@ -663,6 +718,9 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 
 ## Cross-cutting backlog
 
+- **Bank Officer frontend wiring** (Milestone 7 wired farmer, field-officer, and
+  admin; bank-officer screens intentionally remain local/mock until the parked
+  schema lands and the module is live-verified).
 - **Apply the `admin.sql` bank-officer block to the live project and run
   `node test/bank-officer.e2e.cjs` + the three existing suites** (blocking; see audit
   finding 12 — parked on the owner sharing Supabase env details; the E2E has been
