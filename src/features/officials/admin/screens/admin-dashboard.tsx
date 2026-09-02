@@ -14,6 +14,7 @@ import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidthWide } from '@/features/officials/shared/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
+import type { AdminStatsRow, ApiResponse, LoanAnalyticsPoint, TrendPoint } from '@/lib/api-types';
 
 export default function AdminDashboardScreen() {
   const router = useRouter();
@@ -22,7 +23,7 @@ export default function AdminDashboardScreen() {
   const { width } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<AdminStatsRow | null>(null);
   const [registrationData, setRegistrationData] = useState<{ label: string; value: number }[]>([]);
   const [loanData, setLoanData] = useState<{ label: string; values: { key: string; value: number; color: string }[] }[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -32,18 +33,18 @@ export default function AdminDashboardScreen() {
   const loadDashboard = useCallback(async () => {
     try {
       const [statsRes, trendRes, analyticsRes] = await Promise.all([
-        api.get<any>('/api/admin/dashboard/stats'),
-        api.get<any>(`/api/admin/dashboard/registration-trend?months=6`),
-        api.get<any>(`/api/admin/dashboard/loan-analytics?months=6`),
+        api.get<ApiResponse<AdminStatsRow>>('/api/admin/dashboard/stats'),
+        api.get<ApiResponse<TrendPoint[]>>(`/api/admin/dashboard/registration-trend?months=6`),
+        api.get<ApiResponse<LoanAnalyticsPoint[]>>(`/api/admin/dashboard/loan-analytics?months=6`),
       ]);
       setStats(statsRes?.data ?? null);
-      setRegistrationData((trendRes?.data ?? []).map((p: any) => ({ label: p.label, value: p.value })));
+      setRegistrationData((trendRes?.data ?? []).map((p) => ({ label: p.label, value: Number(p.value) })));
       setLoanData(
-        (analyticsRes?.data ?? []).map((p: any) => ({
+        (analyticsRes?.data ?? []).map((p) => ({
           label: p.label,
           values: [
-            { key: 'approved', value: p.approved, color: colors.greenLight },
-            { key: 'pending', value: p.pending, color: '#F59E0B' },
+            { key: 'approved', value: Number(p.approved), color: colors.greenLight },
+            { key: 'pending', value: Number(p.pending), color: '#F59E0B' },
           ],
         })),
       );

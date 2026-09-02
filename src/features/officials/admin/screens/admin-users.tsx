@@ -20,6 +20,7 @@ import { ScreenHeader } from '@/features/officials/shared/components/screen-head
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidth } from '@/features/officials/shared/constants/layout';
 import { api } from '@/lib/api';
+import type { AdminDirectoryRow, ApiResponse, ListResult, ProfileRow } from '@/lib/api-types';
 
 type User = {
   id: string;
@@ -39,7 +40,7 @@ const ROLE_FROM_BACKEND: Record<string, User['role']> = {
   bank_officer: 'Bank Officer',
 };
 
-const userFromRow = (row: any): User => {
+const userFromRow = (row: AdminDirectoryRow): User => {
   const role = ROLE_FROM_BACKEND[String(row.role ?? '').toLowerCase()] ?? 'Farmer';
   const status = String(row.status ?? '').toLowerCase();
   const badgeStatus: User['status'] =
@@ -150,7 +151,7 @@ export default function AdminUsersScreen() {
         if (searchTerm.trim()) {
           params.set('search', searchTerm.trim());
         }
-        const res = await api.get<any>(`/api/admin/users?${params.toString()}`);
+        const res = await api.get<ApiResponse<ListResult<AdminDirectoryRow>>>(`/api/admin/users?${params.toString()}`);
         setUsers((res?.data?.items ?? []).map(userFromRow));
         setLoadError(null);
       } catch (err: any) {
@@ -233,7 +234,7 @@ export default function AdminUsersScreen() {
         // Officer detail edit: only the designation/district/phone fields the
         // backend's update white-list accepts. Role/location edits beyond
         // that are not supported by the API for this row type.
-        await api.put<any>(`/api/admin/field-officers/${editingUser.id}`, {
+        await api.put<ApiResponse<ProfileRow>>(`/api/admin/field-officers/${editingUser.id}`, {
           name_en: formName.trim(),
           designation: formCrop.trim() || undefined,
           supervised_district: formLocation.trim() || undefined,
@@ -241,7 +242,7 @@ export default function AdminUsersScreen() {
         Alert.alert('Success', `${formName.trim()} has been updated.`);
       } else {
         // Create: the only staff role the backend can provision today.
-        const res = await api.post<any>('/api/admin/field-officers', {
+        const res = await api.post<ApiResponse<{ profile: ProfileRow }>>('/api/admin/field-officers', {
           nameEn: formName.trim(),
           nid: formNid.trim(),
           phone: formPhone.trim(),
@@ -283,7 +284,7 @@ export default function AdminUsersScreen() {
             if (statusUpdatingId) return;
             setStatusUpdatingId(user.id);
             try {
-              await api.patch<any>(`/api/admin/users/${user.id}/status`, {
+              await api.patch<ApiResponse<AdminDirectoryRow>>(`/api/admin/users/${user.id}/status`, {
                 status: isActive ? 'suspended' : 'active',
               });
               setUsers((prev) =>

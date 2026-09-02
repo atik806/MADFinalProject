@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { api, ApiError } from '../lib/api';
+import type { ApiResponse, ProfileRow } from '../lib/api-types';
 
 export type FarmerProfile = {
   nameBn: string;
@@ -127,11 +128,12 @@ const ROW_MAP: Record<string, keyof FarmerProfile> = {
   member_since: 'memberSince',
 };
 
-const profileFromRow = (row: any): FarmerProfile => {
-  const out: any = { ...defaultProfile };
+const profileFromRow = (row: ProfileRow): FarmerProfile => {
+  const out: Record<string, unknown> = { ...defaultProfile };
   for (const [col, key] of Object.entries(ROW_MAP)) {
-    if (row?.[col] !== undefined && row?.[col] !== null) {
-      out[key] = row[col];
+    const value = (row as Record<string, unknown>)[col];
+    if (value !== undefined && value !== null) {
+      out[key] = value;
     }
   }
   return out as FarmerProfile;
@@ -172,7 +174,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const refreshProfile = useCallback(async () => {
     setError(null);
     try {
-      const res = await api.get<any>('/api/farmer/me');
+      const res = await api.get<ApiResponse<ProfileRow> & { profile?: ProfileRow }>('/api/farmer/me');
       // The profile endpoints return { success, message, data }; the legacy
       // auth /me returns { data, profile } — both are accepted.
       const row = res?.data?.id ? res.data : res?.profile ?? res?.data;
@@ -197,7 +199,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           body[key] = (data as Record<string, unknown>)[key];
         }
       }
-      const res = await api.put<any>('/api/farmer/me', body);
+      const res = await api.put<ApiResponse<ProfileRow>>('/api/farmer/me', body);
       if (res?.data?.id) {
         setProfile(profileFromRow(res.data));
       }

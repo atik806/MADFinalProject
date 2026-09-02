@@ -17,6 +17,7 @@ import { ScreenHeader } from '@/features/officials/shared/components/screen-head
 import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/shared/constants/layout';
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { api } from '@/lib/api';
+import type { ApiResponse, FieldVisitRow, ListResult, ProfileRow } from '@/lib/api-types';
 
 type VisitStatus = 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
 
@@ -31,11 +32,12 @@ type FieldVisit = {
   notes: string;
 };
 
-// Backend visit row → the card the screen renders. Farmer name comes from
-// the farmer summary the officer-visits endpoint embeds.
-const visitFromRow = (row: any): FieldVisit => ({
+// Backend visit row → the card the screen renders. The visits endpoint does
+// NOT embed a farmer summary (unlike the loans endpoint), so the farmer name
+// is resolved locally from the officer's assigned-farmer list.
+const visitFromRow = (row: FieldVisitRow, farmerName: string): FieldVisit => ({
   id: String(row.id),
-  farmerName: row.farmer?.name_en ?? row.farmer?.name_bn ?? 'Farmer',
+  farmerName,
   farmerId: row.farmer_id ?? null,
   location: row.location ?? '—',
   date: (() => {
@@ -85,15 +87,19 @@ export default function FieldVisitsScreen() {
   const loadVisits = useCallback(async () => {
     try {
       const [visitsRes, farmersRes] = await Promise.all([
-        api.get<any>('/api/field-officer/visits?pageSize=100'),
-        api.get<any>('/api/field-officer/farmers?pageSize=100'),
+        api.get<ApiResponse<ListResult<FieldVisitRow>>>('/api/field-officer/visits?pageSize=100'),
+        api.get<ApiResponse<ListResult<ProfileRow>>>('/api/field-officer/farmers?pageSize=100'),
       ]);
-      const rows: any[] = visitsRes?.data?.items ?? [];
-      const mapped = rows.map(visitFromRow);
+      const farmerRows: ProfileRow[] = farmersRes?.data?.items ?? [];
+      const nameByFarmerId = new Map(
+        farmerRows.map((f) => [String(f.id), f.name_en ?? f.name_bn ?? 'Farmer']),
+      );
+      const rows: FieldVisitRow[] = visitsRes?.data?.items ?? [];
+      const mapped = rows.map((v) => visitFromRow(v, nameByFarmerId.get(String(v.farmer_id)) ?? 'Farmer'));
       setUpcoming(mapped.filter((v) => v.status === 'scheduled' || v.status === 'in-progress'));
       setCompleted(mapped.filter((v) => v.status === 'completed' || v.status === 'cancelled'));
       setAssignedFarmers(
-        (farmersRes?.data?.items ?? []).map((f: any) => ({ id: String(f.id), name: f.name_en ?? f.name_bn ?? 'Farmer' })),
+        farmerRows.map((f) => ({ id: String(f.id), name: f.name_en ?? f.name_bn ?? 'Farmer' })),
       );
       setLoadError(null);
     } catch (err: any) {
@@ -126,7 +132,7 @@ export default function FieldVisitsScreen() {
     try {
       // visitDate accepts an ISO date; the backend validates and scopes the
       // visit to the officer's assignment for that farmer.
-      await api.post<any>('/api/field-officer/visits', {
+      await api.post<ApiResponse<FieldVisitRow>>('/api/field-officer/visits', {
         farmerId: farmer.id,
         visitDate: formDate,
         purpose: formPurpose,

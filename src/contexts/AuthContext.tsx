@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useReducer, type ReactNode } from 'react';
 import type { Href } from 'expo-router';
 import { api, ApiError, setAuthToken } from '../lib/api';
+import type { LoginResponse } from '../lib/api-types';
 
 export type UserRole = 'farmer' | 'admin' | 'bank-officer' | 'field-officer';
 
@@ -46,7 +47,7 @@ export const toUserRole = (backendRole: unknown): UserRole =>
 
 // Builds the frontend User from a login response. The role always comes from
 // the server-resolved profile — never from anything the client submitted.
-const userFromLogin = (payload: any): User => ({
+const userFromLogin = (payload: LoginResponse): User => ({
   id: String(payload?.user?.id ?? payload?.profile?.id ?? ''),
   name:
     payload?.profile?.name_en ??
@@ -85,10 +86,10 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 // account and returns the profile with its server-side role. The admin uses
 // its own endpoint with different credential semantics.
 const trySharedLogin = (identifier: string, password: string) =>
-  api.post<any>('/api/farmer/auth/login', { identifier, password });
+  api.post<LoginResponse>('/api/farmer/auth/login', { identifier, password });
 
 const tryAdminLogin = (identifier: string, password: string) =>
-  api.post<any>('/api/admin/auth/login', { identifier, password });
+  api.post<LoginResponse>('/api/admin/auth/login', { identifier, password });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialAuthState);
@@ -101,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // must not lock the admin out, so both doors are tried. Only a definitive
     // credential rejection (401) falls through to the admin endpoint —
     // network/server failures surface immediately.
-    let payload: any = null;
+    let payload: LoginResponse | null = null;
     try {
       payload = await trySharedLogin(identifier, password);
     } catch (err) {

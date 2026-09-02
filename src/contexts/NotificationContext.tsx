@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { api, ApiError } from '../lib/api';
+import type { ApiResponse, NotificationRow, NotificationsEnvelope } from '../lib/api-types';
 
 export type Notification = {
   id: string;
@@ -50,7 +51,7 @@ const timeAgo = (iso: string): string => {
   return `${days}d ago`;
 };
 
-const mapNotification = (row: any): Notification => {
+const mapNotification = (row: NotificationRow): Notification => {
   const { icon, color } = iconFor(String(row.title ?? ''));
   return {
     id: String(row.id),
@@ -69,7 +70,7 @@ const errorMessage = (err: unknown): string =>
 // The backend notifications controller returns { notifications, success }
 // (a legacy bare shape, documented in AI_README) — not the shared
 // { success, message, data } contract — so both shapes are accepted here.
-const rowsFromResponse = (res: any): any[] =>
+const rowsFromResponse = (res: NotificationsEnvelope & { data?: NotificationRow[] }): NotificationRow[] =>
   Array.isArray(res?.notifications) ? res.notifications : Array.isArray(res?.data) ? res.data : [];
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
@@ -80,7 +81,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const refreshNotifications = useCallback(async () => {
     setError(null);
     try {
-      const res = await api.get<any>('/api/farmer/notifications');
+      const res = await api.get<NotificationsEnvelope & { data?: NotificationRow[] }>('/api/farmer/notifications');
       setNotifications(rowsFromResponse(res).map(mapNotification));
     } catch (err) {
       setError(errorMessage(err));
@@ -108,7 +109,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const markAsRead = useCallback(async (id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
     try {
-      await api.put(`/api/farmer/notifications/${id}/read`, {});
+      await api.put<ApiResponse<unknown>>(`/api/farmer/notifications/${id}/read`, {});
     } catch {
       // Optimistic update stands; the unread badge self-corrects on next refresh.
     }
@@ -118,7 +119,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     await Promise.all(
-      unreadIds.map((id) => api.put(`/api/farmer/notifications/${id}/read`, {}).catch(() => null)),
+      unreadIds.map((id) => api.put<ApiResponse<unknown>>(`/api/farmer/notifications/${id}/read`, {}).catch(() => null)),
     );
   }, [notifications]);
 
@@ -126,7 +127,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const snapshot = notifications;
     setNotifications([]);
     try {
-      await Promise.all(snapshot.map((n) => api.del(`/api/farmer/notifications/${n.id}`).catch(() => null)));
+      await Promise.all(snapshot.map((n) => api.del<ApiResponse<unknown>>(`/api/farmer/notifications/${n.id}`).catch(() => null)));
     } catch {
       // Best effort: refresh restores the server truth.
     }

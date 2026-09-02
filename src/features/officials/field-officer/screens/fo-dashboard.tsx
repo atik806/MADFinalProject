@@ -10,6 +10,7 @@ import { StatusBadge } from '@/features/officials/shared/components/status-badge
 import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/shared/constants/layout';
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { api } from '@/lib/api';
+import type { ApiResponse, FieldVisitRow, ListResult, ProfileRow } from '@/lib/api-types';
 
 type Farmer = {
   id: string;
@@ -20,7 +21,7 @@ type Farmer = {
 };
 
 // Map an assigned-farmer profile row to the card the dashboard renders.
-const farmerFromRow = (row: any): Farmer => ({
+const farmerFromRow = (row: ProfileRow): Farmer => ({
   id: String(row.id),
   name: row.name_en ?? row.name_bn ?? 'Farmer',
   location: [row.village, row.district].filter(Boolean).join(', ') || row.location || '—',
@@ -44,8 +45,8 @@ type ScheduledVisit = {
   type: string;
 };
 
-const visitFromRow = (row: any): ScheduledVisit => {
-  const d = new Date(String(row.visit_date ?? row.scheduledDate ?? row.created_at ?? ''));
+const visitFromRow = (row: FieldVisitRow): ScheduledVisit => {
+  const d = new Date(String(row.visit_date ?? row.created_at ?? ''));
   const time = Number.isFinite(d.getTime())
     ? d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
     : '—';
@@ -69,11 +70,11 @@ export default function FieldOfficerDashboardScreen() {
   const loadDashboard = useCallback(async () => {
     try {
       // Assigned farmers: the officer's own list (server-scoped by token).
-      const farmersRes = await api.get<any>('/api/field-officer/farmers?pageSize=100');
+      const farmersRes = await api.get<ApiResponse<ListResult<ProfileRow>>>('/api/field-officer/farmers?pageSize=100');
       setFarmers((farmersRes?.data?.items ?? []).map(farmerFromRow));
       // Today's view: scheduled + in-progress visits become the schedule list.
-      const visitsRes = await api.get<any>('/api/field-officer/visits?pageSize=100');
-      const visitRows: any[] = visitsRes?.data?.items ?? [];
+      const visitsRes = await api.get<ApiResponse<ListResult<FieldVisitRow>>>('/api/field-officer/visits?pageSize=100');
+      const visitRows: FieldVisitRow[] = visitsRes?.data?.items ?? [];
       setScheduledVisits(visitRows.filter((v) => ['scheduled', 'in-progress'].includes(String(v.status ?? ''))).map(visitFromRow));
       setLoadError(null);
     } catch (err: any) {

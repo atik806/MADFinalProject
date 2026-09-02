@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { api, ApiError } from '../lib/api';
+import type { ApiResponse, TransactionRow } from '../lib/api-types';
 
 export type Transaction = {
   id: string;
@@ -24,7 +25,7 @@ const TransactionContext = createContext<TransactionContextType | null>(null);
 // Backend rows are snake_case; the UI types are camelCase. Amounts follow the
 // backend sign convention (income positive, expense negative) which is the
 // same convention the screen math already uses.
-const mapTransaction = (row: any): Transaction => ({
+const mapTransaction = (row: TransactionRow): Transaction => ({
   id: String(row.id),
   title: row.title ?? '',
   description: row.description ?? '',
@@ -44,7 +45,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const refreshTransactions = useCallback(async () => {
     setError(null);
     try {
-      const res = await api.get<any>('/api/farmer/transactions');
+      const res = await api.get<ApiResponse<TransactionRow[]>>('/api/farmer/transactions');
       const rows = Array.isArray(res?.data) ? res.data : [];
       setTransactions(rows.map(mapTransaction));
     } catch (err) {
@@ -62,14 +63,14 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       const optimistic: Transaction = { ...tx, id: tempId };
       setTransactions((prev) => [optimistic, ...prev]);
       try {
-        const res = await api.post<any>('/api/farmer/transactions', {
+        const res = await api.post<ApiResponse<TransactionRow>>('/api/farmer/transactions', {
           title: tx.title,
           description: tx.description,
           date: tx.date,
           amount: tx.amount,
           category: tx.amount < 0 ? 'expense' : 'income',
         });
-        const created = mapTransaction(res?.data ?? {});
+        const created = mapTransaction((res?.data ?? {}) as TransactionRow);
         setTransactions((prev) => prev.map((t) => (t.id === tempId ? created : t)));
       } catch (err) {
         setTransactions((prev) => prev.filter((t) => t.id !== tempId));

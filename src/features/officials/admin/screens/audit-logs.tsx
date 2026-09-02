@@ -5,6 +5,7 @@ import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidthWide } from '@/features/officials/shared/constants/layout';
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
 import { api } from '@/lib/api';
+import type { ApiResponse, AuditLogRow, ListResult } from '@/lib/api-types';
 
 type LogStatus = 'success' | 'pending' | 'failed';
 type LogModule = 'User' | 'Loan' | 'System';
@@ -42,7 +43,7 @@ const timeAgo = (iso: string): string => {
   return `${days} day${days > 1 ? 's' : ''} ago`;
 };
 
-const logFromRow = (row: any): LogEntry => {
+const logFromRow = (row: AuditLogRow): LogEntry => {
   const rawStatus = String(row.status ?? 'success').toLowerCase();
   const status: LogStatus = rawStatus === 'failure' || rawStatus === 'failed' ? 'failed' : rawStatus === 'pending' ? 'pending' : 'success';
   return {
@@ -94,7 +95,7 @@ export default function AuditLogsScreen() {
 
   const loadLogs = useCallback(async () => {
     try {
-      const res = await api.get<any>('/api/admin/audit?pageSize=100');
+      const res = await api.get<ApiResponse<ListResult<AuditLogRow>>>('/api/admin/audit?pageSize=100');
       setLogs((res?.data?.items ?? []).map(logFromRow));
       setLoadError(null);
     } catch (err: any) {

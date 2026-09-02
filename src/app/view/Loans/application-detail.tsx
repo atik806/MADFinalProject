@@ -10,6 +10,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { api } from '../../../lib/api';
+import type { ApiResponse, LoanRow } from '../../../lib/api-types';
 import { useLoans, type TimelineEntry } from '../../../contexts/LoanContext';
 import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
@@ -39,7 +40,7 @@ export default function ApplicationDetailScreen() {
     if (!id) return;
     // The list endpoint returns rows without loan_timeline; fetch the full
     // detail (with the real timeline rows) for the opened application.
-    api.get<any>(`/api/farmer/loans/${id}`)
+    api.get<ApiResponse<LoanRow>>(`/api/farmer/loans/${id}`)
       .then((res) => {
         if (res?.data?.id) {
           applyDetailTimeline(String(res.data.id), res.data);

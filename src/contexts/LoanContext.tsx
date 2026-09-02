@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { api, ApiError } from '../lib/api';
+import type { ApiResponse, LoanRow, LoanTimelineStep } from '../lib/api-types';
 
 export type LoanStatus = 'pending' | 'under_review' | 'approved' | 'rejected' | 'active' | 'completed';
 
@@ -89,8 +90,8 @@ const asApplicationStatus = (raw: unknown): LoanApplication['status'] => {
 // three (disbursement-era) have no backend flow yet, so they render as
 // not-reached placeholders. bankOfficer is '—' until a bank decision is
 // recorded — inventing a name/bank would be fabricated data.
-const timelineFor = (row: any): TimelineEntry[] => {
-  const rows: any[] = Array.isArray(row?.loan_timeline) ? row.loan_timeline : [];
+const timelineFor = (row: LoanRow): TimelineEntry[] => {
+  const rows: LoanTimelineStep[] = Array.isArray(row?.loan_timeline) ? row.loan_timeline : [];
   const byStep = new Map(rows.map((r) => [Number(r.step), r]));
   const submittedAt = formatDate(String(row?.application_date ?? row?.created_at ?? ''));
   const decidedAt = row?.decision_at ? formatDate(String(row.decision_at)) : '';
@@ -127,7 +128,7 @@ const firstCurrentIndex = (timeline: TimelineEntry[]): number => {
 // The list endpoint returns rows without loan_timeline (only the detail
 // endpoint embeds it), so list items get a status-derived timeline; opening
 // the detail re-fetches with the real rows.
-const mapLoanRow = (row: any): LoanApplication => {
+const mapLoanRow = (row: LoanRow): LoanApplication => {
   const hasEmbeddedTimeline = Array.isArray(row?.loan_timeline) && row.loan_timeline.length > 0;
   return {
     id: String(row.id),
@@ -169,7 +170,7 @@ export function LoanProvider({ children }: { children: ReactNode }) {
   const refreshApplications = useCallback(async () => {
     setError(null);
     try {
-      const res = await api.get<any>('/api/farmer/loans');
+      const res = await api.get<ApiResponse<LoanRow[]>>('/api/farmer/loans');
       const rows = Array.isArray(res?.data) ? res.data : [];
       setApplications(rows.map(mapLoanRow));
     } catch (err) {
@@ -187,7 +188,7 @@ export function LoanProvider({ children }: { children: ReactNode }) {
       purpose: string;
       installmentType: 'monthly' | 'seasonal';
     }) => {
-      const res = await api.post<any>('/api/farmer/loans', {
+      const res = await api.post<ApiResponse<LoanRow>>('/api/farmer/loans', {
         title: app.title,
         amount: app.amount,
         duration: app.duration,
@@ -199,7 +200,7 @@ export function LoanProvider({ children }: { children: ReactNode }) {
       // The server response is the created row; map it in so the list shows
       // the truth immediately. The timeline comes back from the detail view.
       if (res?.data?.id) {
-        setApplications((prev) => [mapLoanRow(res.data), ...prev]);
+        setApplications((prev) => [mapLoanRow(res.data as LoanRow), ...prev]);
       } else {
         await refreshApplications();
       }
@@ -210,7 +211,7 @@ export function LoanProvider({ children }: { children: ReactNode }) {
   // Exposed for the detail screen to swap the status-derived timeline for
   // the server's real timeline rows once the specific loan is loaded.
   const [, setCurrentDetailIndex] = useState<number | null>(null);
-  const applyDetailTimeline = useCallback((loanId: string, row: any) => {
+  const applyDetailTimeline = useCallback((loanId: string, row: LoanRow) => {
     setApplications((prev) => prev.map((a) => (a.id === loanId ? { ...a, timeline: timelineFor(row) } : a)));
     setCurrentDetailIndex(firstCurrentIndex(timelineFor(row)));
   }, []);

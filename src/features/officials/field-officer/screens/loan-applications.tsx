@@ -6,6 +6,7 @@ import { ScreenHeader } from '@/features/officials/shared/components/screen-head
 import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/shared/constants/layout';
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { api } from '@/lib/api';
+import type { ApiResponse, ListResult, LoanRow } from '@/lib/api-types';
 
 type Tab = 'all' | 'pending' | 'verified' | 'forwarded';
 
@@ -33,7 +34,7 @@ const formatDate = (value: string): string => {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).replace(/ /g, ' ');
 };
 
-const mapOfficerLoanRow = (row: any): LoanApplication => {
+const mapOfficerLoanRow = (row: LoanRow): LoanApplication => {
   const status = String(row.status ?? 'pending') as LoanApplication['status'];
   const verificationStatus = String(row.verification_status ?? 'pending') as LoanApplication['verificationStatus'];
   const submittedAt = formatDate(String(row?.application_date ?? row?.created_at ?? ''));
@@ -114,7 +115,7 @@ export default function LoanApplicationsScreen() {
     try {
       // The officer's OWN applications list — server-scoped to the officer's
       // active farmer assignments, with a farmer summary per row.
-      const res = await api.get<any>('/api/field-officer/loans?pageSize=100');
+      const res = await api.get<ApiResponse<ListResult<LoanRow>>>('/api/field-officer/loans?pageSize=100');
       setApplications((res?.data?.items ?? []).map(mapOfficerLoanRow));
       setLoadError(null);
     } catch (err: any) {
@@ -143,7 +144,7 @@ export default function LoanApplicationsScreen() {
     try {
       // Record the officer verification verdict; the server transitions the
       // application's verification_status and stamps verified_at.
-      await api.post<any>(`/api/field-officer/loans/${id}/verify`, {
+      await api.post<ApiResponse<LoanRow>>(`/api/field-officer/loans/${id}/verify`, {
         status: 'verified',
         notes: 'Verified by field officer from mobile app.',
       });
