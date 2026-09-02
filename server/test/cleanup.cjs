@@ -1,6 +1,7 @@
 // Cleanup for test-created loan workflow records (loan-cleanup.tmp),
-// milestone-2 records (cleanup.tmp), farmer records (farmer-cleanup.tmp) and
-// bank-officer review records (bank-cleanup.tmp).
+// milestone-2 records (cleanup.tmp), farmer records (farmer-cleanup.tmp),
+// bank-officer review records (bank-cleanup.tmp) and security-suite
+// fixtures (security-cleanup.tmp).
 // Safe to re-run; reports what it removed.
 require('dotenv').config({ path: __dirname + '/../.env' });
 const fs = require('fs');
@@ -210,6 +211,43 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
     }
 
     fs.unlinkSync(adminFile);
+  }
+
+  // security-cleanup.tmp holds accounts provisioned by the security suite:
+  // one throwaway field officer and one self-registered farmer (recorded in
+  // officerIds because that handler removes any profile + auth user and
+  // their officer-side dependents, which also covers a farmer row).
+  const securityFile = path.join(__dirname, 'security-cleanup.tmp');
+  if (fs.existsSync(securityFile)) {
+    const { officerIds } = JSON.parse(fs.readFileSync(securityFile, 'utf8'));
+
+    for (const oid of officerIds ?? []) {
+      await supabase.from('field_officer_assignments').delete().eq('field_officer_id', oid);
+      await supabase.from('field_officer_assignments').delete().eq('farmer_id', oid);
+      await supabase.from('field_visits').delete().eq('field_officer_id', oid);
+      await supabase.from('farmer_verifications').delete().eq('farmer_id', oid);
+      await supabase.from('transactions').delete().eq('farmer_id', oid);
+      await supabase.from('notifications').delete().eq('user_id', oid);
+      const { data: loans } = await supabase.from('loan_applications').select('id').eq('farmer_id', oid);
+      for (const loan of loans ?? []) {
+        const { error: tlErr } = await supabase.from('loan_timeline').delete().eq('loan_application_id', loan.id);
+        if (!tlErr) removed.timeline += 1;
+        const { error: lErr } = await supabase.from('loan_applications').delete().eq('id', loan.id);
+        if (!lErr) removed.loans += 1;
+      }
+      const { data: profile } = await supabase.from('profiles').select('id, role').eq('id', oid).maybeSingle();
+      if (profile) {
+        const { error: pErr } = await supabase.from('profiles').delete().eq('id', oid);
+        if (!pErr) {
+          if (profile.role === 'farmer') removed.farmers += 1;
+          else removed.officers += 1;
+        }
+        const { error: aErr } = await supabase.auth.admin.deleteUser(oid);
+        if (!aErr) removed.authUsers += 1;
+      }
+    }
+
+    fs.unlinkSync(securityFile);
   }
 
   console.log('CLEANUP_DONE', JSON.stringify(removed));
