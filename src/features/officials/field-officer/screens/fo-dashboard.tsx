@@ -10,7 +10,7 @@ import { StatusBadge } from '@/features/officials/shared/components/status-badge
 import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/shared/constants/layout';
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { api } from '@/lib/api';
-import type { ApiResponse, FieldVisitRow, ListResult, ProfileRow } from '@/lib/api-types';
+import type { ApiResponse, FieldVisitRow, ListResult, OfficerProfileRow, ProfileRow } from '@/lib/api-types';
 
 type Farmer = {
   id: string;
@@ -66,16 +66,23 @@ export default function FieldOfficerDashboardScreen() {
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [scheduledVisits, setScheduledVisits] = useState<ScheduledVisit[]>([]);
+  // The officer's own profile (name/designation) from /profile/me.
+  const [officer, setOfficer] = useState<OfficerProfileRow | null>(null);
 
   const loadDashboard = useCallback(async () => {
     try {
       // Assigned farmers: the officer's own list (server-scoped by token).
-      const farmersRes = await api.get<ApiResponse<ListResult<ProfileRow>>>('/api/field-officer/farmers?pageSize=100');
+      const [farmersRes, visitsRes, profileRes] = await Promise.all([
+        api.get<ApiResponse<ListResult<ProfileRow>>>('/api/field-officer/farmers?pageSize=100'),
+        api.get<ApiResponse<ListResult<FieldVisitRow>>>('/api/field-officer/visits?pageSize=100'),
+        api.get<ApiResponse<unknown> & { profile?: OfficerProfileRow }>('/api/field-officer/profile/me').catch(() => null),
+      ]);
       setFarmers((farmersRes?.data?.items ?? []).map(farmerFromRow));
       // Today's view: scheduled + in-progress visits become the schedule list.
-      const visitsRes = await api.get<ApiResponse<ListResult<FieldVisitRow>>>('/api/field-officer/visits?pageSize=100');
       const visitRows: FieldVisitRow[] = visitsRes?.data?.items ?? [];
       setScheduledVisits(visitRows.filter((v) => ['scheduled', 'in-progress'].includes(String(v.status ?? ''))).map(visitFromRow));
+      // The profile endpoint answers { data: authUser, profile: officerRow }.
+      setOfficer((profileRes as { profile?: OfficerProfileRow } | null)?.profile ?? null);
       setLoadError(null);
     } catch (err: any) {
       setLoadError(err?.message ?? 'Could not load your dashboard.');
@@ -95,6 +102,11 @@ export default function FieldOfficerDashboardScreen() {
     setRefreshing(true);
     loadDashboard().finally(() => setRefreshing(false));
   }, [loadDashboard]);
+
+  // Real counts derived from the same server-scoped lists rendered below.
+  // Previously these four tiles showed hardcoded mock numbers.
+  const pendingVerifications = farmers.filter((f) => f.status === 'pending').length;
+  const visitsToday = scheduledVisits.filter((v) => v.time !== '—').length;
 
   const bg = colors.dashboard.bg;
   const cardBg = colors.dashboard.cardBg;
@@ -143,8 +155,8 @@ export default function FieldOfficerDashboardScreen() {
             </View>
             <View style={styles.heroTextCol}>
               <Text style={styles.heroGreeting}>Good morning,</Text>
-              <Text style={styles.heroName}>Field Officer</Text>
-              <Text style={styles.heroRole}>Field Officer • SOFOL</Text>
+              <Text style={styles.heroName}>{officer?.name_en ?? officer?.name_bn ?? 'Field Officer'}</Text>
+              <Text style={styles.heroRole}>{officer?.designation ?? 'Field Officer'} • SOFOL</Text>
             </View>
           </View>
           <View style={styles.heroStatsRow}>
@@ -156,10 +168,9 @@ export default function FieldOfficerDashboardScreen() {
         {/* Overview Stats */}
         <Text style={[styles.sectionLabel, { color: textSecondary }]}>Overview</Text>
         <View style={styles.statsGrid}>
-          <StatCard icon="people-outline" iconBg="#3A9BD5" value="12" label="Assigned Farmers" sub="5 new this month" />
-          <StatCard icon="time-outline" iconBg="#F59E0B" value="5" label="Pending Verifications" sub="3 overdue" />
-          <StatCard icon="location-outline" iconBg="#1A8F5C" value="3" label="Field Visits Today" />
-          <StatCard icon="document-text-outline" iconBg="#7C3AED" value="8" label="Applications Forwarded" />
+          <StatCard icon="people-outline" iconBg="#3A9BD5" value={String(farmers.length)} label="Assigned Farmers" />
+          <StatCard icon="time-outline" iconBg="#F59E0B" value={String(pendingVerifications)} label="Pending Verifications" />
+          <StatCard icon="location-outline" iconBg="#1A8F5C" value={String(visitsToday)} label="Scheduled Visits" />
         </View>
 
         {/* Quick Actions */}
