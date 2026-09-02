@@ -4,10 +4,10 @@ import { useColorScheme } from 'react-native';
 import { ThemeProvider as AppThemeProvider } from '../contexts/ThemeContext';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { AuthProvider } from '../contexts/AuthContext';
+import { NotificationProvider } from '../contexts/NotificationContext';
 import { TransactionProvider } from '../contexts/TransactionContext';
 import { LoanProvider } from '../contexts/LoanContext';
 import { ProfileProvider } from '../contexts/ProfileContext';
-import { NotificationProvider } from '../contexts/NotificationContext';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -15,8 +15,8 @@ export default function RootLayout() {
   return (
     <AppThemeProvider>
       <LanguageProvider>
-        <NotificationProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <NotificationProvider>
             <TransactionProvider>
               <LoanProvider>
                 <ProfileProvider>
@@ -26,8 +26,8 @@ export default function RootLayout() {
                 </ProfileProvider>
               </LoanProvider>
             </TransactionProvider>
-          </AuthProvider>
-        </NotificationProvider>
+          </NotificationProvider>
+        </AuthProvider>
       </LanguageProvider>
     </AppThemeProvider>
   );
