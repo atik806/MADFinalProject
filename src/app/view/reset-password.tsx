@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { api } from '../../lib/api';
 import { useTranslation } from '../../hooks/use-translation';
 import { useColors } from '../../features/officials/shared/constants/theme';
 
@@ -91,7 +92,7 @@ export default function ResetPasswordScreen() {
     setLoading(false);
   };
 
-  const handleResetPassword = () => {
+  const handleResetPassword = async () => {
     setError('');
     if (!newPwd.trim() || newPwd.length < 6) {
       setError(t('passwordMinLength'));
@@ -101,9 +102,24 @@ export default function ResetPasswordScreen() {
       setError('Passwords do not match');
       return;
     }
-    Alert.alert('Success', t('passwordResetSuccess'), [
-      { text: t('ok'), onPress: () => router.push('/view/login') },
-    ]);
+    // The backend's demo reset endpoint resolves the identifier (phone /
+    // NID / email) and sets the new password directly. The OTP steps above
+    // are UI-only until an SMS/email provider exists — the reset itself is
+    // real, and failures surface instead of pretending success.
+    setLoading(true);
+    try {
+      await api.post('/api/farmer/auth/reset-password', {
+        identifier: phone.trim(),
+        newPassword: newPwd.trim(),
+      });
+      Alert.alert('Success', t('passwordResetSuccess'), [
+        { text: t('ok'), onPress: () => router.push('/view/login') },
+      ]);
+    } catch (err: any) {
+      setError(err?.message ?? 'Could not reset the password. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -339,8 +355,9 @@ export default function ResetPasswordScreen() {
                   {error ? <Text style={[styles.errorText, { color: colors.dashboard.redDown }]}>{error}</Text> : null}
 
                   <TouchableOpacity
-                    style={[styles.primaryBtn, { backgroundColor: colors.deepGreen }]}
+                    style={[styles.primaryBtn, { backgroundColor: colors.deepGreen }, loading && { opacity: 0.6 }]}
                     onPress={handleResetPassword}
+                    disabled={loading}
                     activeOpacity={0.8}
                   >
                     <Ionicons name="checkmark-circle" size={18} color="#fff" style={{ marginRight: 6 }} />
