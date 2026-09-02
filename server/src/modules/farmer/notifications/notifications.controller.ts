@@ -7,7 +7,7 @@ export const getNotification = async (req: Request, res: Response) => {
     return res.status(200).json({ notifications: data, success: true });
   } catch (error: any) {
     return res.status(500).json({
-      error: error?.message ?? 'An error occurred while fetching notifications.',
+      message: 'An error occurred while fetching notifications.',
     });
   }
 };
@@ -25,7 +25,7 @@ export const markAsRead = async (req: Request, res: Response) => {
     return res.status(200).json({ message: 'Notification marked as read.', success: true });
   } catch (error: any) {
     return res.status(500).json({
-      error: error?.message ?? 'An error occurred while marking notification as read.',
+      message: 'An error occurred while marking notification as read.',
     });
   }
 };
@@ -43,7 +43,7 @@ export const deleteNotification = async (req: Request, res: Response) => {
     return res.status(200).json({ message: 'Notification deleted successfully.', success: true });
   } catch (error: any) {
     return res.status(500).json({
-      error: error?.message ?? 'An error occurred while deleting notification.',
+      message: 'An error occurred while deleting notification.',
     });
   }
 };

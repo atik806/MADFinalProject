@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as service from './fieldOfficers.service';
+import { safeErrorMessage } from '../users/validation';
 
 export const list = async (req: Request, res: Response) => {
   try {
@@ -19,7 +20,7 @@ export const list = async (req: Request, res: Response) => {
       data,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message ?? 'Failed to fetch field officers' });
+    return res.status(500).json({ message: 'Failed to fetch field officers' });
   }
 };
 
@@ -40,7 +41,7 @@ export const getById = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     const status = /not found/i.test(error?.message ?? '') ? 404 : 500;
-    return res.status(status).json({ message: error?.message ?? 'Failed to fetch field officer' });
+    return res.status(status).json({ message: status === 404 ? safeErrorMessage(error, 'Failed to fetch field officer') : 'Failed to fetch field officer' });
   }
 };
 
@@ -60,7 +61,7 @@ export const create = async (req: Request, res: Response) => {
       data,
     });
   } catch (error: any) {
-    const msg = error?.message ?? 'Failed to create field officer';
+    const msg = safeErrorMessage(error, 'Failed to create field officer');
     const status = /already (been )?registered/i.test(msg) ? 409 : 400;
     return res.status(status).json({ message: msg });
   }
@@ -86,7 +87,7 @@ export const update = async (req: Request, res: Response) => {
       data,
     });
   } catch (error: any) {
-    const msg = error?.message ?? 'Failed to update field officer';
+    const msg = safeErrorMessage(error, 'Failed to update field officer');
     const status = /not found/i.test(msg) ? 404 : 400;
     return res.status(status).json({ message: msg });
   }
@@ -116,7 +117,7 @@ export const setStatus = async (req: Request, res: Response) => {
       data,
     });
   } catch (error: any) {
-    const msg = error?.message ?? 'Failed to update status';
+    const msg = safeErrorMessage(error, 'Failed to update status');
     const status = /not found/i.test(msg) ? 404 : 500;
     return res.status(status).json({ message: msg });
   }
@@ -142,7 +143,7 @@ export const resetPassword = async (req: Request, res: Response) => {
       message: 'Field officer password reset successfully',
     });
   } catch (error: any) {
-    const msg = error?.message ?? 'Failed to reset password';
+    const msg = safeErrorMessage(error, 'Failed to reset password');
     const status = /not found/i.test(msg) ? 404 : 400;
     return res.status(status).json({ message: msg });
   }

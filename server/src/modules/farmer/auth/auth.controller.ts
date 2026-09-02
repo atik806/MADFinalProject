@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as authService from './auth.service';
 import * as uploadService from './upload.service';
+import { safeErrorMessage } from '../validation';
 
 //register a new farmer (full app registration payload)
 export const register = async (req: Request, res: Response) => {
@@ -8,8 +9,10 @@ export const register = async (req: Request, res: Response) => {
     const data = await authService.registerFarmer(req.body);
     return res.status(201).json({ success: true, message: 'Farmer registered successfully', data });
   } catch (error: any) {
-    const status = /already (been )?registered/.test(error?.message ?? '') ? 409 : 400;
-    return res.status(status).json({ message: error?.message ?? 'Registration failed' });
+    // Own validation/duplicate messages pass; raw Supabase errors are masked.
+    const msg = safeErrorMessage(error, 'Registration failed');
+    const status = /already (been )?registered/i.test(msg) ? 409 : 400;
+    return res.status(status).json({ message: msg });
   }
 };
 
@@ -32,7 +35,8 @@ export const login = async (req: Request, res: Response) => {
       profile,
     });
   } catch (error: any) {
-    return res.status(401).json({ message: error?.message ?? 'Login failed' });
+    // "Invalid login credentials" is ours; raw auth failures are masked.
+    return res.status(401).json({ message: safeErrorMessage(error, 'Login failed') });
   }
 };
 
@@ -49,7 +53,7 @@ export const getMe = async (req: Request, res: Response) => {
       profile,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message ?? 'Failed to fetch profile' });
+    return res.status(500).json({ message: 'Failed to fetch profile' });
   }
 };
 
@@ -63,7 +67,8 @@ export const resetPassword = async (req: Request, res: Response) => {
     await authService.resetFarmerPassword(identifier, newPassword);
     return res.status(200).json({ success: true, message: 'Password reset successful' });
   } catch (error: any) {
-    return res.status(400).json({ message: error?.message ?? 'Password reset failed' });
+    // Only this module's own validation messages pass through.
+    return res.status(400).json({ message: safeErrorMessage(error, 'Password reset failed') });
   }
 };
 
@@ -77,6 +82,6 @@ export const upload = async (req: Request, res: Response) => {
     const url = await uploadService.uploadPhoto(req.file, type);
     return res.status(201).json({ success: true, url });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message ?? 'Upload failed' });
+    return res.status(500).json({ message: 'Upload failed' });
   }
 };

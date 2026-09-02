@@ -10,7 +10,7 @@ export const getStats = async (_req: Request, res: Response) => {
       data: stats,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message ?? 'Failed to fetch dashboard stats' });
+    return res.status(500).json({ message: 'Failed to fetch dashboard stats' });
   }
 };
 
@@ -24,7 +24,7 @@ export const getRegistrationTrend = async (req: Request, res: Response) => {
       data,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message ?? 'Failed to fetch registration trend' });
+    return res.status(500).json({ message: 'Failed to fetch registration trend' });
   }
 };
 
@@ -38,7 +38,7 @@ export const getLoanAnalytics = async (req: Request, res: Response) => {
       data,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message ?? 'Failed to fetch loan analytics' });
+    return res.status(500).json({ message: 'Failed to fetch loan analytics' });
   }
 };
 
@@ -52,7 +52,7 @@ export const getRecentActivity = async (req: Request, res: Response) => {
       data,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message ?? 'Failed to fetch recent activity' });
+    return res.status(500).json({ message: 'Failed to fetch recent activity' });
   }
 };
 
@@ -70,6 +70,6 @@ export const getOverview = async (_req: Request, res: Response) => {
       data: { stats, registrationTrend, loanAnalytics, recentActivity },
     });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message ?? 'Failed to fetch admin overview' });
+    return res.status(500).json({ message: 'Failed to fetch admin overview' });
   }
 };

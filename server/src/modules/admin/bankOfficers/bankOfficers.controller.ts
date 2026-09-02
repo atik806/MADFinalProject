@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as service from './bankOfficers.service';
+import { safeErrorMessage } from '../users/validation';
 
 export const list = async (req: Request, res: Response) => {
   try {
@@ -18,7 +19,7 @@ export const list = async (req: Request, res: Response) => {
       data,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message ?? 'Failed to fetch bank officers' });
+    return res.status(500).json({ message: 'Failed to fetch bank officers' });
   }
 };
 
@@ -39,7 +40,9 @@ export const create = async (req: Request, res: Response) => {
       data,
     });
   } catch (error: any) {
-    const message = error?.message ?? 'Failed to create bank officer';
+    // Only this module's own validation messages pass through; the parked
+    // schema surfaces raw Postgres 42703 text that must not reach clients.
+    const message = safeErrorMessage(error, 'Failed to create bank officer');
     const status = /required|must be|already registered/i.test(message) ? 400 : 500;
     return res.status(status).json({ message });
   }
@@ -61,9 +64,8 @@ export const getById = async (req: Request, res: Response) => {
       data,
     });
   } catch (error: any) {
-    const message = error?.message ?? 'Failed to fetch bank officer';
-    const status = /not found/i.test(message) ? 404 : 500;
-    return res.status(status).json({ message: status === 404 ? message : 'Failed to fetch bank officer' });
+    const status = /not found/i.test(error?.message ?? '') ? 404 : 500;
+    return res.status(status).json({ message: status === 404 ? safeErrorMessage(error, 'Failed to fetch bank officer') : 'Failed to fetch bank officer' });
   }
 };
 
@@ -93,8 +95,7 @@ export const setStatus = async (req: Request, res: Response) => {
       data,
     });
   } catch (error: any) {
-    const message = error?.message ?? 'Failed to update bank officer status';
-    const httpStatus = /not found/i.test(message) ? 404 : 500;
-    return res.status(httpStatus).json({ message: httpStatus === 404 ? message : 'Failed to update bank officer status' });
+    const httpStatus = /not found/i.test(error?.message ?? '') ? 404 : 500;
+    return res.status(httpStatus).json({ message: httpStatus === 404 ? safeErrorMessage(error, 'Failed to update bank officer status') : 'Failed to update bank officer status' });
   }
 };

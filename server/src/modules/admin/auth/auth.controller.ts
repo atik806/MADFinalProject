@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as authService from './auth.service';
 import { recordAuditLog } from '../audit/audit.service';
+import { safeErrorMessage } from '../users/validation';
 
 export const login = async (req: Request, res: Response) => {
   try {
@@ -36,7 +37,9 @@ export const login = async (req: Request, res: Response) => {
       profile,
     });
   } catch (error: any) {
-    return res.status(401).json({ message: error?.message ?? 'Admin login failed' });
+    // Safe message: login failures are business-rule messages ("Invalid admin
+    // credentials"); raw Supabase errors fall back to the generic text.
+    return res.status(401).json({ message: safeErrorMessage(error, 'Admin login failed') });
   }
 };
 
@@ -52,7 +55,7 @@ export const getMe = async (req: Request, res: Response) => {
       profile,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message ?? 'Failed to fetch admin profile' });
+    return res.status(500).json({ message: 'Failed to fetch admin profile' });
   }
 };
 
@@ -76,7 +79,8 @@ export const changePassword = async (req: Request, res: Response) => {
 
     return res.status(200).json({ success: true, message: 'Admin password updated successfully' });
   } catch (error: any) {
-    return res.status(400).json({ message: error?.message ?? 'Failed to change admin password' });
+    // Password-rule messages are ours; anything else is masked.
+    return res.status(400).json({ message: safeErrorMessage(error, 'Failed to change admin password') });
   }
 };
 
@@ -93,6 +97,6 @@ export const reseed = async (_req: Request, res: Response) => {
       data: result,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message ?? 'Failed to seed admin user' });
+    return res.status(500).json({ message: 'Failed to seed admin user' });
   }
 };

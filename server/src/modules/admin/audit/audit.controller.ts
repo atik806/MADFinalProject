@@ -19,6 +19,6 @@ export const list = async (req: Request, res: Response) => {
       data,
     });
   } catch (error: any) {
-    return res.status(500).json({ message: error?.message ?? 'Failed to fetch audit logs' });
+    return res.status(500).json({ message: 'Failed to fetch audit logs' });
   }
 };
