@@ -321,6 +321,29 @@ Notes:
 
 ---
 
+## Security middleware (Milestone 8)
+
+- **CORS** — allow-list driven via `CORS_ORIGINS` (comma-separated). Empty falls back to
+  Expo dev origins (`localhost:8081/19006`, `127.0.0.1:8081`, `exp://localhost:19000`);
+  production must set its real client origins. The previous blanket `origin: '*'` is gone.
+- **Helmet** — security headers on every response (CSP, HSTS, nosniff, frame protection;
+  cross-origin isolation headers disabled so the Expo web client on another port works).
+- **Rate limiting** (per-IP, 15-minute window, `express-rate-limit`):
+  - `RATE_LIMIT_AUTH_MAX` (default 100) on farmer `register`/`login`/`reset-password`
+    and admin `login`/`seed`.
+  - `RATE_LIMIT_ADMIN_MUTATION_MAX` (default 60) on admin officer provisioning, updates,
+    status changes, password resets, and user status changes.
+  - 429 responses carry a generic message + standard `Retry-After` header — no internals.
+- **Body limits** — `express.json` capped at 1 MiB (uploads already capped at 5 MiB by multer);
+  oversized bodies get 413, malformed JSON gets a safe 400.
+- **Error hygiene** — every controller passes errors through `safeErrorMessage` (module
+  validation messages pass; raw Supabase/Postgres text is masked). The global handler never
+  leaks stack traces. In-memory limiter state means limits reset on server restart.
+- Defaults are production-safe; raise them in local `.env` when running the full E2E
+  battery back-to-back (see `server/.env.example`).
+
+---
+
 ## Database overview
 
 Postgres (Supabase). Core tables in [`server/farmer_db.sql`](server/farmer_db.sql):
@@ -359,14 +382,14 @@ in the lifecycle for disbursement and repayment, which are **not yet implemented
   `npm run build`, then `node test/farmer.e2e.cjs` (profile/credit/transactions/loans/
   dashboard), `node test/field-officer.e2e.cjs` (profile/farmers/verification/visits), and
   `node test/field-officer-loans.e2e.cjs` (loan workflow) against a running server.
-- `node test/farmer.e2e.cjs` is **self-provisioning**: it registers its own farmers
-  through the public endpoints and resolves a field-officer token by itself — it reuses
-  `server/scripts/token.tmp` if that file holds a still-valid token, otherwise it
-  provisions a throwaway field officer through the admin API using
-  `ADMIN_EMAIL`/`ADMIN_PASSWORD` from `server/.env`. No manual token setup is needed.
-- `field-officer.e2e.cjs` and `field-officer-loans.e2e.cjs` still need fresh local bearer
-  tokens in `server/scripts/token.tmp` (field officer) and `server/test/admin_token.tmp`
-  (admin); these files are test artifacts and must not be committed.
+- **All four runnable suites are self-provisioning** (Milestone 8): each one logs in the
+  admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `server/.env`, provisions its own throwaway
+  officers/farmers through the public and admin APIs, and cleans up every fixture via
+  `node test/cleanup.cjs`. No manual token files are needed anymore — the old
+  `scripts/token.tmp` / `test/admin_token.tmp` stale-token dependency is gone.
+- The suites share per-IP rate limits with real clients: when running the full battery
+  back-to-back, raise `RATE_LIMIT_AUTH_MAX` / `RATE_LIMIT_ADMIN_MUTATION_MAX` in local
+  `.env` (see [Security middleware](#security-middleware-milestone-8)).
 - `node test/bank-officer.e2e.cjs` (bank officer profile + loan review/decision) is
   also self-provisioning but requires the bank-officer columns to be applied first
   (see [Supabase setup](#supabase-setup)). **This suite has not yet been executed** —

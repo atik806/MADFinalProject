@@ -533,6 +533,91 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 - **Next step:** Bank Officer schema application + live verification (owner
   action), then the Bank Officer frontend wiring as its own milestone.
 
+### Milestone 8 — Backend hardening, reliability & test completion
+- **Status:** Complete — all four runnable E2E suites pass live (admin 71/71,
+  farmer 72/72, field-officer 43/43, field-officer-loans 48/48 = 234
+  assertions), the database returns to its exact baseline after every run
+  (3 profiles / 1 loan / 3 transactions), and the frontend checks are
+  unchanged at their pre-existing baseline. **Zero schema, DDL, or SQL
+  changes. Bank Officer schema remains parked** (untouched; not attempted).
+- **Security middleware (`server/src/middleware/security.middleware.ts`,
+  wired in `app.ts`):**
+  - **CORS:** allow-list via `CORS_ORIGINS` (comma-separated; empty = Expo
+    dev origins localhost:8081/19006, 127.0.0.1:8081, exp://localhost:19000).
+    Replaced the blanket `origin: '*'`. Verified live: allowed origin echoes
+    + full preflight headers; disallowed origin gets no ACAO header.
+  - **Helmet:** default header suite (CSP, HSTS, nosniff, frame protection)
+    with COEP disabled so the Expo web client works cross-port. Verified
+    live on responses.
+  - **Rate limiting:** `express-rate-limit`, per-IP 15-min window,
+    env-tunable. Tier 1 `authLimiter` (default 100) on farmer
+    register/login/reset-password + admin login/seed. Tier 2
+    `adminMutationLimiter` (default 60) on admin officer
+    create/update/status/reset-password, bank-officer create/status, and
+    user status changes. Verified live: 429 with a generic message +
+    Retry-After, no internals. Deliberately NOT a global limiter so normal
+    usage / E2E cannot be broken by low-volume clients.
+  - **Body limits:** `express.json({ limit: '1mb' })`; 413 for oversized
+    bodies (verified live), safe 400 for malformed JSON. Multer uploads
+    already capped at 5 MiB.
+- **Error hygiene (every controller):** the existing `safeErrorMessage` +
+    `statusFor` convention was extended to the remaining leaky handlers —
+    admin (auth, dashboard, audit, bankOfficers, fieldOfficers), farmer
+    (auth, notifications). Business-rule messages pass; raw
+    Supabase/Postgres text (schema details, 42703s, RLS text) is masked
+    behind stable generic messages. The global error handler no longer
+    prints/passes stack traces.
+- **Authorization matrix re-verified live** (all in suites): no token 401;
+    malformed/expired token 401; farmer→admin 403; farmer→FO 403; FO→admin
+    403; admin→FO 403; suspended farmer/FO blocked 403 **with a still-valid
+    token**; reactivation restores access with the SAME token; invalid
+    UUID 400; invalid enum 400; invalid pagination 400; client-supplied
+    role ignored on mutations; admin-row status lockout refused.
+- **IDOR re-verified live:** officer B (real officer, no assignment) gets
+    404 on officer A's loans for get/update/submit/verify/forward/create,
+    and an empty scoped list — the UUID being valid is not enough.
+- **Officer mutation coverage (new in admin E2E, +14 assertions):** admin
+    field-officer PUT (success, white-list ignores role/status/nid
+    injection, nonexistent 404, invalid UUID 400, no-fields 400, officer
+    token survives admin edit), reset-password (success, rotated password
+    login works, short 400, nonexistent 404, no-token 401), cross-role 403
+    (farmer token, officer token), and role-in-body ignored.
+- **E2E token reliability — the long-standing blocker is closed:**
+    `field-officer.e2e.cjs` and `field-officer-loans.e2e.cjs` are now fully
+    self-provisioning (admin login from env → provision throwaway officers
+    → login). They no longer read `scripts/token.tmp` /
+    `test/admin_token.tmp`; those files can be ignored/deleted. FO suites
+    also gained suspension/reactivation + malformed-token + validation
+    assertions. Setup failures exit early with a clear message instead of
+    cascading 401s.
+- **Cleanup reliability:** all suites write manifests eagerly after every
+    created record (an early abort still leaves a complete removal list);
+    `cleanup.cjs` now also removes the suite-provisioned officer A (the
+    loans manifest previously only recorded officer B — found and fixed via
+    a live leak during verification), test-farmer loans in the m2 branch,
+    and assignments/visits for every officer id. Full-battery verification:
+    `cleanup.cjs` + `cleanup-sweep.cjs` leave the DB at exactly
+    3 profiles / 1 loan / 3 transactions.
+- **Files created:** `server/src/middleware/security.middleware.ts`.
+- **Files modified:** `server/src/app.ts` (helmet/CORS/body-limit/central
+  error handler), route files (limiter wiring: farmer auth, admin auth,
+  admin field-officers/bank-officers/users), controllers listed above,
+  `server/test/{admin,field-officer,field-officer-loans}.e2e.cjs`,
+  `server/test/cleanup.cjs`, `server/.env.example` (documents
+  `CORS_ORIGINS`, `RATE_LIMIT_*`; local `.env` has raised dev values),
+  `README.md`, `AI_README.md`. Dependencies added: `helmet`,
+  `express-rate-limit`.
+- **Admin reports/settings:** do not exist in the backend and are not
+  defined by current requirements — deliberately documented as backlog,
+  not invented.
+- **Known limitations:** rate-limit state is in-memory (resets on restart;
+    a multi-instance deployment would need a shared store); CORS credentials
+    remain disabled (token auth, not cookies); no request-id/correlated
+    logging yet.
+- **Next milestone (recommendation, not started):** apply the Bank Officer
+  schema (owner action) → run `bank-officer.e2e.cjs` → wire the Bank
+  Officer frontend.
+
 ### Milestone 5 — Bank Officer backend (loan review & decision)
 - **Status:** ⚠️ **Implemented but NOT live-verified — blocked solely on schema
   application.** All code is written and `npm run build` (tsc) passes. **Zero Bank
@@ -663,8 +748,8 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
    (`GET /api/farmer/dashboard`) was standardized in the Milestone 4 follow-up. *(closed)*
 3. ~~Admin routes not mounted.~~ **Fixed (Milestone 1)** — mounted at `/api/admin`.
 4. ~~Missing admin schema / audit module.~~ **Fixed (Milestone 1)** — `admin.sql` + `audit/` added.
-5. **CORS is `*`.** Must be scoped before production. *(open)*
-6. **Security hardening absent.** No helmet, no rate limiting. *(open)*
+5. ~~**CORS is `*`.** Must be scoped before production.~~ **Fixed (Milestone 8)** — allow-list via `CORS_ORIGINS`; blanket wildcard removed and verified live. *(closed)*
+6. ~~**Security hardening absent.** No helmet, no rate limiting.~~ **Fixed (Milestone 8)** — helmet headers, tiered per-IP rate limits (auth + admin mutations), 1 MiB body cap, all verified live. *(closed)*
 7. **`tsconfig` `types: []`.** `tsc --noEmit` can error on Node globals; runtime uses `--transpile-only`. *(open)*
 8. **Unused deps.** `jsonwebtoken`, `bcryptjs` unused (auth is Supabase-based). *(open)*
 9. ~~Field Officer loan workflow.~~ **Fixed (Milestone 3)** — officer-facing loan application
@@ -736,10 +821,15 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 - Live-test the remaining Admin field-officer update/status paths (create and reset-password were verified live in Milestone 3 setup).
 - Standardize/extend automated tests across Farmer, Bank Officer, and Admin APIs.
 - ~~Backport the self-provisioning token approach to the older suites so they stop
-  depending on stale `*.tmp` bearer tokens.~~ **Done for `farmer.e2e.cjs`** (Milestone 4
-  follow-up) — it now provisions its own throwaway field officer when no working token
-  file exists. Still outstanding for `field-officer.e2e.cjs` and
-  `field-officer-loans.e2e.cjs`.
+  depending on stale `*.tmp` bearer tokens.~~ **Done for all runnable suites
+  (Milestone 8)** — farmer, admin, field-officer and field-officer-loans are all
+  self-provisioning; the `scripts/token.tmp` / `test/admin_token.tmp` dependency is gone.
+- ~~CORS is `*`. Must be scoped before production.~~ **Fixed (Milestone 8)** —
+  allow-list via `CORS_ORIGINS`; blanket wildcard removed.
+- ~~Security hardening absent. No helmet, no rate limiting.~~ **Fixed (Milestone
+  8)** — helmet headers, tiered per-IP rate limits (auth + admin mutations),
+  1 MiB body cap. In-memory limiter state noted as a limitation for
+  multi-instance deployments.
 - Remove the superseded JS `backend/` skeleton.
 
 ---
