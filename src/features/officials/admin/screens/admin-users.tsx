@@ -257,10 +257,13 @@ export default function AdminUsersScreen() {
         );
       }
       setFormModalVisible(false);
-      // Newly created officers land in the Field Officers tab; refresh it.
-      setActiveTab('Field Officers');
+      // Edit applies to the officer already on screen; create lands the new
+      // officer in the Field Officers tab. Either way the directory is
+      // re-fetched so it reflects the server's truth.
+      const tabAfterSubmit: Tab = editingUser ? activeTab : 'Field Officers';
+      setActiveTab(tabAfterSubmit);
       setLoading(true);
-      await loadUsers('Field Officers', search);
+      await loadUsers(tabAfterSubmit, search);
     } catch (err: any) {
       Alert.alert('Error', err?.message ?? 'The request failed. Please try again.');
     } finally {

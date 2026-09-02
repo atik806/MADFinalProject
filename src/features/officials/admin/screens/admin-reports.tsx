@@ -1,8 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidthWide } from '@/features/officials/shared/constants/layout';
+import { api } from '@/lib/api';
+import type { AdminStatsRow, ApiResponse } from '@/lib/api-types';
 
 type Report = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -18,15 +21,41 @@ const REPORTS: Report[] = [
   { icon: 'analytics', title: 'Credit Score Report', description: 'Score distribution and risk assessment summary', accent: '#F59E0B' },
 ];
 
-const STATS = [
-  { icon: 'leaf' as const, value: '510', label: 'Total Farmers', color: '#22C55E' },
-  { icon: 'wallet' as const, value: '234', label: 'Total Loans', color: '#3B82F6' },
-  { icon: 'checkmark-circle' as const, value: '72%', label: 'Approval Rate', color: '#A78BFA' },
-  { icon: 'people' as const, value: '89', label: 'Active Users', color: '#F472B6' },
-];
-
 export default function AdminReportsScreen() {
   const colors = useColors();
+  // Real platform statistics from /api/admin/dashboard/stats — the same
+  // numbers the dashboard hero shows. The previous hardcoded values
+  // (510/234/72%/89) were mock data.
+  const [stats, setStats] = useState<AdminStatsRow | null>(null);
+
+  const loadStats = useCallback(async () => {
+    try {
+      const res = await api.get<ApiResponse<AdminStatsRow>>('/api/admin/dashboard/stats');
+      setStats(res?.data ?? null);
+    } catch {
+      // Stat tiles fall back to 0 rather than fake numbers.
+      setStats(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Kickoff deferred out of the effect body (repo lint rule); state
+    // updates happen only after the fetch resolves.
+    const timer = setTimeout(() => void loadStats(), 0);
+    return () => clearTimeout(timer);
+  }, [loadStats]);
+
+  const totalLoans = Number(stats?.totalLoans ?? 0);
+  const approvedLoans = Number(stats?.approvedLoans ?? 0);
+  const approvalRate = totalLoans > 0 ? Math.round((approvedLoans / totalLoans) * 100) : 0;
+  const activeUsers = Number(stats?.activeFieldOfficers ?? 0) + Number(stats?.activeBankOfficers ?? 0);
+
+  const STATS = [
+    { icon: 'leaf' as const, value: String(stats?.totalFarmers ?? 0), label: 'Total Farmers', color: '#22C55E' },
+    { icon: 'wallet' as const, value: String(totalLoans), label: 'Total Loans', color: '#3B82F6' },
+    { icon: 'checkmark-circle' as const, value: `${approvalRate}%`, label: 'Approval Rate', color: '#A78BFA' },
+    { icon: 'people' as const, value: String(activeUsers), label: 'Active Users', color: '#F472B6' },
+  ];
 
   const handleExportPdf = (title: string) => {
     Alert.alert('Export PDF', `${title} exported as PDF`);
