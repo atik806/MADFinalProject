@@ -6,8 +6,9 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useNotifications } from "../../../contexts/NotificationContext";
 import { useTranslation } from "../../../hooks/use-translation";
@@ -15,7 +16,7 @@ import { useColors } from "../../../features/officials/shared/constants/theme";
 
 export default function NotificationsScreen() {
   const colors = useColors();
-  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications, refreshNotifications } =
+  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications, refreshNotifications, loading, error } =
     useNotifications();
   const { t } = useTranslation();
 
@@ -53,7 +54,21 @@ export default function NotificationsScreen() {
         </View>
       )}
 
-      {notifications.length === 0 ? (
+      {loading ? (
+        <View style={styles.empty}>
+          <ActivityIndicator color={colors.deepGreen} />
+          <Text style={[styles.emptyTitle, { color: colors.dashboard.textSecondary }]}>{t('loading')}</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.empty}>
+          <Feather name="cloud-off" size={48} color={colors.dashboard.redDown} />
+          <Text style={[styles.emptyTitle, { color: colors.dashboard.textSecondary }]}>{error}</Text>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => { refreshNotifications(); }}>
+            <Ionicons name="refresh" size={16} color={colors.deepGreen} />
+            <Text style={[styles.actionText, { color: colors.deepGreen }]}>{t('retry')}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : notifications.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="notifications-off-outline" size={48} color={colors.dashboard.border} />
           <Text style={[styles.emptyTitle, { color: colors.dashboard.textSecondary }]}>{t('noNotifications')}</Text>

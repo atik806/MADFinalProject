@@ -26,7 +26,7 @@ type TabDef = {
 export default function ProfileScreen() {
   const colors = useColors();
   const { logout } = useAuth();
-  const { profile, refreshProfile } = useProfile();
+  const { profile, refreshProfile, error } = useProfile();
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('profile');
 
@@ -92,9 +92,9 @@ export default function ProfileScreen() {
               <Text style={styles.farmerName}>{lang === 'bn' && profile.nameBn ? profile.nameBn : profile.nameEn}</Text>
               <Text style={styles.farmerId}>{t('farmerId')}: {profile.farmerId}</Text>
             </View>
-            <View style={[styles.verifiedBadge, { backgroundColor: '#22C55E20' }]}>
-              <Ionicons name="checkmark-circle" size={14} color={colors.dashboard.greenUp} />
-              <Text style={styles.verifiedText}>{t('verified')}</Text>
+            <View style={[styles.verifiedBadge, { backgroundColor: profile.isVerified ? '#22C55E20' : '#F59E0B20' }]}>
+              <Ionicons name={profile.isVerified ? 'checkmark-circle' : 'time'} size={14} color={profile.isVerified ? colors.dashboard.greenUp : '#F59E0B'} />
+              <Text style={styles.verifiedText}>{profile.isVerified ? t('verified') : t('pending')}</Text>
             </View>
           </View>
 
@@ -120,6 +120,18 @@ export default function ProfileScreen() {
           <Ionicons name="pencil" size={16} color="#fff" />
           <Text style={styles.editBtnText}>{t('editProfile')}</Text>
         </TouchableOpacity>
+
+        {error ? (
+          <View style={[styles.infoCard, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.redDown, borderWidth: 1 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 }}>
+              <Ionicons name="cloud-offline-outline" size={18} color={colors.dashboard.redDown} />
+              <Text style={{ color: colors.dashboard.textSecondary, flex: 1 }}>{error}</Text>
+              <TouchableOpacity onPress={() => { refreshProfile(); }} hitSlop={8}>
+                <Text style={{ color: colors.deepGreen, fontWeight: '700' }}>{t('retry')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
 
         <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('personalInfo')}</Text>
         <View style={[styles.infoCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>

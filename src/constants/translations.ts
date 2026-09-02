@@ -114,6 +114,8 @@ export const translations = {
   deleteTransaction: { en: 'Delete Transaction', bn: 'লেনদেন মুছুন' },
   removeConfirm: { en: 'Remove', bn: 'মুছুন' },
   cancel: { en: 'Cancel', bn: 'বাতিল' },
+  loading: { en: 'Loading…', bn: 'লোড হচ্ছে…' },
+  retry: { en: 'Retry', bn: 'আবার চেষ্টা করুন' },
 
   // Loans screen
   myLoans: { en: 'My Loans', bn: 'আমার ঋণ' },

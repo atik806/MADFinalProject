@@ -36,10 +36,10 @@ function getInitials(name: string): string {
 
 export default function DashboardScreen() {
   const colors = useColors();
-  const { activeLoans, applications, refreshApplications } = useLoans();
-  const { notifications, unreadCount, refreshNotifications } = useNotifications();
-  const { profile, refreshProfile } = useProfile();
-  const { transactions, refreshTransactions } = useTransactions();
+  const { activeLoans, applications, refreshApplications, error: loansError } = useLoans();
+  const { notifications, unreadCount, refreshNotifications, error: notifError } = useNotifications();
+  const { profile, refreshProfile, error: profileError } = useProfile();
+  const { transactions, refreshTransactions, error: txError } = useTransactions();
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>("home");
 
@@ -49,6 +49,10 @@ export default function DashboardScreen() {
     refreshApplications();
     refreshNotifications();
   }, [refreshProfile, refreshTransactions, refreshApplications, refreshNotifications]);
+
+  // First failure across the four feeds is surfaced as one banner with a
+  // retry instead of silently rendering zeros/empty sections.
+  const feedError = profileError ?? txError ?? loansError ?? notifError;
 
   const recentTransactions = transactions.slice(0, 4);
   const recentNotifications = notifications.slice(0, 3);
@@ -113,6 +117,25 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        {feedError ? (
+          <View style={[styles.quickCard, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.redDown, borderWidth: 1 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Feather name="cloud-off" size={18} color={colors.dashboard.redDown} />
+              <Text style={{ color: colors.dashboard.textSecondary, flex: 1 }}>{feedError}</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  refreshProfile();
+                  refreshTransactions();
+                  refreshApplications();
+                  refreshNotifications();
+                }}
+                hitSlop={8}
+              >
+                <Text style={{ color: colors.deepGreen, fontWeight: '700' }}>{t('retry')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
         <View style={[styles.heroCard, { backgroundColor: colors.deepGreen }]}>
           <View style={styles.heroTop}>
             <View style={styles.heroInfo}>

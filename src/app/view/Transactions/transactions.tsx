@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -30,7 +31,7 @@ type FilterType = 'all' | 'income' | 'expense';
 
 export default function TransactionsScreen() {
   const colors = useColors();
-  const { transactions, removeTransaction, refreshTransactions } = useTransactions();
+  const { transactions, removeTransaction, refreshTransactions, loading, error } = useTransactions();
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('transactions');
   const [filter, setFilter] = useState<FilterType>('all');
@@ -177,7 +178,28 @@ export default function TransactionsScreen() {
           ))}
         </View>
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <View style={styles.empty}>
+            <ActivityIndicator color={colors.deepGreen} />
+            <Text style={[styles.emptyText, { color: colors.dashboard.textSecondary }]}>
+              {t('loading')}
+            </Text>
+          </View>
+        ) : error ? (
+          <View style={styles.empty}>
+            <Feather name="cloud-off" size={40} color={colors.dashboard.redDown} />
+            <Text style={[styles.emptyText, { color: colors.dashboard.textSecondary }]}>{error}</Text>
+            <TouchableOpacity
+              style={[styles.filterBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}
+              onPress={() => {
+                refreshTransactions();
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.filterText, { color: colors.deepGreen }]}>{t('retry')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filtered.length === 0 ? (
           <View style={styles.empty}>
             <Feather name="inbox" size={40} color={colors.dashboard.border} />
             <Text style={[styles.emptyText, { color: colors.dashboard.textSecondary }]}>{t('noTransactions')}</Text>

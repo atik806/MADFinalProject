@@ -6,6 +6,7 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -32,7 +33,7 @@ const statusConfig: Record<string, { labelKey: string; color: string; bg: string
 
 export default function LoansScreen() {
   const colors = useColors();
-  const { applications, activeLoans, refreshApplications } = useLoans();
+  const { applications, activeLoans, refreshApplications, loading, error } = useLoans();
 
   useEffect(() => {
     refreshApplications();
@@ -146,18 +147,35 @@ export default function LoansScreen() {
               <ActiveLoanCard key={loan.id} loan={loan} t={t} colors={colors} />
             ))
           )
+        ) : loading ? (
+          <View style={styles.empty}>
+            <ActivityIndicator color={colors.deepGreen} />
+            <Text style={[styles.emptyText, { color: colors.dashboard.textSecondary }]}>{t('loading')}</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.empty}>
+            <Feather name="cloud-off" size={40} color={colors.dashboard.redDown} />
+            <Text style={[styles.emptyText, { color: colors.dashboard.textSecondary }]}>{error}</Text>
+            <TouchableOpacity
+              style={[styles.tabBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}
+              onPress={() => {
+                refreshApplications();
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.tabText, { color: colors.deepGreen }]}>{t('retry')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : applications.length === 0 ? (
+          <View style={styles.empty}>
+            <Feather name="file-text" size={40} color={colors.dashboard.border} />
+            <Text style={[styles.emptyText, { color: colors.dashboard.textSecondary }]}>{t('noApplications')}</Text>
+            <Text style={[styles.emptySub, { color: colors.dashboard.border }]}>{t('applyFirst')}</Text>
+          </View>
         ) : (
-          applications.length === 0 ? (
-            <View style={styles.empty}>
-              <Feather name="file-text" size={40} color={colors.dashboard.border} />
-              <Text style={[styles.emptyText, { color: colors.dashboard.textSecondary }]}>{t('noApplications')}</Text>
-              <Text style={[styles.emptySub, { color: colors.dashboard.border }]}>{t('applyFirst')}</Text>
-            </View>
-          ) : (
-            applications.map((app) => (
-              <ApplicationCard key={app.id} app={app} t={t} colors={colors} />
-            ))
-          )
+          applications.map((app) => (
+            <ApplicationCard key={app.id} app={app} t={t} colors={colors} />
+          ))
         )}
       </ScrollView>
 
