@@ -1,9 +1,23 @@
+// Field Officer LOAN workflow E2E: draft create/update/submit/verify/
+// forward, validation failures, protected-field injection guards,
+// cross-officer IDOR (officer B is not assigned to officer A's farmer),
+// and status-enforcement (suspension blocks access mid-token).
+//
+// Self-provisioning: no dependency on scripts/token.tmp or
+// test/admin_token.tmp. The admin token comes from ADMIN_EMAIL/
+// ADMIN_PASSWORD in server/.env; officers A and B are provisioned through
+// the admin API and log in through the login route.
+//
+// Fixtures are cleaned via loan-cleanup.tmp + node test/cleanup.cjs. The
+// manifest is written eagerly after every created record so an early
+// abort still leaves a complete removal list.
+require('dotenv').config({ path: __dirname + '/../.env' });
 const fs = require('fs');
 const path = require('path');
 
-const BASE = 'http://localhost:3000';
-const TOKEN = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'token.tmp'), 'utf8').trim();
-const ADMIN_TOKEN = fs.readFileSync(path.join(__dirname, 'admin_token.tmp'), 'utf8').trim();
+const BASE = process.env.TEST_BASE_URL || 'http://localhost:3000';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@gmail.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '123456';
 
 const results = [];
 
@@ -25,39 +39,68 @@ async function req(method, url, opts = {}) {
   return { status: res.status, data };
 }
 
-(async () => {
-  // ---------- test fixtures ----------
-  // Create a SECOND field officer (via admin API) + a farmer assigned to that
-  // officer, so cross-officer IDOR scenarios can be tested for real.
-  const stamp = Date.now().toString().slice(-8);
-  let r = await req('POST', '/api/admin/field-officers', { token: ADMIN_TOKEN, json: true, body: {
-    nameEn: 'Officer B Loans Test', nid: '99' + stamp.slice(-6), phone: '017' + stamp,
-    password: 'officerbpass123', designation: 'Junior Officer'
+// Provision a throwaway field officer through the admin API and return
+// { id, token }. Used for both the primary officer (A) and the IDOR
+// officer (B).
+async function provisionOfficer(adminToken, nameEn, nid, phone, password) {
+  const created = await req('POST', '/api/admin/field-officers', { token: adminToken, json: true, body: {
+    nameEn, nid, phone, password, designation: 'Field Officer',
   }});
-  const officerBId = r.data?.data?.profile?.id;
-  report('setup: officer B created via admin API', r.status === 201 && !!officerBId, `officerB=${officerBId}`);
+  const id = created.data?.data?.profile?.id ?? null;
+  if (!id) return { error: created.data?.message ?? 'no officer id' };
+  const login = await req('POST', '/api/farmer/auth/login', { json: true, body: { identifier: `${nid}@sofol.local`, password } });
+  const token = login.data?.token ?? null;
+  if (!token) return { error: login.data?.message ?? 'officer login failed' };
+  return { id, token };
+}
 
-  let officerBToken = null;
-  // (officer B login happens below after fixtures)
+(async () => {
+  const stamp = Date.now().toString().slice(-8);
+  const cleanupFile = path.join(__dirname, 'loan-cleanup.tmp');
+  const manifest = { farmerId: null, officerAId: null, officerBId: null, loanIds: [], officerBEmail: null };
+  const saveCleanup = () => fs.writeFileSync(cleanupFile, JSON.stringify(manifest));
 
-  // Officer B's farmer: register through officer B's own account is not
-  // possible without their token, so assign a fresh farmer to officer B
-  // directly through officer A? No — that would assign to A. Instead the
-  // admin has no farmer-assign endpoint, so we test IDOR with officer B's
-  // loan created via direct DB is overkill. Simpler: officer A's own farmer
-  // is used for positive tests, and officer B (no assignments) is used to
-  // prove scoping: officer B must see an empty list and get 404 on A's loan.
-  report('setup: officer B has no assignments (scoping baseline)', true);
+  // ---------- self-provisioned tokens ----------
+  const admin = await req('POST', '/api/admin/auth/login', { json: true, body: { identifier: ADMIN_EMAIL, password: ADMIN_PASSWORD } });
+  const ADMIN_TOKEN = admin.data?.token ?? null;
+  if (!ADMIN_TOKEN) {
+    console.error('SETUP FAILED: admin login returned no token (check ADMIN_EMAIL/ADMIN_PASSWORD in server/.env and that the server is running).');
+    process.exit(1);
+  }
+  report('setup: admin login', true, 'token resolved');
+
+  // Officer A — drives the whole positive workflow.
+  const officerA = await provisionOfficer(ADMIN_TOKEN, 'Officer A Loans Test', '88' + stamp.slice(-6), '014' + stamp.slice(-7), 'officerapass123');
+  if (!officerA.token) {
+    console.error('SETUP FAILED: officer A provisioning:', officerA.error);
+    process.exit(1);
+  }
+  const TOKEN = officerA.token;
+  manifest.officerAId = officerA.id;
+  saveCleanup();
+
+  // Officer B — real field officer with NO assignments; proves scoping/IDOR.
+  const officerB = await provisionOfficer(ADMIN_TOKEN, 'Officer B Loans Test', '99' + stamp.slice(-6), '017' + stamp.slice(-7), 'officerbpass123');
+  if (!officerB.token) {
+    console.error('SETUP FAILED: officer B provisioning:', officerB.error);
+    process.exit(1);
+  }
+  manifest.officerBId = officerB.id;
+  manifest.officerBEmail = `99${stamp.slice(-6)}@sofol.local`;
+  saveCleanup();
+  report('setup: officers A and B provisioned', true, `A=${officerA.id} B=${officerB.id}`);
 
   // ---------- Officer A positive workflow ----------
   // A1. Create a farmer to own the loans (officer A registers)
   const NID = '66' + Date.now().toString().slice(-7);
   const FPHONE = '015' + Date.now().toString().slice(-8);
-  r = await req('POST', '/api/field-officer/farmers', { token: TOKEN, json: true, body: {
+  let r = await req('POST', '/api/field-officer/farmers', { token: TOKEN, json: true, body: {
     nameEn: 'Loan Farmer One', nid: NID, phone: FPHONE, password: 'farmerpass123',
     dob: '1985-05-05', gender: 'female', district: 'Bhola'
   }});
   const farmerId = r.data?.data?.profile?.id;
+  manifest.farmerId = farmerId ?? null;
+  saveCleanup();
   report('setup: farmer registered', r.status === 201 && !!farmerId, `farmer=${farmerId}`);
 
   // A2. Create a draft loan application for the assigned farmer
@@ -66,6 +109,7 @@ async function req(method, url, opts = {}) {
     purpose: 'Buy seeds and fertilizer', installmentType: 'monthly', emi: 2200, interest: 9
   }});
   const loanId = r.data?.data?.id;
+  if (loanId) { manifest.loanIds.push(loanId); saveCleanup(); }
   report('loans create draft 201', r.status === 201 && !!loanId, `loan=${loanId} status=${r.data?.data?.status} vs=${r.data?.data?.verification_status}`);
   report('loans create draft has officer stamp', r.status === 201 && r.data?.data?.field_officer_id !== undefined, `field_officer_id=${r.data?.data?.field_officer_id}`);
 
@@ -137,7 +181,7 @@ async function req(method, url, opts = {}) {
 
   // A17. Update cannot set protected fields (status/verification/officer ignored)
   r = await req('PUT', `/api/field-officer/loans/${loanId}`, { token: TOKEN, json: true, body: {
-    status: 'approved', verification_status: 'verified', farmer_id: officerBId, field_officer_id: officerBId,
+    status: 'approved', verification_status: 'verified', farmer_id: officerB.id, field_officer_id: officerB.id,
     title: 'Paddy Cultivation Loan v2'
   }});
   report('loans update ignores protected fields', r.status === 200 && r.data?.data?.status === 'draft' && r.data?.data?.verification_status === 'pending' && r.data?.data?.farmer_id === farmerId,
@@ -163,7 +207,7 @@ async function req(method, url, opts = {}) {
   r = await req('POST', `/api/field-officer/loans/${loanId}/verify`, { token: TOKEN, json: true, body: { status: 'maybe' } });
   report('loans verify invalid verdict 400', r.status === 400, `msg=${r.data?.message}`);
 
-  // A23. Forward before verification already done — this is after verify, so OK
+  // A23. Forward (after verification)
   r = await req('POST', `/api/field-officer/loans/${loanId}/forward`, { token: TOKEN, json: true, body: { recommendedAmount: 28000 } });
   report('loans forward 200', r.status === 200 && !!r.data?.data?.forwarded_at, `fwd_at=${r.data?.data?.forwarded_at} rec=${r.data?.data?.recommended_amount}`);
 
@@ -180,6 +224,7 @@ async function req(method, url, opts = {}) {
     farmerId, title: 'Draft For Verify Guard', amount: 500, duration: '3 months', purpose: 'guard test', installmentType: 'seasonal'
   }});
   const draft2Id = r.data?.data?.id;
+  if (draft2Id) { manifest.loanIds.push(draft2Id); saveCleanup(); }
   r = await req('POST', `/api/field-officer/loans/${draft2Id}/verify`, { token: TOKEN, json: true, body: { status: 'verified' } });
   report('loans verify draft rejected', r.status === 400, `msg=${r.data?.message}`);
 
@@ -207,12 +252,10 @@ async function req(method, url, opts = {}) {
   r = await req('POST', '/api/field-officer/loans', { token: ADMIN_TOKEN, json: true, body: { farmerId, title: 'X', amount: 1, duration: '1m', purpose: 'x', installmentType: 'monthly' } });
   report('loans create admin token 403', r.status === 403, `msg=${r.data?.message}`);
 
-  // B4. Officer B (a real field officer, but NOT assigned to this farmer) must
-  // not see officer A's loan. Login as officer B first.
-  // officer B email: 99<stamp6>@sofol.local, password officerbpass123
-  r = await req('POST', '/api/farmer/auth/login', { token: '', json: true, body: { identifier: `99${stamp.slice(-6)}@sofol.local`, password: 'officerbpass123' } });
-  officerBToken = r.data?.token ?? r.data?.session?.access_token ?? r.data?.data?.token;
-  if (officerBToken) {
+  // B4. Officer B (a real field officer, but NOT assigned to this farmer)
+  // must not see officer A's loan.
+  {
+    const officerBToken = officerB.token;
     // B4a. Officer B list is scoped to their own assignments (empty)
     r = await req('GET', '/api/field-officer/loans', { token: officerBToken });
     report('loans officer B scoped empty list 200', r.status === 200 && (r.data?.data?.items ?? []).length === 0, `total=${r.data?.data?.pagination?.total ?? '?'}`);
@@ -221,7 +264,7 @@ async function req(method, url, opts = {}) {
     r = await req('GET', `/api/field-officer/loans/${loanId}`, { token: officerBToken });
     report('loans IDOR get foreign loan 404', r.status === 404, `msg=${r.data?.message}`);
 
-    // B4c. Officer B cannot update officer A's loan -> 404 (before 400 state check; assertLoan runs first)
+    // B4c. Officer B cannot update officer A's loan -> 404
     r = await req('PUT', `/api/field-officer/loans/${loanId}`, { token: officerBToken, json: true, body: { amount: 1 } });
     report('loans IDOR update foreign loan blocked', r.status === 404, `msg=${r.data?.message}`);
 
@@ -242,8 +285,20 @@ async function req(method, url, opts = {}) {
       farmerId, title: 'X', amount: 100, duration: '6m', purpose: 'p', installmentType: 'monthly'
     }});
     report('loans IDOR create for foreign farmer 404', r.status === 404, `msg=${r.data?.message}`);
-  } else {
-    report('setup: officer B login (needed for IDOR tests)', false, 'no token returned');
+
+    // B5. Suspended officer B keeps a valid token but loses access
+    // immediately (status re-read per request); reactivation restores it.
+    r = await req('PATCH', `/api/admin/users/${officerB.id}/status`, { token: ADMIN_TOKEN, json: true, body: { status: 'suspended' } });
+    report('admin suspends officer B 200', r.status === 200, `msg=${r.data?.message}`);
+
+    r = await req('GET', '/api/field-officer/loans', { token: officerBToken });
+    report('suspended officer B blocked 403', r.status === 403, `msg=${r.data?.message}`);
+
+    r = await req('PATCH', `/api/admin/users/${officerB.id}/status`, { token: ADMIN_TOKEN, json: true, body: { status: 'active' } });
+    report('admin reactivates officer B 200', r.status === 200, `msg=${r.data?.message}`);
+
+    r = await req('GET', '/api/field-officer/loans', { token: officerBToken });
+    report('reactivated officer B allowed 200', r.status === 200, `status=${r.status}`);
   }
 
   // ---------- Data persistence & relationships ----------
@@ -254,11 +309,7 @@ async function req(method, url, opts = {}) {
   // C2. Notification was created for the farmer
   // (farmer token is not available here; verified indirectly via DB later in cleanup script)
 
-  // Save cleanup info: farmer, loans, officer B
-  fs.writeFileSync(path.join(__dirname, 'loan-cleanup.tmp'), JSON.stringify({
-    farmerId, officerBId, loanIds: [loanId, draft2Id].filter(Boolean),
-    officerBEmail: `99${stamp.slice(-6)}@sofol.local`
-  }));
+  saveCleanup();
 
   const pass = results.filter(x => x.ok).length;
   console.log(`\n==== ${pass}/${results.length} passed ====`);
