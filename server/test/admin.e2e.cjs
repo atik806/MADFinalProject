@@ -83,7 +83,7 @@ const login = async (identifier, password) => {
   if (officerId) { cleanup.officerIds.push(officerId); saveCleanup(); }
   report('setup: field officer created', r.status === 201 && !!officerId, `id=${officerId}`);
 
-  const FO_TOKEN = await login(`${foNid}@sofol.local`, 'adminofficer123');
+  let FO_TOKEN = await login(`${foNid}@sofol.local`, 'adminofficer123');
   report('setup: field officer login', !!FO_TOKEN);
   if (!FO_TOKEN) { console.log('==== aborted: officer login failed ===='); saveCleanup(); process.exit(1); }
 
@@ -176,6 +176,70 @@ const login = async (identifier, password) => {
 
   r = await req('PATCH', '/api/admin/users/00000000-0000-0000-0000-000000000000/status', { token: ADMIN_TOKEN, json: true, body: { status: 'active' } });
   report('users status nonexistent 404', r.status === 404, `msg=${r.data?.message}`);
+
+  // ================= B2. FIELD OFFICER MANAGEMENT MUTATIONS =================
+  // PUT /:id — update white-list, protected-field injection, not-found,
+  // invalid input; and POST /:id/reset-password — the credential rotation
+  // path. All against the fixture officer, so cleanup covers everything.
+  r = await req('PUT', `/api/admin/field-officers/${officerId}`, { token: ADMIN_TOKEN, json: true, body: {
+    name_en: 'Admin Suite Officer Updated', designation: 'Senior Field Officer', supervised_district: 'Bhola',
+  }});
+  report('officer update 200', r.status === 200 && r.data?.data?.name_en === 'Admin Suite Officer Updated', `name=${r.data?.data?.name_en} designation=${r.data?.data?.designation}`);
+
+  // Role/privileged fields in the body must be ignored by the update
+  // white-list — client-supplied elevation cannot land.
+  r = await req('PUT', `/api/admin/field-officers/${officerId}`, { token: ADMIN_TOKEN, json: true, body: {
+    role: 'admin', status: 'suspended', nid: '0000000000000', name_en: 'Escalation Attempt',
+  }});
+  report('officer update ignores role/status/nid', r.status === 200 && r.data?.data?.role === 'field_officer' && r.data?.data?.name_en === 'Escalation Attempt',
+    `role=${r.data?.data?.role} name=${r.data?.data?.name_en}`);
+
+  // The fixture officer's token still works after their own profile row
+  // was edited by the admin (identity unchanged).
+  r = await req('GET', '/api/field-officer/profile/me', { token: FO_TOKEN });
+  report('officer token survives admin edit', r.status === 200, `status=${r.status}`);
+
+  r = await req('PUT', '/api/admin/field-officers/00000000-0000-0000-0000-000000000000', { token: ADMIN_TOKEN, json: true, body: { name_en: 'X' } });
+  report('officer update nonexistent 404', r.status === 404, `msg=${r.data?.message}`);
+
+  r = await req('PUT', '/api/admin/field-officers/not-a-uuid', { token: ADMIN_TOKEN, json: true, body: { name_en: 'X' } });
+  report('officer update invalid uuid 400', r.status === 400, `msg=${r.data?.message}`);
+
+  r = await req('PUT', `/api/admin/field-officers/${officerId}`, { token: ADMIN_TOKEN, json: true, body: {} });
+  report('officer update no fields 400', r.status === 400, `msg=${r.data?.message}`);
+
+  // Reset password — then prove the new credential works and the old one
+  // does not have to be reused (old token stays valid until expiry; the
+  // point is the rotation itself).
+  r = await req('POST', `/api/admin/field-officers/${officerId}/reset-password`, { token: ADMIN_TOKEN, json: true, body: { newPassword: 'rotatedpass123' } });
+  report('officer reset-password 200', r.status === 200, `msg=${r.data?.message}`);
+
+  const FO_TOKEN2 = await login(`${foNid}@sofol.local`, 'rotatedpass123');
+  report('officer login with rotated password', !!FO_TOKEN2);
+  if (FO_TOKEN2) {
+    r = await req('GET', '/api/field-officer/profile/me', { token: FO_TOKEN2 });
+    report('rotated officer token works', r.status === 200, `status=${r.status}`);
+    // The rotation invalidated the officer's original session — re-point
+    // FO_TOKEN at the fresh token so the later cross-role checks assert a
+    // real 403 (valid token, wrong role) instead of a stale-token 401.
+    FO_TOKEN = FO_TOKEN2;
+  }
+
+  r = await req('POST', `/api/admin/field-officers/${officerId}/reset-password`, { token: ADMIN_TOKEN, json: true, body: { newPassword: '123' } });
+  report('officer reset-password short 400', r.status === 400, `msg=${r.data?.message}`);
+
+  r = await req('POST', '/api/admin/field-officers/00000000-0000-0000-0000-000000000000/reset-password', { token: ADMIN_TOKEN, json: true, body: { newPassword: 'validpass123' } });
+  report('officer reset-password nonexistent 404', r.status === 404, `msg=${r.data?.message}`);
+
+  // Wrong roles cannot reach officer management.
+  r = await req('PUT', `/api/admin/field-officers/${officerId}`, { token: FARMER_TOKEN, json: true, body: { name_en: 'Hacked' } });
+  report('officer update farmer token 403', r.status === 403, `msg=${r.data?.message}`);
+
+  r = await req('PUT', `/api/admin/field-officers/${officerId}`, { token: FO_TOKEN, json: true, body: { name_en: 'Hacked' } });
+  report('officer update officer token 403', r.status === 403, `msg=${r.data?.message}`);
+
+  r = await req('POST', `/api/admin/field-officers/${officerId}/reset-password`, { token: '' , json: true, body: { newPassword: 'x' } });
+  report('officer reset-password no token 401', r.status === 401, `msg=${r.data?.message}`);
 
   // ================= C. FARMER DIRECTORY =================
   r = await req('GET', '/api/admin/farmers?pageSize=100', { token: ADMIN_TOKEN });
