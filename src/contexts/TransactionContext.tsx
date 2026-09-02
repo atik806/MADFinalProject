@@ -45,9 +45,12 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   // Tracks which session the cached rows belong to. On account switch or
   // logout the stale rows are dropped rather than shown to the next user.
+  // `user?.id` is normalized to null so the guard converges (see
+  // NotificationContext for the full rationale).
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
-  if (user?.id !== sessionUserId) {
-    setSessionUserId(user?.id ?? null);
+  const currentSessionUserId = user?.id ?? null;
+  if (currentSessionUserId !== sessionUserId) {
+    setSessionUserId(currentSessionUserId);
     setTransactions([]);
     setError(null);
     setLoading(true);

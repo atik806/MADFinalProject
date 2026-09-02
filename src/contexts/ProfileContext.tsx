@@ -174,10 +174,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   // Tracks which session the cached data belongs to. When the authenticated
   // user changes (login switch or 401-driven logout) the stale profile is
-  // dropped instead of leaking into the next session.
+  // dropped instead of leaking into the next session. `user?.id` is
+  // normalized to null so the guard converges (see NotificationContext for
+  // the full rationale).
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
-  if (user?.id !== sessionUserId) {
-    setSessionUserId(user?.id ?? null);
+  const currentSessionUserId = user?.id ?? null;
+  if (currentSessionUserId !== sessionUserId) {
+    setSessionUserId(currentSessionUserId);
     setProfile(defaultProfile);
     setError(null);
     setLoading(true);

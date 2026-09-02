@@ -81,10 +81,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   // Tracks which session the cached notifications belong to. On account
   // switch or logout the stale list is dropped rather than shown to the
-  // next user.
+  // next user. `user?.id` is normalized to null so the guard CONVERGES:
+  // for a logged-out user it compares null === null (false → no reset),
+  // instead of undefined !== null, which is true on every render and
+  // turned the fresh-array reset below into an infinite re-render loop.
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
-  if (user?.id !== sessionUserId) {
-    setSessionUserId(user?.id ?? null);
+  const currentSessionUserId = user?.id ?? null;
+  if (currentSessionUserId !== sessionUserId) {
+    setSessionUserId(currentSessionUserId);
     setNotifications([]);
     setError(null);
     setLoading(true);
