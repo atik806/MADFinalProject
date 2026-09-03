@@ -1,6 +1,13 @@
 import { supabase, supabaseAdmin } from '../../../config/supabase';
 
-export type AuditModule = 'User' | 'Loan' | 'FieldOfficer' | 'System' | 'Auth' | 'Report';
+export type AuditModule =
+  | 'User'
+  | 'Loan'
+  | 'FieldOfficer'
+  | 'BankOfficer'
+  | 'System'
+  | 'Auth'
+  | 'Report';
 export type AuditStatus = 'success' | 'pending' | 'failed';
 
 export interface RecordAuditLogInput {
