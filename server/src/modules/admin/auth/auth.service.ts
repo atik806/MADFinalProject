@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin } from '../../../config/supabase';
+import { supabaseAdmin, createAuthClient } from '../../../config/supabase';
 import { config } from 'dotenv';
 
 config();
@@ -161,8 +161,13 @@ export const loginAdmin = async (identifier: string, password: string) => {
     throw new Error('Invalid admin credentials');
   }
 
+  // Isolated client for the sign-in itself — see createAuthClient() docs.
+  // Signing in on a privileged client would leave it authenticated as the
+  // admin user and subject that client's later `.from()` calls to RLS.
+  const authClient = createAuthClient();
+
   // Try the standard Supabase password sign-in first.
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await authClient.auth.signInWithPassword({
     email: adminEmail,
     password: adminPassword,
   });
@@ -175,7 +180,7 @@ export const loginAdmin = async (identifier: string, password: string) => {
       throw new Error(seedErr?.message ?? error?.message ?? 'Admin login failed');
     }
 
-    const retry = await supabase.auth.signInWithPassword({
+    const retry = await authClient.auth.signInWithPassword({
       email: adminEmail,
       password: adminPassword,
     });
