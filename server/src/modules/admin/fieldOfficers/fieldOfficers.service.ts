@@ -1,5 +1,6 @@
 import { supabase, supabaseAdmin } from '../../../config/supabase';
 import { recordAuditLog } from '../audit/audit.service';
+import { escapeLike, pgrstValue } from '../../../lib/postgrest';
 
 const shortHex = (): string => {
   return Math.floor(Math.random() * 0xffffff)
@@ -86,7 +87,7 @@ export const createFieldOfficerByAdmin = async (
   const { data: existing, error: dupError } = await supabaseAdmin
     .from('profiles')
     .select('id')
-    .or(`nid.eq.${nid},phone.eq.${normalizedPhone}`)
+    .or(`nid.eq.${pgrstValue(nid)},phone.eq.${pgrstValue(normalizedPhone)}`)
     .limit(1)
     .maybeSingle();
 
@@ -265,8 +266,7 @@ export const listFieldOfficers = async (filters: ListFieldOfficersFilters) => {
     query = query.eq('supervised_district', filters.district);
   }
   if (filters.search) {
-    const term = filters.search.replace(/[%_]/g, '\\$&');
-    const pattern = `%${term}%`;
+    const pattern = pgrstValue(`%${escapeLike(filters.search)}%`);
     query = query.or(
       `name_en.ilike.${pattern},name_bn.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},employee_id.ilike.${pattern},nid.ilike.${pattern}`,
     );
