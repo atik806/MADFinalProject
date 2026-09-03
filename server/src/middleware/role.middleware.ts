@@ -8,9 +8,10 @@ export const farmerOnly = async (req: Request, res: Response, next: NextFunction
             return res.status(401).json({ message: 'Unauthorized' });
         }
 
-        const authRole = String(
-            (req.user.user_metadata as any)?.role ?? (req.user.app_metadata as any)?.role ?? '',
-        )
+        // Only trust app_metadata.role — it can be set exclusively with the
+        // service-role key. user_metadata is user-editable via
+        // supabase.auth.updateUser(), so it must not drive access decisions.
+        const authRole = String((req.user.app_metadata as any)?.role ?? '')
             .trim()
             .toLowerCase();
 

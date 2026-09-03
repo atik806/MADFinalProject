@@ -153,11 +153,14 @@ export const loginAdmin = async (identifier: string, password: string) => {
   const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawIdentifier);
   const candidateEmail = isEmail ? rawIdentifier.toLowerCase() : adminEmail;
 
-  // Hard guard: only the configured admin email can sign in here.
+  // Hard guard: only the configured admin email can sign in here. The
+  // password is verified by Supabase below against the supplied value
+  // (not the env value) so a password changed via changeAdminPassword
+  // keeps working without an env edit + redeploy.
   if (candidateEmail !== adminEmail) {
     throw new Error('Invalid admin credentials');
   }
-  if (password !== adminPassword) {
+  if (!password) {
     throw new Error('Invalid admin credentials');
   }
 
@@ -166,14 +169,19 @@ export const loginAdmin = async (identifier: string, password: string) => {
   // admin user and subject that client's later `.from()` calls to RLS.
   const authClient = createAuthClient();
 
-  // Try the standard Supabase password sign-in first.
+  // Verify the supplied password against Supabase.
   const { data, error } = await authClient.auth.signInWithPassword({
     email: adminEmail,
-    password: adminPassword,
+    password,
   });
 
   if (error || !data?.session?.access_token || !data?.user) {
-    // The auth user might be missing (e.g. fresh DB). Re-seed and retry.
+    // The auth user may be missing (fresh DB). Only the env-configured
+    // password can bootstrap it, so bail out unless that is what was
+    // supplied — otherwise a wrong password would trigger a needless seed.
+    if (password !== adminPassword) {
+      throw new Error(error?.message ?? 'Invalid admin credentials');
+    }
     try {
       await ensureAdminUser();
     } catch (seedErr: any) {
@@ -182,7 +190,7 @@ export const loginAdmin = async (identifier: string, password: string) => {
 
     const retry = await authClient.auth.signInWithPassword({
       email: adminEmail,
-      password: adminPassword,
+      password,
     });
     if (retry.error || !retry.data?.session?.access_token || !retry.data?.user) {
       throw new Error(retry.error?.message ?? 'Admin login failed');
@@ -197,16 +205,25 @@ export const loginAdmin = async (identifier: string, password: string) => {
 // .env value is the source of truth — this just makes it convenient to
 // rotate the password from the admin UI.
 export const changeAdminPassword = async (currentPassword: string, newPassword: string) => {
-  const { email, password } = getAdminCredentials();
+  const { email } = getAdminCredentials();
 
   if (!currentPassword || !newPassword) {
     throw new Error('Current password and new password are required');
   }
-  if (currentPassword !== password) {
-    throw new Error('Current password is incorrect');
-  }
   if (String(newPassword).length < 6) {
     throw new Error('New password must be at least 6 characters');
+  }
+
+  // Verify the current password against Supabase (the live source of
+  // truth) rather than the env value — the two diverge after the first
+  // successful password change.
+  const verifyClient = createAuthClient();
+  const { error: verifyError } = await verifyClient.auth.signInWithPassword({
+    email,
+    password: currentPassword,
+  });
+  if (verifyError) {
+    throw new Error('Current password is incorrect');
   }
 
   // Find the admin's auth id.
