@@ -176,6 +176,55 @@ export type LoanApplicationInput = {
 };
 
 // ---------------------------------------------------------------------------
+// Bank Officer — loan review queue (GET /api/bank-officer/loans)
+// ---------------------------------------------------------------------------
+
+export type BankReviewFarmer = {
+  id: string;
+  name_en?: string | null;
+  name_bn?: string | null;
+  farmer_id?: string | null;
+  phone?: string | null;
+  district?: string | null;
+  is_verified?: boolean | null;
+  credit_score?: number | null;
+};
+
+// A forwarded loan_applications row as the bank sees it, with the farmer and
+// the verifying field officer embedded.
+export type BankReviewRow = {
+  id: string;
+  farmer_id: string;
+  title?: string | null;
+  amount?: number | null;
+  duration?: string | null;
+  purpose?: string | null;
+  installment_type?: string | null;
+  emi?: number | null;
+  interest?: number | null;
+  status?: string;
+  verification_status?: string;
+  verification_notes?: string | null;
+  recommended_amount?: number | null;
+  forwarded_at?: string | null;
+  reviewed_at?: string | null;
+  decision_at?: string | null;
+  decision_notes?: string | null;
+  approved_amount?: number | null;
+  application_date?: string | null;
+  created_at?: string;
+  farmer?: BankReviewFarmer | null;
+  field_officer?: { id: string; name_en?: string | null; name_bn?: string | null } | null;
+  timeline?: LoanTimelineStep[];
+};
+
+export type BankDecisionInput = {
+  status: 'approved' | 'rejected';
+  notes?: string;
+  approvedAmount?: number;
+};
+
+// ---------------------------------------------------------------------------
 // Notifications (farmer)
 // ---------------------------------------------------------------------------
 
@@ -214,6 +263,11 @@ export type BankOfficerProfileRow = {
   name_bn?: string | null;
   phone?: string | null;
   email?: string | null;
+  designation?: string | null;
+  employee_id?: string | null;
+  bank_name?: string | null;
+  branch_name?: string | null;
+  branch_code?: string | null;
 };
 
 export type FieldVisitRow = {
