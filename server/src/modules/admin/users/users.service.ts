@@ -1,4 +1,5 @@
 import { supabase, supabaseAdmin } from '../../../config/supabase';
+import { escapeLike, pgrstValue } from '../../../lib/postgrest';
 
 export type UserRoleFilter = 'farmer' | 'field_officer' | 'bank_officer' | 'admin' | 'all';
 
@@ -75,8 +76,7 @@ export const listUsers = async (filters: ListUsersFilters) => {
     query = query.eq('supervised_district', filters.district);
   }
   if (filters.search) {
-    const term = filters.search.replace(/[%_]/g, '\\$&');
-    const pattern = `%${term}%`;
+    const pattern = pgrstValue(`%${escapeLike(filters.search)}%`);
     query = query.or(
       `name_en.ilike.${pattern},name_bn.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},farmer_id.ilike.${pattern},employee_id.ilike.${pattern},nid.ilike.${pattern},location.ilike.${pattern}`,
     );

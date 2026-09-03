@@ -1,4 +1,5 @@
 import { supabase, createAuthClient } from '../../../config/supabase';
+import { pgrstValue } from '../../../lib/postgrest';
 
 export interface RegisterInput {
   nameBn: string;
@@ -119,11 +120,12 @@ export const registerFarmer = async (input: RegisterInput) => {
 
   const normalizedPhone = normalizePhone(phone);
 
-  // prevent duplicate registration by nid or phone
+  // prevent duplicate registration by nid or phone. `nid` is raw user input,
+  // so both values are quoted for the PostgREST filter string (see pgrstValue).
   const { data: existing, error: dupError } = await supabase
     .from('profiles')
     .select('id')
-    .or(`nid.eq.${nid},phone.eq.${normalizedPhone}`)
+    .or(`nid.eq.${pgrstValue(nid)},phone.eq.${pgrstValue(normalizedPhone)}`)
     .limit(1)
     .maybeSingle();
 
