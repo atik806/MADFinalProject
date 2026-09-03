@@ -1,3 +1,6 @@
+import { Redirect } from 'expo-router';
+
+import { useAuth } from '@/contexts/AuthContext';
 import { RoleTabLayout, type TabRoute } from '@/features/officials/shared/components/role-tab-layout';
 
 const routes: TabRoute[] = [
@@ -9,5 +12,12 @@ const routes: TabRoute[] = [
 ];
 
 export default function AdminTabLayout() {
+  const { isBootstrapping, isLoggedIn, user } = useAuth();
+
+  if (isBootstrapping) return null;
+  if (!isLoggedIn || user?.role !== 'admin') {
+    return <Redirect href={'/officials/login' as any} />;
+  }
+
   return <RoleTabLayout routes={routes} />;
 }
