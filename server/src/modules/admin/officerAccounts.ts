@@ -68,6 +68,11 @@ export const createOfficerAuthUser = async (input: OfficerAuthUserInput) => {
       password: input.password,
       phone_confirm: true,
       email_confirm: true,
+      // full_name for display; role in BOTH:
+      //  - app_metadata is settable only with the service-role key, so the
+      //    role guards can trust it (the profiles row stays the primary check)
+      //  - user_metadata mirrors it for any client-side display code
+      app_metadata: { role: input.role },
       user_metadata: { full_name: input.fullName, role: input.role },
     });
 

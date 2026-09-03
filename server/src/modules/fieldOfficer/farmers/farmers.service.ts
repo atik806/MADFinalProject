@@ -1,6 +1,7 @@
 import { supabase, supabaseAdmin } from '../../../config/supabase';
 import { recordAuditLog } from '../../admin/audit/audit.service';
 import { isUuid, optionalText, requireText, requireUuid } from '../validation';
+import { escapeLike, pgrstValue } from '../../../lib/postgrest';
 
 const shortHex = (): string => {
   return Math.floor(Math.random() * 0xffffff)
@@ -104,8 +105,7 @@ export const listAssignedFarmers = async (officerId: string, filters: ListFarmer
     query = query.eq('status', filters.status);
   }
   if (filters.search) {
-    const term = filters.search.replace(/[%_]/g, '\\$&');
-    const pattern = `%${term}%`;
+    const pattern = pgrstValue(`%${escapeLike(filters.search)}%`);
     query = query.or(
       `name_en.ilike.${pattern},name_bn.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},nid.ilike.${pattern},farmer_id.ilike.${pattern}`,
     );
