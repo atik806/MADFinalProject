@@ -1,4 +1,4 @@
-import { api, setAuthToken } from '@/config/api';
+import { api, setAuthToken, setUnauthorizedHandler } from '@/config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Href } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer } from 'react';
@@ -191,6 +191,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthToken(null);
     await AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
     dispatch({ type: 'LOGOUT' });
+  }, []);
+
+  // Any authenticated request that comes back 401 means the token is dead
+  // (expired / revoked). The api client clears it and calls this so the app
+  // drops to the login screen instead of silently failing every request.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+      dispatch({ type: 'LOGOUT' });
+    });
+    return () => setUnauthorizedHandler(null);
   }, []);
 
   const value = useMemo(
