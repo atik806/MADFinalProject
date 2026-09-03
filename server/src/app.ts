@@ -2,6 +2,7 @@ import express = require('express');
 import farmerRoutes from './modules/farmer/farmer.routes';
 import adminRoutes from './modules/admin/admin.routes';
 import fieldOfficerRoutes from './modules/fieldOfficer/fieldOfficer.routes';
+import bankOfficerRoutes from './modules/bankOfficer/bankOfficer.routes';
 import { corsMiddleware, helmetMiddleware } from './middleware/security.middleware';
 
 const app = express();
@@ -32,6 +33,9 @@ app.use('/api/admin', adminRoutes);
 
 // field-officer module api
 app.use('/api/field-officer', fieldOfficerRoutes);
+
+// bank-officer module api
+app.use('/api/bank-officer', bankOfficerRoutes);
 
 // 404
 app.use((req, res) => {
