@@ -88,6 +88,47 @@ function buildUser(u: any, fallbackIdentifier?: string): User {
   };
 }
 
+// Auth endpoints per role. The farmer routes are unauthenticated-role-agnostic
+// (they only require a valid Supabase session), so they double as the default
+// path; officials fall back to their own module endpoint.
+const ME_ENDPOINTS = ['/api/farmer/auth/me', '/api/admin/auth/me'] as const;
+const LOGIN_ENDPOINTS = ['/api/farmer/auth/login', '/api/admin/auth/login'] as const;
+
+async function fetchMe(knownRole?: string): Promise<{ data: any; profile?: any }> {
+  // Try the admin endpoint first when we already know this is an admin session.
+  const endpoints =
+    normalizeRole(knownRole) === 'admin' ? [...ME_ENDPOINTS].reverse() : [...ME_ENDPOINTS];
+  let lastError: unknown;
+  for (const endpoint of endpoints) {
+    try {
+      return await api.get<{ data: any; profile?: any }>(endpoint);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError ?? new Error('Session validation failed');
+}
+
+async function loginAnyRole(
+  identifier: string,
+  password: string,
+): Promise<{ token: string; user: any; profile?: any }> {
+  let lastError: unknown;
+  for (const endpoint of LOGIN_ENDPOINTS) {
+    try {
+      const res = await api.post<{ token: string; user: any; profile?: any }>(endpoint, {
+        identifier,
+        password,
+      });
+      if (res?.token && res?.user) return res;
+      lastError = new Error('Login failed: invalid server response');
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Invalid credentials');
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialAuthState);
 
@@ -108,8 +149,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         setAuthToken(saved.token);
         // Validate the token is still good. Throws on 401 (expired/invalid) or
-        // when the server is unreachable.
-        const me = await api.get<{ data: any; profile?: any }>('/api/farmer/auth/me');
+        // when the server is unreachable. The farmer `/auth/me` accepts any
+        // valid Supabase session; if it rejects (e.g. role-gated later) fall
+        // back to the admin endpoint so official sessions still restore.
+        const me = await fetchMe(saved.user?.role);
         if (cancelled) return;
         const user = buildUser(me?.data ?? saved.user, saved.user?.phone ?? saved.user?.email);
         user.role = normalizeRole(me?.profile?.role ?? user.role);
@@ -131,13 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'LOGIN_START' });
 
     try {
-      const res = await api.post<{ token: string; user: any; profile?: any }>('/api/farmer/auth/login', {
-        identifier,
-        password,
-      });
-      if (!res?.token || !res?.user) {
-        throw new Error('Login failed: invalid server response');
-      }
+      const res = await loginAnyRole(identifier, password);
       setAuthToken(res.token);
       const user = buildUser(res.user, identifier);
       user.role = normalizeRole(res?.profile?.role ?? user.role);

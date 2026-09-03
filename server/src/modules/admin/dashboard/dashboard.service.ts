@@ -6,16 +6,19 @@ const isoDaysAgo = (days: number): string => {
   return d.toISOString();
 };
 
+// Every call site passes a thunk that builds a Supabase count query, e.g.
+//   safeCount(() => supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }))
+// so we must invoke it here. (Awaiting the thunk itself silently yields the
+// function object, count === undefined, and the whole dashboard reads 0.)
 const safeCount = async (
-  query: any,
+  queryFn: (() => PromiseLike<{ count: number | null; error: unknown }>) | PromiseLike<{ count: number | null; error: unknown }>,
 ): Promise<number> => {
   try {
-    const { count, error } = await query;
+    const { count, error } = await (typeof queryFn === 'function' ? queryFn() : queryFn);
     if (error) {
       console.error('safeCount error:', error);
       return 0;
     }
-    console.log('[debug] safeCount -> count:', count);
     return count ?? 0;
   } catch (err) {
     console.error('safeCount threw:', err);
@@ -177,8 +180,7 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     recentFarmers,
     recentFieldOfficers,
     generatedAt: new Date().toISOString(),
-    _reloaded_at: 'VERSION-MARKER-2',
-  } as any;
+  };
 };
 
 export interface RegistrationSeriesPoint {
