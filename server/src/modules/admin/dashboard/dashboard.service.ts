@@ -79,7 +79,10 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('role', 'farmer')
-        .neq('is_verified', true),
+        // `neq('is_verified', true)` would be NULL (and thus excluded) for
+        // rows where is_verified is unset — i.e. every brand-new farmer.
+        // Treat NULL/false alike as "pending verification".
+        .not('is_verified', 'is', true),
     ),
     safeCount(() =>
       supabaseAdmin
