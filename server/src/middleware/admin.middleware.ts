@@ -24,9 +24,11 @@ export const adminOnly = async (req: Request, res: Response, next: NextFunction)
         const tokenEmail = String(req.user.email ?? '').trim().toLowerCase();
         const isPrimaryAdmin = tokenEmail && tokenEmail === PRIMARY_ADMIN_EMAIL;
 
-        const authRole = String(
-            (req.user.user_metadata as any)?.role ?? (req.user.app_metadata as any)?.role ?? '',
-        )
+        // Only trust app_metadata.role — it can be set exclusively with the
+        // service-role key. user_metadata is editable by the user themselves
+        // via supabase.auth.updateUser(), so trusting it here would let any
+        // authenticated farmer self-promote to admin.
+        const authRole = String((req.user.app_metadata as any)?.role ?? '')
             .trim()
             .toLowerCase();
 
