@@ -24,16 +24,17 @@ alter table if exists public.profiles
   add column if not exists admin_since timestamptz;
 
 -- field_officer_assignments: the admin UI shows when and by whom each
--- assignment was created. The column was originally defined with
--- assigned_by — we only need to ensure it exists (idempotent).
+-- assignment was created. The table itself is created by fieldOfficer.sql;
+-- only touch it if it already exists so this file can run in any order.
 do $$
 begin
-  if not exists (
-    select 1 from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'field_officer_assignments'
-      and column_name = 'assigned_by'
-  ) then
+  if to_regclass('public.field_officer_assignments') is not null
+     and not exists (
+       select 1 from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'field_officer_assignments'
+         and column_name = 'assigned_by'
+     ) then
     alter table public.field_officer_assignments
       add column assigned_by uuid references public.profiles (id) on delete set null;
   end if;
