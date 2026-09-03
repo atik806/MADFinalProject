@@ -1,4 +1,4 @@
-import { supabase } from '../../../config/supabase';
+import { supabase, createAuthClient } from '../../../config/supabase';
 
 export interface RegisterInput {
   nameBn: string;
@@ -240,9 +240,14 @@ export const loginFarmer = async (identifier: string, password: string) => {
   const isPhone = /^\+?\d[\d\s-]{6,}$/.test(rawIdentifier);
   const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawIdentifier);
 
+  // Isolated client for the sign-in itself — see createAuthClient() docs.
+  // Doing this on the shared `supabase` client would leave it authenticated
+  // as this farmer, breaking RLS-bypass for every later request.
+  const authClient = createAuthClient();
+
   // Attempts a password sign-in with the given email and returns on success.
   const tryEmailLogin = async (email: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await authClient.auth.signInWithPassword({ email, password });
     if (error) return null;
     if (!data?.session?.access_token || !data?.user) return null;
     return data;
@@ -250,7 +255,7 @@ export const loginFarmer = async (identifier: string, password: string) => {
 
   // Attempts a password sign-in with the given phone and returns on success.
   const tryPhoneLogin = async (phone: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ phone, password });
+    const { data, error } = await authClient.auth.signInWithPassword({ phone, password });
     if (error) return null;
     if (!data?.session?.access_token || !data?.user) return null;
     return data;

@@ -1,6 +1,7 @@
 import cors = require('cors');
 import express = require('express');
 import farmerRoutes from './modules/farmer/farmer.routes';
+import adminRoutes from './modules/admin/admin.routes';
 
 const app = express();
 
@@ -19,6 +20,9 @@ app.get('/', (req, res) => {
 
 // farmer module api
 app.use('/api/farmer', farmerRoutes);
+
+// admin module api
+app.use('/api/admin', adminRoutes);
 
 // 404
 app.use((req, res) => {
