@@ -1,0 +1,128 @@
+-- ============================================================
+-- SOFOL — Field Officer module database schema
+-- ============================================================
+-- HOW TO APPLY:
+--   1. Run farmer_db.sql (base tables) and admin.sql first.
+--   2. Open your Supabase project -> SQL Editor -> New query.
+--   3. Paste this entire file and click "Run".
+--   (The Express server uses the service-role key, so it bypasses
+--    Row Level Security and can read/write these tables directly.)
+--
+-- Idempotent and safe to re-run: only creates tables/columns that do not
+-- already exist, never drops data.
+-- ============================================================
+
+create extension if not exists "pgcrypto";
+
+-- ============================================================
+-- SECTION 1: EXTEND EXISTING TABLES
+-- ============================================================
+
+-- profiles: field-officer-specific metadata on the official's own row.
+-- Populated only when role = 'field_officer'.
+alter table if exists public.profiles
+  add column if not exists employee_id text,
+  add column if not exists designation text,
+  add column if not exists office_address text,
+  add column if not exists joining_date text,
+  add column if not exists supervised_district text,
+  add column if not exists supervised_upazila text;
+
+-- loan_applications: the field officer's verification step in the loan
+-- lifecycle. The farmer creates the application, the field officer verifies
+-- it on the ground, then forwards it to the bank officer. The officer who
+-- created the draft and the officer who verified it are recorded separately
+-- from the farmer so the bank can see who handled the application.
+alter table if exists public.loan_applications
+  add column if not exists field_officer_id uuid references public.profiles (id),
+  add column if not exists verification_status text default 'pending',
+  add column if not exists verified_at timestamptz,
+  add column if not exists verification_notes text,
+  add column if not exists forwarded_at timestamptz,
+  add column if not exists forwarded_by uuid references public.profiles (id),
+  add column if not exists recommended_amount numeric;
+
+create index if not exists loan_applications_verification_status_idx
+  on public.loan_applications (verification_status);
+
+-- ============================================================
+-- SECTION 2: NEW TABLES
+-- ============================================================
+
+-- ---------- FIELD OFFICER <-> FARMER ASSIGNMENTS ----------
+-- Which farmers a field officer is responsible for.
+create table if not exists public.field_officer_assignments (
+  id uuid primary key default gen_random_uuid(),
+  field_officer_id uuid references public.profiles (id) on delete cascade,
+  farmer_id uuid references public.profiles (id) on delete cascade,
+  status text default 'active',
+  assigned_at timestamptz default now(),
+  created_at timestamptz default now(),
+  unique (field_officer_id, farmer_id)
+);
+
+create index if not exists foa_field_officer_idx on public.field_officer_assignments (field_officer_id);
+create index if not exists foa_farmer_idx on public.field_officer_assignments (farmer_id);
+
+-- ---------- FIELD VISITS ----------
+-- Visits a field officer schedules / completes for a farmer.
+create table if not exists public.field_visits (
+  id uuid primary key default gen_random_uuid(),
+  field_officer_id uuid references public.profiles (id) on delete cascade,
+  farmer_id uuid references public.profiles (id) on delete cascade,
+  visit_date timestamptz,
+  status text default 'scheduled',
+  purpose text,
+  notes text,
+  location text,
+  visit_type text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists field_visits_officer_idx on public.field_visits (field_officer_id);
+create index if not exists field_visits_farmer_idx on public.field_visits (farmer_id);
+create index if not exists field_visits_visit_date_idx on public.field_visits (visit_date);
+
+-- ---------- FARMER VERIFICATIONS ----------
+-- A field officer's verification of a farmer's profile / documents / land.
+-- History is preserved: every submission inserts a NEW row.
+create table if not exists public.farmer_verifications (
+  id uuid primary key default gen_random_uuid(),
+  farmer_id uuid references public.profiles (id) on delete cascade,
+  field_officer_id uuid references public.profiles (id),
+  status text default 'pending',
+  notes text,
+  verification_type text not null,
+  verified_at timestamptz,
+  photo_urls text[] default '{}',
+  documents_checked text[] default '{}',
+  farmer_present boolean default false,
+  land_verified boolean default false,
+  documents_verified boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists farmer_verifications_farmer_idx on public.farmer_verifications (farmer_id);
+create index if not exists farmer_verifications_status_idx on public.farmer_verifications (status);
+
+-- ============================================================
+-- SECTION 3: SCHEMA REPAIR (idempotent, safe to re-run)
+-- ============================================================
+-- Layers current columns onto older tables without dropping data. Re-run any
+-- time a "column does not exist" error appears after upgrading.
+
+alter table if exists public.field_visits
+  add column if not exists location text,
+  add column if not exists visit_type text;
+
+alter table if exists public.farmer_verifications
+  add column if not exists field_officer_id uuid references public.profiles (id),
+  add column if not exists verification_type text,
+  add column if not exists verified_at timestamptz,
+  add column if not exists photo_urls text[] default '{}',
+  add column if not exists documents_checked text[] default '{}',
+  add column if not exists farmer_present boolean default false,
+  add column if not exists land_verified boolean default false,
+  add column if not exists documents_verified boolean default false;

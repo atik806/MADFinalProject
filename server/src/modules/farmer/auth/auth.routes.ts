@@ -2,14 +2,17 @@ import { Router } from 'express';
 import multer from 'multer';
 import * as authController from './auth.controller';
 import { authenticateUser } from '../../../middleware/auth.middleware';
+import { authLimiter } from '../../../middleware/security.middleware';
 
 const router = Router();
 
 const uploadMiddleware = multer({ limits: { fileSize: 5 * 1024 * 1024 } });
 
-router.post('/register', authController.register);
-router.post('/login', authController.login);
-router.post('/reset-password', authController.resetPassword);
+// Brute-forcing a password or farming registrations is the main abuse
+// vector on these unauthenticated endpoints — throttle them per IP.
+router.post('/register', authLimiter, authController.register);
+router.post('/login', authLimiter, authController.login);
+router.post('/reset-password', authLimiter, authController.resetPassword);
 router.post('/upload', uploadMiddleware.single('file'), authController.upload);
 router.get('/me', authenticateUser, authController.getMe);
 
