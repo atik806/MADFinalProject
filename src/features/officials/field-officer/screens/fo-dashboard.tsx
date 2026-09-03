@@ -3,12 +3,14 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { ActionCard } from '@/features/officials/shared/components/action-card';
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
 import { StatCard } from '@/features/officials/shared/components/stat-card';
 import { StatusBadge } from '@/features/officials/shared/components/status-badge';
 import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/shared/constants/layout';
 import { useColors } from '@/features/officials/shared/constants/theme';
-import { MOCK_FARMERS, QUICK_ACTIONS, SCHEDULED_TASKS } from '@/data';
+import { api } from '@/lib/api';
+import type { ApiResponse, FieldVisitRow, ListResult, OfficerProfileRow, ProfileRow } from '@/lib/api-types';
 
 type Farmer = {
   id: string;
@@ -18,21 +20,93 @@ type Farmer = {
   status: 'verified' | 'pending' | 'rejected';
 };
 
+// Map an assigned-farmer profile row to the card the dashboard renders.
+const farmerFromRow = (row: ProfileRow): Farmer => ({
+  id: String(row.id),
+  name: row.name_en ?? row.name_bn ?? 'Farmer',
+  location: [row.village, row.district].filter(Boolean).join(', ') || row.location || '—',
+  crop: row.primary_crop ?? '—',
+  status: row.is_verified ? 'verified' : 'pending',
+});
+
+const QUICK_ACTIONS = [
+  { icon: 'person-add-outline' as const, iconBg: '#3A9BD5', title: 'New Farmer\nOnboarding' },
+  { icon: 'location-outline' as const, iconBg: '#1A8F5C', title: 'Record Visit' },
+  { icon: 'document-text-outline' as const, iconBg: '#7C3AED', title: 'Submit\nApplication' },
+  { icon: 'cloud-upload-outline' as const, iconBg: '#F59E0B', title: 'Upload\nDocuments' },
+];
+
+// A scheduled visit, mapped from the officer's visits endpoint. Time is the
+// visit date; type is always 'Visit' (the backend has no visit taxonomy).
+type ScheduledVisit = {
+  time: string;
+  title: string;
+  location: string;
+  type: string;
+};
+
+const visitFromRow = (row: FieldVisitRow): ScheduledVisit => {
+  const d = new Date(String(row.visit_date ?? row.created_at ?? ''));
+  const time = Number.isFinite(d.getTime())
+    ? d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    : '—';
+  return {
+    time,
+    title: row.purpose ? `Field Visit — ${row.purpose}` : 'Field Visit',
+    location: row.location ?? '—',
+    type: 'Visit',
+  };
+};
+
 export default function FieldOfficerDashboardScreen() {
   const router = useRouter();
   const colors = useColors();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [farmers, setFarmers] = useState<Farmer[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [scheduledVisits, setScheduledVisits] = useState<ScheduledVisit[]>([]);
+  // The officer's own profile (name/designation) from /profile/me.
+  const [officer, setOfficer] = useState<OfficerProfileRow | null>(null);
+
+  const loadDashboard = useCallback(async () => {
+    try {
+      // Assigned farmers: the officer's own list (server-scoped by token).
+      const [farmersRes, visitsRes, profileRes] = await Promise.all([
+        api.get<ApiResponse<ListResult<ProfileRow>>>('/api/field-officer/farmers?pageSize=100'),
+        api.get<ApiResponse<ListResult<FieldVisitRow>>>('/api/field-officer/visits?pageSize=100'),
+        api.get<ApiResponse<unknown> & { profile?: OfficerProfileRow }>('/api/field-officer/profile/me').catch(() => null),
+      ]);
+      setFarmers((farmersRes?.data?.items ?? []).map(farmerFromRow));
+      // Today's view: scheduled + in-progress visits become the schedule list.
+      const visitRows: FieldVisitRow[] = visitsRes?.data?.items ?? [];
+      setScheduledVisits(visitRows.filter((v) => ['scheduled', 'in-progress'].includes(String(v.status ?? ''))).map(visitFromRow));
+      // The profile endpoint answers { data: authUser, profile: officerRow }.
+      setOfficer((profileRes as { profile?: OfficerProfileRow } | null)?.profile ?? null);
+      setLoadError(null);
+    } catch (err: any) {
+      setLoadError(err?.message ?? 'Could not load your dashboard.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 800);
+    // Data fetch on mount. The kickoff is deferred out of the effect body;
+    // state updates happen only after the fetch resolves.
+    const timer = setTimeout(() => void loadDashboard(), 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [loadDashboard]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+    loadDashboard().finally(() => setRefreshing(false));
+  }, [loadDashboard]);
+
+  // Real counts derived from the same server-scoped lists rendered below.
+  // Previously these four tiles showed hardcoded mock numbers.
+  const pendingVerifications = farmers.filter((f) => f.status === 'pending').length;
+  const visitsToday = scheduledVisits.filter((v) => v.time !== '—').length;
 
   const bg = colors.dashboard.bg;
   const cardBg = colors.dashboard.cardBg;
@@ -63,6 +137,16 @@ export default function FieldOfficerDashboardScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.greenLight} />}
       >
+        {loadError ? (
+          <View style={[styles.card, { backgroundColor: cardBg, borderColor: colors.dashboard.redDown }]}>
+            <View style={styles.emptyInner}>
+              <Ionicons name="cloud-offline-outline" size={36} color={colors.dashboard.redDown} />
+              <Text style={[styles.emptyTitle, { color: textPrimary }]}>Could not load your data</Text>
+              <Text style={[styles.emptySubtitle, { color: textSecondary }]}>{loadError}</Text>
+              <Text style={[styles.emptySubtitle, { color: textSecondary }]}>Pull down to retry.</Text>
+            </View>
+          </View>
+        ) : null}
         {/* Hero Card */}
         <View style={[styles.heroCard, { backgroundColor: colors.deepGreen }]}>
           <View style={styles.heroRow}>
@@ -71,103 +155,53 @@ export default function FieldOfficerDashboardScreen() {
             </View>
             <View style={styles.heroTextCol}>
               <Text style={styles.heroGreeting}>Good morning,</Text>
-              <Text style={styles.heroName}>Mohammad Rahim</Text>
-              <Text style={styles.heroRole}>Field Officer • Bhola</Text>
+              <Text style={styles.heroName}>{officer?.name_en ?? officer?.name_bn ?? 'Field Officer'}</Text>
+              <Text style={styles.heroRole}>{officer?.designation ?? 'Field Officer'} • SOFOL</Text>
             </View>
           </View>
           <View style={styles.heroStatsRow}>
-            <StatCard hero icon="people" iconBg="#FFFFFF" value="12" label="Assigned Farmers" trend="+2" trendLabel="this wk" />
-            <StatCard hero icon="checkmark-circle" iconBg="#FFFFFF" value="5" label="Pending Verifications" />
-          </View>
-        </View>
-        {/* Overview Card */}
-        <Text style={[styles.sectionLabel, { color: textSecondary }]}>Overview</Text>
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
-          <View style={styles.overviewRow}>
-            <View style={styles.overviewItem}>
-              <View style={[styles.overviewIcon, { backgroundColor: '#3A9BD520' }]}>
-                <Ionicons name="people-outline" size={22} color="#3A9BD5" />
-              </View>
-              <Text style={[styles.overviewValue, { color: textPrimary }]}>12</Text>
-              <Text style={[styles.overviewLabel, { color: textSecondary }]}>Assigned Farmers</Text>
-            </View>
-            <View style={styles.overviewItem}>
-              <View style={[styles.overviewIcon, { backgroundColor: '#F59E0B20' }]}>
-                <Ionicons name="time-outline" size={22} color="#F59E0B" />
-              </View>
-              <Text style={[styles.overviewValue, { color: textPrimary }]}>5</Text>
-              <Text style={[styles.overviewLabel, { color: textSecondary }]}>Pending Verifications</Text>
-            </View>
-          </View>
-          <View style={[styles.overviewDivider, { backgroundColor: border }]} />
-          <View style={styles.overviewRow}>
-            <View style={styles.overviewItem}>
-              <View style={[styles.overviewIcon, { backgroundColor: '#1A8F5C20' }]}>
-                <Ionicons name="location-outline" size={22} color="#1A8F5C" />
-              </View>
-              <Text style={[styles.overviewValue, { color: textPrimary }]}>3</Text>
-              <Text style={[styles.overviewLabel, { color: textSecondary }]}>Field Visits Today</Text>
-            </View>
-            <View style={styles.overviewItem}>
-              <View style={[styles.overviewIcon, { backgroundColor: '#7C3AED20' }]}>
-                <Ionicons name="document-text-outline" size={22} color="#7C3AED" />
-              </View>
-              <Text style={[styles.overviewValue, { color: textPrimary }]}>8</Text>
-              <Text style={[styles.overviewLabel, { color: textSecondary }]}>Applications Forwarded</Text>
-            </View>
+            <StatCard hero icon="people" iconBg="#FFFFFF" value={String(farmers.length)} label="Assigned Farmers" />
+            <StatCard hero icon="checkmark-circle" iconBg="#FFFFFF" value={String(scheduledVisits.length)} label="Scheduled Visits" />
           </View>
         </View>
 
-        {/* Quick Actions Card */}
+        {/* Overview Stats */}
+        <Text style={[styles.sectionLabel, { color: textSecondary }]}>Overview</Text>
+        <View style={styles.statsGrid}>
+          <StatCard icon="people-outline" iconBg="#3A9BD5" value={String(farmers.length)} label="Assigned Farmers" />
+          <StatCard icon="time-outline" iconBg="#F59E0B" value={String(pendingVerifications)} label="Pending Verifications" />
+          <StatCard icon="location-outline" iconBg="#1A8F5C" value={String(visitsToday)} label="Scheduled Visits" />
+        </View>
+
+        {/* Quick Actions */}
         <Text style={[styles.sectionLabel, { color: textSecondary }]}>Quick Actions</Text>
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
-          <View style={styles.overviewRow}>
-            {QUICK_ACTIONS.slice(0, 2).map((action, i) => (
-              <Pressable
-                key={i}
-                style={({ pressed }) => [styles.quickActionItem, pressed && styles.pressed]}
-                onPress={() => {
-                  if (i === 0) router.push('/officials/users');
-                  else if (i === 1) router.push('/officials/visits');
-                }}
-              >
-                <View style={[styles.overviewIcon, { backgroundColor: action.iconBg + '20' }]}>
-                  <Ionicons name={action.icon} size={22} color={action.iconBg} />
-                </View>
-                <Text style={[styles.overviewLabel, { color: textPrimary }]}>{action.title}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <View style={[styles.overviewDivider, { backgroundColor: border }]} />
-          <View style={styles.overviewRow}>
-            {QUICK_ACTIONS.slice(2, 4).map((action, i) => (
-              <Pressable
-                key={i + 2}
-                style={({ pressed }) => [styles.quickActionItem, pressed && styles.pressed]}
-                onPress={() => {
-                  if (i === 0) router.push('/officials/applications');
-                  else if (i === 1) Alert.alert('Success', 'Documents uploaded successfully');
-                }}
-              >
-                <View style={[styles.overviewIcon, { backgroundColor: action.iconBg + '20' }]}>
-                  <Ionicons name={action.icon} size={22} color={action.iconBg} />
-                </View>
-                <Text style={[styles.overviewLabel, { color: textPrimary }]}>{action.title}</Text>
-              </Pressable>
-            ))}
-          </View>
+        <View style={styles.quickActionsGrid}>
+          {QUICK_ACTIONS.map((action, i) => (
+            <ActionCard
+              key={i}
+              icon={action.icon}
+              iconBg={action.iconBg}
+              title={action.title}
+              onPress={() => {
+                if (i === 0) router.push('/officials/users');
+                else if (i === 1) router.push('/officials/visits');
+                else if (i === 2) router.push('/officials/applications');
+                else if (i === 3) Alert.alert('Success', 'Documents uploaded successfully');
+              }}
+            />
+          ))}
         </View>
 
         {/* Today&apos;s Schedule */}
         <Text style={[styles.sectionLabel, { color: textSecondary }]}>Today&apos;s Schedule</Text>
         <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
-          {SCHEDULED_TASKS.length === 0 ? (
+          {scheduledVisits.length === 0 ? (
             <View style={styles.emptyInner}>
               <Ionicons name="calendar-outline" size={32} color={textSecondary} />
               <Text style={[styles.emptyInnerText, { color: textSecondary }]}>No tasks scheduled</Text>
             </View>
           ) : (
-            SCHEDULED_TASKS.map((task, i) => (
+            scheduledVisits.map((task, i) => (
               <View key={i}>
                 <View style={styles.taskRow}>
                   <View style={styles.taskTimeCol}>
@@ -191,15 +225,15 @@ export default function FieldOfficerDashboardScreen() {
                     <Text style={[styles.taskLocation, { color: textSecondary }]}>{task.location}</Text>
                   </View>
                 </View>
-                {i < SCHEDULED_TASKS.length - 1 && <View style={[styles.divider, { backgroundColor: border }]} />}
+                {i < scheduledVisits.length - 1 && <View style={[styles.divider, { backgroundColor: border }]} />}
               </View>
-            ))
+             ))
           )}
         </View>
 
         {/* My Assigned Farmers */}
         <Text style={[styles.sectionLabel, { color: textSecondary }]}>My Assigned Farmers</Text>
-        {MOCK_FARMERS.length === 0 ? (
+        {farmers.length === 0 ? (
           <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
             <View style={styles.emptyInner}>
               <Ionicons name="people-outline" size={40} color={textSecondary} />
@@ -209,7 +243,7 @@ export default function FieldOfficerDashboardScreen() {
           </View>
         ) : (
           <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
-            {MOCK_FARMERS.map((farmer, i) => (
+            {farmers.map((farmer, i) => (
               <Pressable key={farmer.id} onPress={() => router.push('/officials/users')} style={({ pressed }) => pressed && styles.pressed}>
                 <View style={styles.farmerRow}>
                   <Ionicons
@@ -232,7 +266,7 @@ export default function FieldOfficerDashboardScreen() {
                   </View>
                   <StatusBadge status={farmer.status} />
                 </View>
-                {i < MOCK_FARMERS.length - 1 && <View style={[styles.divider, { backgroundColor: border }]} />}
+                {i < farmers.length - 1 && <View style={[styles.divider, { backgroundColor: border }]} />}
               </Pressable>
             ))}
           </View>
@@ -409,41 +443,5 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
-  },
-  overviewRow: {
-    flexDirection: 'row',
-  },
-  overviewItem: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 16,
-  },
-  overviewIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  overviewValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: 2,
-  },
-  overviewLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  overviewDivider: {
-    height: 1,
-    marginHorizontal: 14,
-  },
-  quickActionItem: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 16,
   },
 });
