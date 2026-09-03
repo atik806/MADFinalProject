@@ -13,31 +13,6 @@ export type SettingSection = {
   items: SettingItem[];
 };
 
-export const ADMIN_SETTINGS: SettingSection[] = [
-  {
-    title: 'General',
-    items: [
-      { icon: 'globe-outline', label: 'Language', subtitle: 'English', value: 'en' },
-      { icon: 'moon-outline', label: 'Dark Mode', value: false },
-    ],
-  },
-  {
-    title: 'System',
-    items: [
-      { icon: 'notifications-outline', label: 'Notifications', subtitle: 'Push, Email' },
-      { icon: 'shield-checkmark-outline', label: 'Security', subtitle: '2FA enabled' },
-    ],
-  },
-  {
-    title: 'About',
-    items: [
-      { icon: 'information-circle-outline', label: 'Version', subtitle: '1.0.0' },
-      { icon: 'document-text-outline', label: 'Terms of Service' },
-      { icon: 'lock-closed-outline', label: 'Privacy Policy' },
-    ],
-  },
-];
-
 export const BANK_OFFICER_SETTINGS: SettingSection[] = [
   {
     title: 'General',

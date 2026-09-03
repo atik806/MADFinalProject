@@ -47,6 +47,7 @@ export const translations = {
   newPassword: { en: 'New Password', bn: 'নতুন পাসওয়ার্ড' },
   confirmPassword: { en: 'Confirm Password', bn: 'পাসওয়ার্ড নিশ্চিত করুন' },
   passwordResetSuccess: { en: 'Password reset successful!', bn: 'পাসওয়ার্ড রিসেট সফল!' },
+  passwordResetFailed: { en: 'Password reset failed. Please try again.', bn: 'পাসওয়ার্ড রিসেট ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' },
   passwordMismatch: { en: 'Passwords do not match', bn: 'পাসওয়ার্ড মিলছে না' },
   passwordUpdated: { en: 'Your password has been updated. Please login with your new password.', bn: 'আপনার পাসওয়ার্ড আপডেট হয়েছে। নতুন পাসওয়ার্ড দিয়ে লগইন করুন।' },
   backToLogin: { en: 'Back to Login', bn: 'লগইনে ফিরুন' },
