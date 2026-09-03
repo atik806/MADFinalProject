@@ -1,4 +1,12 @@
 import { Request, Response } from 'express';
+
+// Clamp a caller-supplied month window to a sane range — the services
+// issue one count query per month, so an unbounded value is a cheap DoS.
+const parseMonths = (raw: unknown): number => {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 6;
+  return Math.min(Math.max(Math.trunc(n), 1), 24);
+};
 import * as dashboardService from './dashboard.service';
 
 export const getStats = async (_req: Request, res: Response) => {
@@ -16,8 +24,7 @@ export const getStats = async (_req: Request, res: Response) => {
 
 export const getRegistrationTrend = async (req: Request, res: Response) => {
   try {
-    const months = req.query.months ? Number(req.query.months) : 6;
-    const data = await dashboardService.getFarmerRegistrationTrend(Number.isFinite(months) ? months : 6);
+    const data = await dashboardService.getFarmerRegistrationTrend(parseMonths(req.query.months));
     return res.status(200).json({
       success: true,
       message: 'Registration trend fetched',
@@ -30,8 +37,7 @@ export const getRegistrationTrend = async (req: Request, res: Response) => {
 
 export const getLoanAnalytics = async (req: Request, res: Response) => {
   try {
-    const months = req.query.months ? Number(req.query.months) : 6;
-    const data = await dashboardService.getLoanAnalytics(Number.isFinite(months) ? months : 6);
+    const data = await dashboardService.getLoanAnalytics(parseMonths(req.query.months));
     return res.status(200).json({
       success: true,
       message: 'Loan analytics fetched',
