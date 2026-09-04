@@ -16,6 +16,7 @@ import {
 } from '../../../contexts/TransactionContext';
 import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
+import { ErrorState, LoadingState } from '../../../components/screen-status';
 
 type TabName = 'home' | 'transactions' | 'loans' | 'profile';
 
@@ -30,7 +31,7 @@ type FilterType = 'all' | 'income' | 'expense';
 
 export default function TransactionsScreen() {
   const colors = useColors();
-  const { transactions, removeTransaction } = useTransactions();
+  const { transactions, removeTransaction, loading, error, reload } = useTransactions();
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('transactions');
   const [filter, setFilter] = useState<FilterType>('all');
@@ -91,10 +92,19 @@ export default function TransactionsScreen() {
         </View>
         <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('transactions')}</Text>
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={toggleLang} hitSlop={8} style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
+          <TouchableOpacity
+            onPress={toggleLang}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={lang === 'en' ? 'Switch to Bangla' : 'Switch to English'}
+            style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
             <Text style={[styles.langText, { color: colors.userVerifiedText }]}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/view/Notifications/notifications')} hitSlop={8}>
+          <TouchableOpacity
+            onPress={() => router.push('/view/Notifications/notifications')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('notifications')}>
             <Ionicons name="notifications-outline" size={22} color={colors.dashboard.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -138,6 +148,8 @@ export default function TransactionsScreen() {
           style={[styles.addBtn, { backgroundColor: colors.deepGreen }]}
           onPress={() => router.push('/view/Transactions/add-transaction')}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={t('addTransaction')}
         >
           <Ionicons name="add-circle" size={20} color="#fff" />
           <Text style={styles.addBtnText}>{t('addTransaction')}</Text>
@@ -147,6 +159,9 @@ export default function TransactionsScreen() {
           {(['all', 'income', 'expense'] as const).map((f) => (
             <TouchableOpacity
               key={f}
+              accessibilityRole="button"
+              accessibilityState={{ selected: filter === f }}
+              accessibilityLabel={`${t('filter')}: ${f === 'all' ? t('all') : f === 'income' ? t('income') : t('expense')}`}
               style={[styles.filterBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, filter === f && { backgroundColor: colors.userVerified, borderColor: colors.deepGreen }]}
               onPress={() => setFilter(f)}
               activeOpacity={0.7}
@@ -173,7 +188,11 @@ export default function TransactionsScreen() {
           ))}
         </View>
 
-        {filtered.length === 0 ? (
+        {loading && transactions.length === 0 ? (
+          <LoadingState />
+        ) : error && transactions.length === 0 ? (
+          <ErrorState message={error} onRetry={reload} />
+        ) : filtered.length === 0 ? (
           <View style={styles.empty}>
             <Feather name="inbox" size={40} color={colors.dashboard.border} />
             <Text style={[styles.emptyText, { color: colors.dashboard.textSecondary }]}>{t('noTransactions')}</Text>
@@ -183,6 +202,9 @@ export default function TransactionsScreen() {
           filtered.map((tx) => (
             <TouchableOpacity
               key={tx.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${tx.title}, ${formatAmount(tx.amount)} taka, ${tx.date}`}
+              accessibilityHint={t('deleteTransaction')}
               style={[styles.txRow, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }]}
               onLongPress={() => {
                 Alert.alert(t('deleteTransaction'), `Remove "${tx.title}"?`, [
@@ -241,6 +263,9 @@ export default function TransactionsScreen() {
               style={styles.navItem}
               onPress={() => handleTabPress(tab.key)}
               activeOpacity={0.6}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={t(tab.labelKey as any)}
             >
               <View style={[styles.navIconWrap, isActive && { backgroundColor: colors.deepGreen }]}>
                 <Ionicons

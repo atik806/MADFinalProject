@@ -226,6 +226,9 @@ export default function AdminReportsScreen() {
                     </View>
                   </View>
                   <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${Platform.OS === 'web' ? 'Download' : 'Export'} CSV — ${report.title}`}
+                    accessibilityState={{ disabled: busy !== null, busy: busy === report.key }}
                     style={({ pressed }) => [styles.exportBtn, { borderColor: report.accent }, pressed && { opacity: 0.7 }]}
                     disabled={busy !== null}
                     onPress={() => runExport(report.key)}>

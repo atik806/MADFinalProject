@@ -136,7 +136,7 @@ export default function AuditLogsScreen() {
           onChangeText={setSearchInput}
         />
         {searchInput.length > 0 && (
-          <Pressable onPress={() => setSearchInput('')}>
+          <Pressable onPress={() => setSearchInput('')} accessibilityRole="button" accessibilityLabel="Clear search">
             <Ionicons name="close-circle" size={18} color={colors.dashboard.textSecondary} />
           </Pressable>
         )}
@@ -152,6 +152,9 @@ export default function AuditLogsScreen() {
             <Pressable
               key={filter}
               onPress={() => setActiveFilter(filter)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeFilter === filter }}
+              accessibilityLabel={String(filter)}
               style={[
                 styles.filterChip,
                 { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border },
@@ -177,7 +180,7 @@ export default function AuditLogsScreen() {
           <View style={styles.centerBox}>
             <Ionicons name="cloud-offline-outline" size={40} color={colors.dashboard.textSecondary} />
             <Text style={[styles.emptyTitle, { color: colors.dashboard.textPrimary }]}>{error}</Text>
-            <Pressable onPress={() => load('initial')} style={[styles.retryBtn, { backgroundColor: colors.greenLight }]}>
+            <Pressable onPress={() => load('initial')} accessibilityRole="button" accessibilityLabel="Retry" style={[styles.retryBtn, { backgroundColor: colors.greenLight }]}>
               <Text style={styles.retryText}>Retry</Text>
             </Pressable>
           </View>
@@ -222,7 +225,7 @@ export default function AuditLogsScreen() {
               );
             })}
             {page < totalPages && (
-              <Pressable onPress={loadMore} style={[styles.loadMore, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }]}>
+              <Pressable onPress={loadMore} accessibilityRole="button" accessibilityLabel="Load more" style={[styles.loadMore, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }]}>
                 {loadingMore ? <ActivityIndicator color={colors.greenLight} size="small" /> : <Text style={[styles.loadMoreText, { color: colors.greenLight }]}>Load more</Text>}
               </Pressable>
             )}

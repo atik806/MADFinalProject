@@ -34,6 +34,8 @@ export default function NotFoundScreen() {
         <Pressable
           style={({ pressed }) => StyleSheet.flatten([styles.homeBtn, pressed && styles.homeBtnPressed])}
           onPress={() => router.push('/')}
+          accessibilityRole="button"
+          accessibilityLabel={t('backToHomeBtn')}
         >
           <Text style={styles.homeBtnText}>{t('backToHomeBtn')}</Text>
         </Pressable>

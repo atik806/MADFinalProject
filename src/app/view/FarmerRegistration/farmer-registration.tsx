@@ -91,7 +91,7 @@ export default function FarmerRegistrationScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()}>
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t('back')}>
             <Ionicons name="chevron-back" size={22} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
           <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
@@ -234,6 +234,9 @@ export default function FarmerRegistrationScreen() {
           {[t('male'), t('female'), t('other')].map((item) => (
             <TouchableOpacity
               key={item}
+              accessibilityRole="button"
+              accessibilityState={{ selected: gender === item }}
+              accessibilityLabel={item}
               style={[styles.genderBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, gender === item && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
               onPress={() => setGender(item)}
             >
@@ -245,7 +248,7 @@ export default function FarmerRegistrationScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.deepGreen }]} onPress={handleNext}>
+        <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.deepGreen }]} onPress={handleNext} accessibilityRole="button" accessibilityLabel={t('nextStep')}>
           <Text style={styles.nextBtnText}>{t('nextStep')}</Text>
           <Ionicons name="chevron-forward" size={20} color="#fff" />
         </TouchableOpacity>

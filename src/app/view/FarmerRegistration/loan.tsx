@@ -85,7 +85,7 @@ export default function LoanScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()}>
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t('back')}>
             <Ionicons name="chevron-back" size={22} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
           <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
@@ -136,6 +136,9 @@ export default function LoanScreen() {
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('haveLoan')}</Text>
         <View style={styles.radioRow}>
           <TouchableOpacity
+            accessibilityRole="radio"
+            accessibilityState={{ checked: hasLoan === true }}
+            accessibilityLabel={t('yes')}
             style={[styles.radioBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, hasLoan === true && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
             onPress={() => { setHasLoan(true); setErrors((p) => ({ ...p, hasLoan: undefined })); }}
           >
@@ -150,6 +153,9 @@ export default function LoanScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            accessibilityRole="radio"
+            accessibilityState={{ checked: hasLoan === false }}
+            accessibilityLabel={t('no')}
             style={[styles.radioBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, hasLoan === false && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
             onPress={() => { setHasLoan(false); setErrors((p) => ({ ...p, hasLoan: undefined })); }}
           >
@@ -209,6 +215,9 @@ export default function LoanScreen() {
               {loanSources.map((source) => (
                 <TouchableOpacity
                   key={source}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: selectedSource === source }}
+                  accessibilityLabel={source}
                   style={[styles.sourceBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, selectedSource === source && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
                   onPress={() => { setSelectedSource(source); setErrors((p) => ({ ...p, loanSource: undefined })); }}
                 >
@@ -234,7 +243,7 @@ export default function LoanScreen() {
           </View>
         )}
 
-        <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.deepGreen }]} onPress={handleNext}>
+        <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.deepGreen }]} onPress={handleNext} accessibilityRole="button" accessibilityLabel={t('nextStep')}>
           <Text style={styles.nextBtnText}>{t('nextStep')}</Text>
           <Ionicons name="chevron-forward" size={20} color="#fff" />
         </TouchableOpacity>

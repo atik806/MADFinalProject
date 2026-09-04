@@ -105,7 +105,7 @@ export default function ApplyLoanScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={handleBackStep} hitSlop={8}>
+          <TouchableOpacity onPress={handleBackStep} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('back')}>
             <Ionicons name="arrow-back" size={24} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
           <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
@@ -191,6 +191,9 @@ export default function ApplyLoanScreen() {
             onPress={handleNext}
             disabled={!canContinue}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={step === 2 ? t('nextReview') : t('nextUploadDocs')}
+            accessibilityState={{ disabled: !canContinue }}
           >
             <Text style={styles.primaryBtnText}>
               {step === 2 ? t('nextReview') : t('nextUploadDocs')}
@@ -204,6 +207,9 @@ export default function ApplyLoanScreen() {
             onPress={handleSubmit}
             disabled={isSubmitting}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={t('submitApplication')}
+            accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
           >
             <Ionicons name="checkmark-circle" size={18} color="#fff" style={{ marginRight: 6 }} />
             <Text style={styles.primaryBtnText}>{t('submitApplication')}</Text>
@@ -243,6 +249,9 @@ function StepLoanDetails({
         {amountPresets.map((preset) => (
           <TouchableOpacity
             key={preset}
+            accessibilityRole="button"
+            accessibilityState={{ selected: amount === preset && !customAmount }}
+            accessibilityLabel={`৳${preset.toLocaleString('en-BD')}`}
             style={[styles.chip, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }, amount === preset && !customAmount && { borderColor: colors.deepGreen, backgroundColor: colors.userVerified }]}
             onPress={() => { setAmount(preset); setCustomAmount(''); }}
           >
@@ -266,6 +275,9 @@ function StepLoanDetails({
         {purposes.map((p) => (
           <TouchableOpacity
             key={p}
+            accessibilityRole="button"
+            accessibilityState={{ selected: purpose === p }}
+            accessibilityLabel={p}
             style={[styles.purposeBtn, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }, purpose === p && { borderColor: colors.deepGreen, backgroundColor: colors.userVerified }]}
             onPress={() => setPurpose(p)}
           >
@@ -279,6 +291,9 @@ function StepLoanDetails({
         {durationPresets.map((m) => (
           <TouchableOpacity
             key={m}
+            accessibilityRole="button"
+            accessibilityState={{ selected: durationMonths === m }}
+            accessibilityLabel={`${m} ${t('months')}`}
             style={[styles.chip, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }, durationMonths === m && { borderColor: colors.deepGreen, backgroundColor: colors.userVerified }]}
             onPress={() => setDurationMonths(m)}
           >
@@ -292,6 +307,9 @@ function StepLoanDetails({
       <Text style={[styles.sectionLabel, { color: colors.dashboard.textPrimary }]}>{t('installmentType')}</Text>
       <View style={styles.toggleRow}>
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityState={{ selected: installmentType === 'monthly' }}
+          accessibilityLabel={t('monthly')}
           style={[styles.toggleBtn, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }, installmentType === 'monthly' && { borderColor: colors.deepGreen, backgroundColor: colors.userVerified }]}
           onPress={() => setInstallmentType('monthly')}
         >
@@ -301,6 +319,9 @@ function StepLoanDetails({
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityState={{ selected: installmentType === 'seasonal' }}
+          accessibilityLabel={t('seasonal')}
           style={[styles.toggleBtn, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }, installmentType === 'seasonal' && { borderColor: colors.deepGreen, backgroundColor: colors.userVerified }]}
           onPress={() => setInstallmentType('seasonal')}
         >
@@ -354,6 +375,9 @@ function StepDocuments({
         return (
           <TouchableOpacity
             key={doc.key}
+            accessibilityRole="button"
+            accessibilityState={{ checked: uploaded }}
+            accessibilityLabel={`${t(doc.labelKey as any)}${uploaded ? ', uploaded' : ''}`}
             style={[styles.docCard, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }, uploaded && { borderColor: '#BBF7D0', backgroundColor: colors.userVerified }]}
             onPress={() => toggleDoc(doc.key)}
             activeOpacity={0.7}

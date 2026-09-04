@@ -38,12 +38,14 @@ const mapNotification = (n: any): Notification => ({
 type NotificationContextType = {
   notifications: Notification[];
   loading: boolean;
+  error: string | null;
   unreadCount: number;
   addNotification: (notif: Omit<Notification, 'id' | 'time' | 'read'>) => void;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   clearNotifications: () => Promise<void>;
   refresh: () => Promise<void>;
+  reload: () => Promise<void>;
 };
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
@@ -52,23 +54,26 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!isFarmerRole(user?.role)) return;
     try {
       setLoading(true);
+      setError(null);
       const res = await api.get<{ notifications: any[] }>('/api/farmer/notifications');
       setNotifications((res.notifications ?? []).map(mapNotification));
-    } catch (error) {
-      console.warn('Notification refresh failed:', error);
-      setNotifications([]);
+    } catch (e: any) {
+      console.warn('Notification refresh failed:', e);
+      setError(e?.message ?? 'Could not load notifications.');
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    refresh();
+    const timer = setTimeout(() => void refresh(), 0);
+    return () => clearTimeout(timer);
   }, [refresh]);
 
   const addNotification = useCallback((notif: Omit<Notification, 'id' | 'time' | 'read'>) => {
@@ -110,7 +115,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   return (
     <NotificationContext.Provider
-      value={{ notifications, loading, unreadCount, addNotification, markAsRead, markAllAsRead, clearNotifications, refresh }}
+      value={{ notifications, loading, error, unreadCount, addNotification, markAsRead, markAllAsRead, clearNotifications, refresh, reload: refresh }}
     >
       {children}
     </NotificationContext.Provider>

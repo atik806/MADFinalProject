@@ -1,5 +1,18 @@
 # SOFOL — Backend Conversion Guide (Demo Data → Supabase)
 
+> ⚠️ **SUPERSEDED — historical document. Do not follow this as the current plan.**
+>
+> This was the original plan to move the in-memory prototype *directly* to Supabase
+> from the app. The team instead built a dedicated **Express + TypeScript API** in
+> `server/`, and the app talks to Supabase only through that API
+> (`src/lib/api.ts` → `server/` → Supabase).
+>
+> For the current architecture see **`README.md`** and **`work.md`**. For the live
+> database schema see **`server/schema.sql`**. This file is kept only because it
+> documents the original demo-data design (Section 0 below) that the API replaced.
+
+---
+
 This guide converts the SOFOL agricultural loan app from **in-memory demo data** to a real **Supabase** backend, step by step. Every section has copy-paste-ready code and tells you exactly which file to edit.
 
 ---

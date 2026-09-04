@@ -97,7 +97,12 @@ export default function LoginScreen() {
         <View style={styles.root}>
           <View style={styles.langRow}>
             <View />
-            <TouchableOpacity onPress={toggleLang} hitSlop={8} style={[styles.langBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+            <TouchableOpacity
+              onPress={toggleLang}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={lang === 'en' ? 'Switch to Bangla' : 'Switch to English'}
+              style={[styles.langBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
               <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
             </TouchableOpacity>
           </View>
@@ -197,6 +202,8 @@ export default function LoginScreen() {
                 onPress={() => setShowPassword((p) => !p)}
                 style={styles.eyeButton}
                 hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? t('hidePassword') : t('showPassword')}
               >
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -209,7 +216,7 @@ export default function LoginScreen() {
               <Text style={[styles.errorText, { color: colors.dashboard.redDown }]}>{errors.password.message}</Text>
             ) : null}
 
-            <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotButton}>
+            <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotButton} accessibilityRole="button" accessibilityLabel={t('forgotPassword')}>
               <Text style={[styles.forgotText, { color: colors.deepGreen }]}>{t('forgotPassword')}</Text>
             </TouchableOpacity>
 
@@ -218,6 +225,9 @@ export default function LoginScreen() {
               onPress={handleSubmit(onSubmit)}
               disabled={isSubmitting}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={t('loginButton')}
+              accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
             >
               {isSubmitting ? (
                 <ActivityIndicator color="#fff" size="small" />
@@ -229,11 +239,18 @@ export default function LoginScreen() {
             <Pressable
               style={StyleSheet.flatten([styles.signupButton, { borderColor: colors.deepGreen }])}
               onPress={() => router.push('/view/FarmerRegistration/farmer-registration')}
+              accessibilityRole="button"
+              accessibilityLabel={t('signUp')}
             >
               <Text style={StyleSheet.flatten([styles.signupText, { color: colors.deepGreen }])}>{t('signUp')}</Text>
             </Pressable>
 
-            <Pressable style={styles.backButton} onPress={() => router.push('/')}>
+            <Pressable
+              style={styles.backButton}
+              onPress={() => router.push('/')}
+              accessibilityRole="button"
+              accessibilityLabel={t('backToHome')}
+            >
               <Ionicons
                 name="arrow-back"
                 size={16}

@@ -24,7 +24,12 @@ export default function LandingPage() {
 
       <View style={styles.langRow}>
         <View />
-        <TouchableOpacity onPress={toggleLang} hitSlop={8} style={styles.langBtn}>
+        <TouchableOpacity
+          onPress={toggleLang}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={lang === 'en' ? 'Switch to Bangla' : 'Switch to English'}
+          style={styles.langBtn}>
           <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
         </TouchableOpacity>
       </View>
@@ -80,12 +85,12 @@ export default function LandingPage() {
           </View>
         </View>
 
-        <Pressable style={styles.getStartedBtn} onPress={() => router.push('/view/login')}>
+        <Pressable style={styles.getStartedBtn} onPress={() => router.push('/view/login')} accessibilityRole="button" accessibilityLabel={t('getStarted')}>
           <Text style={styles.getStartedText}>{t('getStarted')}</Text>
           <Ionicons name="arrow-forward" size={18} color="#065F46" />
         </Pressable>
 
-        <Pressable style={styles.signInBtn} onPress={() => router.push('/view/login')}>
+        <Pressable style={styles.signInBtn} onPress={() => router.push('/view/login')} accessibilityRole="button" accessibilityLabel={t('alreadyRegistered')}>
           <Text style={styles.signInText}>{t('alreadyRegistered')}</Text>
           <Ionicons name="log-in-outline" size={16} color="#D1FAE5" />
         </Pressable>

@@ -12,10 +12,11 @@ import { router } from "expo-router";
 import { useNotifications } from "../../../contexts/NotificationContext";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
+import { ErrorState, LoadingState } from "../../../components/screen-status";
 
 export default function NotificationsScreen() {
   const colors = useColors();
-  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications } =
+  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications, loading, error, reload } =
     useNotifications();
   const { t } = useTranslation();
 
@@ -23,7 +24,11 @@ export default function NotificationsScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('back')}>
             <Ionicons name="arrow-back" size={24} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
           <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
@@ -37,19 +42,31 @@ export default function NotificationsScreen() {
       {notifications.length > 0 && (
         <View style={[styles.actions, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
           {unreadCount > 0 && (
-            <TouchableOpacity style={styles.actionBtn} onPress={markAllAsRead}>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={markAllAsRead}
+              accessibilityRole="button"
+              accessibilityLabel={t('markAllRead')}>
               <Ionicons name="checkmark-done" size={16} color={colors.deepGreen} />
               <Text style={[styles.actionText, { color: colors.deepGreen }]}>{t('markAllRead')}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.actionBtn} onPress={clearNotifications}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={clearNotifications}
+            accessibilityRole="button"
+            accessibilityLabel={t('clearAll')}>
             <Ionicons name="trash-outline" size={16} color={colors.dashboard.redDown} />
             <Text style={[styles.actionText, { color: colors.dashboard.redDown }]}>{t('clearAll')}</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {notifications.length === 0 ? (
+      {loading && notifications.length === 0 ? (
+        <LoadingState />
+      ) : error && notifications.length === 0 ? (
+        <ErrorState message={error} onRetry={reload} />
+      ) : notifications.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="notifications-off-outline" size={48} color={colors.dashboard.border} />
           <Text style={[styles.emptyTitle, { color: colors.dashboard.textSecondary }]}>{t('noNotifications')}</Text>
@@ -63,6 +80,8 @@ export default function NotificationsScreen() {
           {notifications.map((notif) => (
             <TouchableOpacity
               key={notif.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${notif.title}. ${notif.description}. ${notif.time}${notif.read ? '' : '. ' + t('markAllRead')}`}
               style={[styles.notifRow, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }, !notif.read && { backgroundColor: colors.userVerified }]}
               onPress={() => markAsRead(notif.id)}
               activeOpacity={0.7}

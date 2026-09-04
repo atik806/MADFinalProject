@@ -74,7 +74,7 @@ export default function AddTransactionScreen() {
       >
         <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
           <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('cancel')}>
             <Ionicons name="close" size={24} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
           <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
@@ -94,6 +94,9 @@ export default function AddTransactionScreen() {
             {categories.map((cat) => (
               <TouchableOpacity
                 key={cat}
+                accessibilityRole="button"
+                accessibilityState={{ selected: category === cat }}
+                accessibilityLabel={cat === 'Income' ? t('incomeType') : t('expenseType')}
                 style={[styles.toggleBtn, { borderColor: colors.dashboard.border, backgroundColor: colors.dashboard.cardBg }, category === cat && { borderColor: colors.deepGreen, backgroundColor: colors.userVerified }]}
                 onPress={() => setCategory(cat)}
               >
@@ -139,6 +142,9 @@ export default function AddTransactionScreen() {
             onPress={handleSave}
             disabled={!canSave || saving}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={t('saveTransaction')}
+            accessibilityState={{ disabled: !canSave || saving, busy: saving }}
           >
             <Ionicons name="checkmark-circle" size={20} color="#fff" style={{ marginRight: 6 }} />
             <Text style={styles.saveBtnText}>{t('saveTransaction')}</Text>

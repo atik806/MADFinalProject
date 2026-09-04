@@ -82,7 +82,12 @@ export default function ApprovalsScreen() {
     const canDecide = row.status === 'under_review';
     return (
       <View key={row.id} style={[styles.card, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
-        <Pressable onPress={() => setExpandedId(expanded ? null : row.id)} style={({ pressed }) => pressed && styles.pressed}>
+        <Pressable
+          onPress={() => setExpandedId(expanded ? null : row.id)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          accessibilityLabel={row.title ?? 'Loan application'}
+          style={({ pressed }) => pressed && styles.pressed}>
           <View style={styles.cardHeader}>
             <View style={styles.cardInfo}>
               <Text style={[styles.appTitle, { color: colors.dashboard.textPrimary }]}>{row.title ?? 'Loan application'}</Text>
@@ -169,6 +174,9 @@ export default function ApprovalsScreen() {
                     <Pressable
                       disabled={busy}
                       onPress={() => onStartReview(row)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Start review"
+                      accessibilityState={{ disabled: busy, busy }}
                       style={[styles.reviewBtn, { borderColor: colors.greenLight, opacity: busy ? 0.6 : 1 }]}>
                       {busy ? (
                         <ActivityIndicator size="small" color={colors.greenLight} />
@@ -204,6 +212,9 @@ export default function ApprovalsScreen() {
                         <Pressable
                           disabled={busy}
                           onPress={() => submit(row, 'approved')}
+                          accessibilityRole="button"
+                          accessibilityLabel="Approve"
+                          accessibilityState={{ disabled: busy, busy }}
                           style={[styles.actionBtn, { backgroundColor: colors.greenLight, opacity: busy ? 0.6 : 1 }]}>
                           <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
                           <Text style={styles.actionBtnText}>Approve</Text>
@@ -211,6 +222,9 @@ export default function ApprovalsScreen() {
                         <Pressable
                           disabled={busy}
                           onPress={() => submit(row, 'rejected')}
+                          accessibilityRole="button"
+                          accessibilityLabel="Reject"
+                          accessibilityState={{ disabled: busy, busy }}
                           style={[styles.actionBtn, { backgroundColor: colors.dashboard.redDown, opacity: busy ? 0.6 : 1 }]}>
                           <Ionicons name="close-circle" size={18} color="#FFFFFF" />
                           <Text style={styles.actionBtnText}>Reject</Text>
@@ -220,6 +234,8 @@ export default function ApprovalsScreen() {
                   ) : (
                     <Pressable
                       onPress={() => openForm(row)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Record decision"
                       style={[styles.reviewBtn, { borderColor: colors.greenLight }]}>
                       <Ionicons name="create-outline" size={16} color={colors.greenLight} />
                       <Text style={[styles.reviewBtnText, { color: colors.greenLight }]}>Record Decision</Text>

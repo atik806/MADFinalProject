@@ -185,6 +185,44 @@ export async function resetFieldOfficerPassword(
   );
 }
 
+// Bank officers. Provisioned by an admin like field officers, but with a bank
+// branch posting instead of a supervised district. The backend only exposes
+// create + status (no edit / reset-password endpoint yet).
+export type CreateBankOfficerPayload = {
+  nameEn: string;
+  nameBn?: string;
+  nid: string;
+  phone: string;
+  password: string;
+  email?: string;
+  employeeId?: string;
+  designation?: string;
+  bankName?: string;
+  branchName?: string;
+  branchCode?: string;
+  joiningDate?: string;
+  profilePhotoUrl?: string;
+};
+
+export async function createBankOfficer(
+  payload: CreateBankOfficerPayload,
+): Promise<{ success: boolean; message: string; data: unknown }> {
+  return api.post<{ success: boolean; message: string; data: unknown }>(
+    `/api/admin/bank-officers`,
+    payload,
+  );
+}
+
+export async function setBankOfficerStatus(
+  id: string,
+  status: FieldOfficerStatus,
+): Promise<{ success: boolean; message: string; data: AdminUserItem }> {
+  return api.patch<{ success: boolean; message: string; data: AdminUserItem }>(
+    `/api/admin/bank-officers/${id}/status`,
+    { status },
+  );
+}
+
 // Dashboard
 export async function fetchDashboardStats(): Promise<{ success: boolean; data: DashboardStats }> {
   return api.get<{ success: boolean; data: DashboardStats }>(`/api/admin/dashboard/stats`);

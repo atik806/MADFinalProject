@@ -19,6 +19,7 @@ import { useProfile } from "../../../contexts/ProfileContext";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from '../../../features/officials/shared/constants/theme';
+import { ErrorState, LoadingState } from "../../../components/screen-status";
 
 type TabName = "home" | "transactions" | "loans" | "profile";
 
@@ -37,13 +38,28 @@ function getInitials(name: string): string {
 
 export default function DashboardScreen() {
   const colors = useColors();
-  const { activeLoans } = useLoans();
-  const { notifications, unreadCount } = useNotifications();
-  const { transactions } = useTransactions();
-  const { profile } = useProfile();
+  const { activeLoans, loading: loansLoading, error: loansError, reload: reloadLoans } = useLoans();
+  const { notifications, unreadCount, loading: notifLoading, error: notifError, reload: reloadNotif } = useNotifications();
+  const { transactions, loading: txLoading, error: txError, reload: reloadTx } = useTransactions();
+  const { profile, loading: profileLoading, error: profileError, reload: reloadProfile } = useProfile();
   const { user } = useAuth();
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>("home");
+
+  const anyLoading = loansLoading || notifLoading || txLoading || profileLoading;
+  const anyError = loansError || txError || profileError || notifError;
+  const dashboardEmpty =
+    activeLoans.length === 0 &&
+    transactions.length === 0 &&
+    notifications.length === 0 &&
+    !profile.nameEn &&
+    !profile.farmerId;
+  const reloadAll = () => {
+    reloadLoans();
+    reloadTx();
+    reloadProfile();
+    reloadNotif();
+  };
 
   const tabs: TabDef[] = [
     { key: "home", activeIcon: "home", inactiveIcon: "home-outline", labelKey: "home" },
@@ -104,10 +120,19 @@ export default function DashboardScreen() {
         <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('dashboard')}</Text>
 
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={toggleLang} hitSlop={8} style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
+          <TouchableOpacity
+            onPress={toggleLang}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={lang === 'en' ? 'Switch to Bangla' : 'Switch to English'}
+            style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
             <Text style={[styles.langText, { color: colors.userVerifiedText }]}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/view/Notifications/notifications')} hitSlop={8}>
+          <TouchableOpacity
+            onPress={() => router.push('/view/Notifications/notifications')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={unreadCount > 0 ? `${t('notifications')}, ${unreadCount}` : t('notifications')}>
             <Ionicons name="notifications-outline" size={22} color={colors.dashboard.textSecondary} />
             {unreadCount > 0 && (
               <View style={[styles.badgeDot, { backgroundColor: colors.dashboard.redDown }]}>
@@ -115,7 +140,11 @@ export default function DashboardScreen() {
               </View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/view/Settings/farmer-settings')} hitSlop={8}>
+          <TouchableOpacity
+            onPress={() => router.push('/view/Settings/farmer-settings')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('settings')}>
             <Ionicons name="settings-outline" size={22} color={colors.dashboard.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -125,6 +154,12 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        {anyLoading && dashboardEmpty ? (
+          <LoadingState />
+        ) : anyError && dashboardEmpty ? (
+          <ErrorState message={anyError} onRetry={reloadAll} />
+        ) : (
+        <>
         <View style={[styles.heroCard, { backgroundColor: colors.deepGreen }]}>
           <View style={styles.heroTop}>
             <View style={styles.heroInfo}>
@@ -145,7 +180,10 @@ export default function DashboardScreen() {
           <View style={[styles.scoreCard, { backgroundColor: colors.scoreCardBg }]}>
             <View style={styles.scoreHeader}>
               <Text style={[styles.scoreLabel, { color: colors.scoreCardText }]}>{t('creditScore')}</Text>
-              <TouchableOpacity onPress={() => router.push('/view/Profile/profile')}>
+              <TouchableOpacity
+                onPress={() => router.push('/view/Profile/profile')}
+                accessibilityRole="button"
+                accessibilityLabel={`${t('creditScore')} ${t('details')}`}>
                 <Text style={[styles.scoreDetails, { color: colors.scoreCardValue }]}>{t('details')} →</Text>
               </TouchableOpacity>
             </View>
@@ -205,7 +243,10 @@ export default function DashboardScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('activeLoan')}</Text>
-          <TouchableOpacity onPress={() => router.push('/view/Loans/loans')}>
+          <TouchableOpacity
+            onPress={() => router.push('/view/Loans/loans')}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('viewAll')} — ${t('myLoans')}`}>
             <Text style={[styles.viewAll, { color: colors.deepGreen }]}>{t('viewAll')}</Text>
           </TouchableOpacity>
         </View>
@@ -277,7 +318,10 @@ export default function DashboardScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('recentTransactions')}</Text>
-          <TouchableOpacity onPress={() => router.push('/view/Transactions/transactions')}>
+          <TouchableOpacity
+            onPress={() => router.push('/view/Transactions/transactions')}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('seeAll')} — ${t('transactions')}`}>
             <Text style={[styles.viewAll, { color: colors.deepGreen }]}>{t('seeAll')}</Text>
           </TouchableOpacity>
         </View>
@@ -301,7 +345,10 @@ export default function DashboardScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('notifications')}</Text>
-          <TouchableOpacity onPress={() => router.push('/view/Notifications/notifications')}>
+          <TouchableOpacity
+            onPress={() => router.push('/view/Notifications/notifications')}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('viewAll')} — ${t('notifications')}`}>
             <Text style={[styles.viewAll, { color: colors.deepGreen }]}>{t('viewAll')}</Text>
           </TouchableOpacity>
         </View>
@@ -323,6 +370,8 @@ export default function DashboardScreen() {
             <Text style={[styles.emptyLoanText, { color: colors.dashboard.textSecondary }]}>{t('noNotifications')}</Text>
           </View>
         )}
+        </>
+        )}
       </ScrollView>
 
       <View style={[styles.bottomNav, { backgroundColor: colors.dashboard.cardBg, borderTopColor: colors.dashboard.border, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }]}>
@@ -334,6 +383,9 @@ export default function DashboardScreen() {
               style={styles.navItem}
               onPress={() => handleTabPress(tab.key)}
               activeOpacity={0.6}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={t(tab.labelKey as any)}
             >
               <View style={[styles.navIconWrap, isActive && { backgroundColor: colors.deepGreen }]}>
                 <Ionicons
@@ -356,7 +408,11 @@ export default function DashboardScreen() {
 function ActionButton({ icon, label, color, onPress }: { icon: string; label: string; color: string; onPress?: () => void }) {
   const c = useColors();
   return (
-    <TouchableOpacity style={styles.actionItem} onPress={onPress}>
+    <TouchableOpacity
+      style={styles.actionItem}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}>
       <View style={[styles.actionIcon, { backgroundColor: `${color}12` }]}>
         <Feather name={icon as any} size={22} color={color} />
       </View>

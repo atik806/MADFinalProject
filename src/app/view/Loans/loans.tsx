@@ -12,6 +12,7 @@ import { Ionicons, Feather } from '@expo/vector-icons';
 import { useLoans, type LoanApplication, type ActiveLoan } from '../../../contexts/LoanContext';
 import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
+import { ErrorState, LoadingState } from '../../../components/screen-status';
 import { statusConfig } from '@/data';
 
 type TabName = 'home' | 'transactions' | 'loans' | 'profile';
@@ -26,7 +27,7 @@ type TabDef = {
 
 export default function LoansScreen() {
   const colors = useColors();
-  const { applications, activeLoans } = useLoans();
+  const { applications, activeLoans, loading, error, reload } = useLoans();
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('loans');
   const [loansTab, setLoansTab] = useState<LoansTab>('active');
@@ -55,6 +56,8 @@ export default function LoansScreen() {
     }
   };
 
+  const noData = applications.length === 0 && activeLoans.length === 0;
+
   const totalActiveAmount = activeLoans.reduce((sum, l) => sum + l.amount, 0);
   const totalPendingAmount = applications
     .filter((a) => a.status === 'pending' || a.status === 'under_review')
@@ -70,10 +73,19 @@ export default function LoansScreen() {
         </View>
         <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('myLoans')}</Text>
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={toggleLang} hitSlop={8} style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
+          <TouchableOpacity
+            onPress={toggleLang}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={lang === 'en' ? 'Switch to Bangla' : 'Switch to English'}
+            style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
             <Text style={[styles.langText, { color: colors.userVerifiedText }]}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/view/Notifications/notifications')} hitSlop={8}>
+          <TouchableOpacity
+            onPress={() => router.push('/view/Notifications/notifications')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('notifications')}>
             <Ionicons name="notifications-outline" size={22} color={colors.dashboard.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -83,6 +95,12 @@ export default function LoansScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        {noData && loading ? (
+          <LoadingState />
+        ) : noData && error ? (
+          <ErrorState message={error} onRetry={reload} />
+        ) : (
+        <>
         <View style={styles.summaryRow}>
           <View style={[styles.summaryCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
             <Feather name="briefcase" size={18} color={colors.dashboard.greenUp} />
@@ -100,6 +118,8 @@ export default function LoansScreen() {
           style={[styles.applyBtn, { backgroundColor: colors.deepGreen }]}
           onPress={() => router.push('/view/Loans/apply-loan')}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={t('applyForNewLoan')}
         >
           <Ionicons name="add-circle" size={20} color="#fff" />
           <Text style={styles.applyBtnText}>{t('applyForNewLoan')}</Text>
@@ -107,6 +127,9 @@ export default function LoansScreen() {
 
         <View style={styles.tabRow}>
           <TouchableOpacity
+            accessibilityRole="tab"
+            accessibilityState={{ selected: loansTab === 'active' }}
+            accessibilityLabel={t('myLoansTab')}
             style={[styles.tabBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, loansTab === 'active' && { backgroundColor: colors.deepGreen, borderColor: colors.deepGreen }]}
             onPress={() => setLoansTab('active')}
           >
@@ -115,6 +138,9 @@ export default function LoansScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
+            accessibilityRole="tab"
+            accessibilityState={{ selected: loansTab === 'applications' }}
+            accessibilityLabel={t('myApplications')}
             style={[styles.tabBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, loansTab === 'applications' && { backgroundColor: colors.deepGreen, borderColor: colors.deepGreen }]}
             onPress={() => setLoansTab('applications')}
           >
@@ -149,6 +175,8 @@ export default function LoansScreen() {
             ))
           )
         )}
+        </>
+        )}
       </ScrollView>
 
       <View style={[styles.bottomNav, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }]}>
@@ -160,6 +188,9 @@ export default function LoansScreen() {
               style={styles.navItem}
               onPress={() => handleTabPress(tab.key)}
               activeOpacity={0.6}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={t(tab.labelKey as any)}
             >
               <View style={[styles.navIconWrap, isActive && { backgroundColor: colors.deepGreen }]}>
                 <Ionicons
@@ -248,6 +279,8 @@ function ApplicationCard({ app, t, colors }: { app: LoanApplication; t: (key: an
     <TouchableOpacity
       style={[styles.appCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 }]}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`${app.title}, ৳${app.amount.toLocaleString('en-BD')}, ${t(status.labelKey as any)}`}
       onPress={() => router.push(`/view/Loans/application-detail?id=${app.id}`)}
     >
       <View style={styles.appTop}>

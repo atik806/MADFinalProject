@@ -26,7 +26,7 @@ export default function ApplicationDetailScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
         <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
           <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('back')}>
               <Ionicons name="arrow-back" size={24} color={colors.dashboard.textPrimary} />
             </TouchableOpacity>
             <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
@@ -51,7 +51,7 @@ export default function ApplicationDetailScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel={t('back')}>
             <Ionicons name="arrow-back" size={24} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
           <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>

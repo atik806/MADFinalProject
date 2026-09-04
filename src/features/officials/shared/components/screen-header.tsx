@@ -27,7 +27,7 @@ export function ScreenHeader({ title, subtitle, actions }: ScreenHeaderProps) {
       {actions && actions.length > 0 && (
         <View style={styles.actions}>
           {actions.map((action, i) => (
-            <Pressable key={i} onPress={action.onPress} accessibilityLabel={action.accessibilityLabel} style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}>
+            <Pressable key={i} onPress={action.onPress} accessibilityRole="button" accessibilityLabel={action.accessibilityLabel} style={({ pressed }) => [styles.actionBtn, pressed && styles.actionPressed]}>
               <Ionicons name={action.icon} size={20} color={colors.dashboard.textPrimary} />
             </Pressable>
           ))}

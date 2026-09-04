@@ -49,7 +49,7 @@ export default function LoanManagementScreen() {
             onChangeText={setSearch}
           />
           {search.length > 0 && (
-            <Pressable onPress={() => setSearch('')}>
+            <Pressable onPress={() => setSearch('')} accessibilityRole="button" accessibilityLabel="Clear search">
               <Ionicons name="close-circle" size={18} color={colors.dashboard.textSecondary} />
             </Pressable>
           )}
@@ -68,6 +68,9 @@ export default function LoanManagementScreen() {
               <Pressable
                 key={f.key}
                 onPress={() => { setActiveFilter(f.key); setExpandedId(null); }}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={f.label}
                 style={[styles.filterBtn, active && { backgroundColor: colors.greenLight + '15' }]}>
                 <Text style={[styles.filterLabel, { color: active ? colors.greenLight : colors.dashboard.textSecondary }, active && { fontWeight: '700' }]}>
                   {f.label}
@@ -99,7 +102,12 @@ export default function LoanManagementScreen() {
             const expanded = expandedId === row.id;
             return (
               <View key={row.id} style={[styles.card, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
-                <Pressable onPress={() => setExpandedId(expanded ? null : row.id)} style={({ pressed }) => pressed && styles.pressed}>
+                <Pressable
+                  onPress={() => setExpandedId(expanded ? null : row.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded }}
+                  accessibilityLabel={`${row.title ?? 'Loan application'}, ${farmerName(row)}`}
+                  style={({ pressed }) => pressed && styles.pressed}>
                   <View style={styles.cardHeader}>
                     <View style={styles.cardInfo}>
                       <Text style={[styles.cardTitle, { color: colors.dashboard.textPrimary }]}>{row.title ?? 'Loan application'}</Text>

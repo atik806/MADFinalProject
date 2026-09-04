@@ -115,6 +115,8 @@ type LoanContextType = {
   applications: LoanApplication[];
   activeLoans: ActiveLoan[];
   loading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
   addApplication: (app: {
     title: string;
     amount: number;
@@ -133,31 +135,30 @@ export function LoanProvider({ children }: { children: ReactNode }) {
   const [applications, setApplications] = useState<LoanApplication[]>([]);
   const [activeLoans, setActiveLoans] = useState<ActiveLoan[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    if (!isFarmerRole(user?.role)) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await api.get<{ data: any[] }>('/api/farmer/loans');
+      const apps = (res.data ?? []).map(mapLoanApplication);
+      setApplications(apps);
+      setActiveLoans(apps.filter((a) => a.status === 'approved').map(mapActiveLoan));
+    } catch (e: any) {
+      console.warn('Loan refresh failed:', e);
+      setError(e?.message ?? 'Could not load loans.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!isFarmer) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoading(true);
-        const res = await api.get<{ data: any[] }>('/api/farmer/loans');
-        if (cancelled) return;
-        const apps = (res.data ?? []).map(mapLoanApplication);
-        setApplications(apps);
-        setActiveLoans(
-          apps.filter((a) => a.status === 'approved').map(mapActiveLoan),
-        );
-      } catch (error) {
-        console.warn('Loan refresh failed:', error);
-        if (!cancelled) setApplications([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isFarmer, user]);
+    const timer = setTimeout(() => void reload(), 0);
+    return () => clearTimeout(timer);
+  }, [isFarmer, reload]);
 
   const addApplication = useCallback(
     async (app: { title: string; amount: number; duration: string; purpose: string; installmentType: 'monthly' | 'seasonal' }) => {
@@ -175,18 +176,13 @@ export function LoanProvider({ children }: { children: ReactNode }) {
         installment_type: app.installmentType,
         emi,
       });
-      const res = await api.get<{ data: any[] }>('/api/farmer/loans');
-      const apps = (res.data ?? []).map(mapLoanApplication);
-      setApplications(apps);
-      setActiveLoans(
-        apps.filter((a) => a.status === 'approved').map(mapActiveLoan),
-      );
+      await reload();
     },
-    [],
+    [reload],
   );
 
   return (
-    <LoanContext.Provider value={{ applications, activeLoans, loading, addApplication }}>
+    <LoanContext.Provider value={{ applications, activeLoans, loading, error, reload, addApplication }}>
       {children}
     </LoanContext.Provider>
   );

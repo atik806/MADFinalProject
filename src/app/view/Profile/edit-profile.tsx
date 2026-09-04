@@ -132,7 +132,7 @@ export default function EditProfileScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.border }]} onPress={() => router.back()}>
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.border }]} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t('back')}>
             <Ionicons name="chevron-back" size={22} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
           <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
@@ -212,6 +212,9 @@ export default function EditProfileScreen() {
           {GENDERS.map((item) => (
             <TouchableOpacity
               key={item}
+              accessibilityRole="button"
+              accessibilityState={{ selected: gender === item }}
+              accessibilityLabel={item}
               style={[styles.genderBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, gender === item && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
               onPress={() => setGender(item)}
             >
@@ -269,6 +272,9 @@ export default function EditProfileScreen() {
           {CROPS.map((crop) => (
             <TouchableOpacity
               key={crop}
+              accessibilityRole="button"
+              accessibilityState={{ selected: selectedCrops.includes(crop) }}
+              accessibilityLabel={crop}
               style={[styles.chip, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, selectedCrops.includes(crop) && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
               onPress={() => toggleCrop(crop)}
             >
@@ -312,6 +318,9 @@ export default function EditProfileScreen() {
           {INCOME_SOURCES.map((source) => (
             <TouchableOpacity
               key={source}
+              accessibilityRole="button"
+              accessibilityState={{ selected: selectedSources.includes(source) }}
+              accessibilityLabel={source}
               style={[styles.chip, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, selectedSources.includes(source) && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
               onPress={() => toggleSource(source)}
             >
@@ -365,6 +374,9 @@ export default function EditProfileScreen() {
 
         <View style={styles.radioRow}>
           <TouchableOpacity
+            accessibilityRole="radio"
+            accessibilityState={{ checked: hasLoan === true }}
+            accessibilityLabel={t('yes')}
             style={[styles.radioBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, hasLoan === true && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
             onPress={() => setHasLoan(true)}
           >
@@ -378,6 +390,9 @@ export default function EditProfileScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
+            accessibilityRole="radio"
+            accessibilityState={{ checked: hasLoan === false }}
+            accessibilityLabel={t('no')}
             style={[styles.radioBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, hasLoan === false && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
             onPress={() => setHasLoan(false)}
           >
@@ -433,7 +448,14 @@ export default function EditProfileScreen() {
           </>
         )}
 
-        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.deepGreen }, isSaving && { opacity: 0.5 }]} onPress={handleSave} disabled={isSaving} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={[styles.saveBtn, { backgroundColor: colors.deepGreen }, isSaving && { opacity: 0.5 }]}
+          onPress={handleSave}
+          disabled={isSaving}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={t('saveChanges')}
+          accessibilityState={{ disabled: isSaving, busy: isSaving }}>
           <Ionicons name="checkmark-circle" size={22} color="#fff" />
           <Text style={styles.saveBtnText}>{isSaving ? t('saving') : t('saveChanges')}</Text>
         </TouchableOpacity>
@@ -442,6 +464,8 @@ export default function EditProfileScreen() {
           style={[styles.cancelBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}
           onPress={() => router.back()}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={t('cancel')}
         >
           <Text style={[styles.cancelBtnText, { color: colors.dashboard.textSecondary }]}>{t('cancel')}</Text>
         </TouchableOpacity>

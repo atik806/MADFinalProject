@@ -13,6 +13,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useProfile } from '../../../contexts/ProfileContext';
 import { useColors } from '../../../features/officials/shared/constants/theme';
 import { useTranslation } from '../../../hooks/use-translation';
+import { ErrorState, LoadingState } from '../../../components/screen-status';
 
 type TabName = 'home' | 'transactions' | 'loans' | 'profile';
 
@@ -26,9 +27,11 @@ type TabDef = {
 export default function ProfileScreen() {
   const colors = useColors();
   const { logout } = useAuth();
-  const { profile } = useProfile();
+  const { profile, loading, error, reload } = useProfile();
   const { t, lang, toggleLang } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('profile');
+
+  const profileEmpty = !profile.nameEn && !profile.nameBn && !profile.farmerId;
 
   const tabs: TabDef[] = [
     { key: 'home', activeIcon: 'home', inactiveIcon: 'home-outline', labelKey: 'home' },
@@ -69,10 +72,19 @@ export default function ProfileScreen() {
         </View>
         <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('myProfileTitle')}</Text>
         <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={toggleLang} hitSlop={8} style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
+          <TouchableOpacity
+            onPress={toggleLang}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={lang === 'en' ? 'Switch to Bangla' : 'Switch to English'}
+            style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
             <Text style={[styles.langText, { color: colors.userVerifiedText }]}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/view/Notifications/notifications')} hitSlop={8}>
+          <TouchableOpacity
+            onPress={() => router.push('/view/Notifications/notifications')}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('notifications')}>
             <Ionicons name="notifications-outline" size={22} color={colors.dashboard.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -82,6 +94,12 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        {loading && profileEmpty ? (
+          <LoadingState />
+        ) : error && profileEmpty ? (
+          <ErrorState message={error} onRetry={reload} />
+        ) : (
+        <>
         <View style={[styles.heroCard, { backgroundColor: colors.deepGreen }]}>
           <View style={styles.heroTop}>
             <View style={styles.heroInfo}>
@@ -114,7 +132,11 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <TouchableOpacity style={[styles.editBtn, { backgroundColor: colors.deepGreen }]} onPress={() => router.push('/view/Profile/edit-profile')}>
+        <TouchableOpacity
+          style={[styles.editBtn, { backgroundColor: colors.deepGreen }]}
+          onPress={() => router.push('/view/Profile/edit-profile')}
+          accessibilityRole="button"
+          accessibilityLabel={t('editProfile')}>
           <Ionicons name="pencil" size={16} color="#fff" />
           <Text style={styles.editBtnText}>{t('editProfile')}</Text>
         </TouchableOpacity>
@@ -149,10 +171,17 @@ export default function ProfileScreen() {
           <DocRow label={t('farmPhotographs')} uploaded={false} last colors={colors} />
         </View>
 
-        <TouchableOpacity style={[styles.signOutBtn, { backgroundColor: colors.userRejected, borderColor: '#FECACA' }]} onPress={handleSignOut} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={[styles.signOutBtn, { backgroundColor: colors.userRejected, borderColor: '#FECACA' }]}
+          onPress={handleSignOut}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={t('signOut')}>
           <Ionicons name="log-out-outline" size={20} color={colors.dashboard.redDown} />
           <Text style={[styles.signOutText, { color: colors.dashboard.redDown }]}>{t('signOut')}</Text>
         </TouchableOpacity>
+        </>
+        )}
       </ScrollView>
 
       <View style={[styles.bottomNav, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 }]}>
@@ -164,6 +193,9 @@ export default function ProfileScreen() {
               style={styles.navItem}
               onPress={() => handleTabPress(tab.key)}
               activeOpacity={0.6}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={t(tab.labelKey as any)}
             >
               <View style={[styles.navIconWrap, isActive && { backgroundColor: colors.deepGreen }]}>
                 <Ionicons

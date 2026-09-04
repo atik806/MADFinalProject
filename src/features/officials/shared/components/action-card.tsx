@@ -16,6 +16,8 @@ export function ActionCard({ icon, iconBg, title, onPress }: ActionCardProps) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
       style={({ pressed }) => [
         styles.card,
         { backgroundColor: colors.dashboard.cardBg },

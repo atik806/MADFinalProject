@@ -2,13 +2,15 @@
 
 ## Overview
 
-A comprehensive frontend-only React Native (Expo) prototype for a Bangladeshi agricultural fintech platform. It helps farmers build digital credit histories, manage transactions, apply for loans, and track applications. Includes role-based dashboards for **Admin**, **Bank Officer**, and **Field Officer** roles.
+A React Native (Expo) app with an **Express + Supabase** backend for a Bangladeshi agricultural fintech scenario. It helps farmers build digital credit histories, manage transactions, apply for loans, and track applications. Includes role-based dashboards for **Admin**, **Bank Officer**, and **Field Officer** roles.
 
 - **App Name:** SOFOL (সফল)
 - **Package Slug:** sofolar_app (finalproject)
 - **Framework:** Expo Router (file-based routing) + React Native
-- **Language:** TypeScript
-- **Status:** Frontend prototype — all data is in-memory, no backend API
+- **Language:** TypeScript (app and server)
+- **Backend:** Express 5 REST API in `server/`, backed by Supabase PostgreSQL / Auth / Storage
+- **Data flow:** app → `src/lib/api.ts` → Express API → Supabase (the app never calls Supabase directly)
+- **Status:** Backend wired for all four roles. Farmer, admin, field-officer and bank-officer screens call the live API.
 
 ---
 
@@ -26,10 +28,13 @@ A comprehensive frontend-only React Native (Expo) prototype for a Bangladeshi ag
 | **Notifications** | expo-notifications ~56.0.19 |
 | **Styling** | StyleSheet, expo-linear-gradient ~56.0.4, global CSS (web) |
 | **Web Support** | react-native-web ~0.21.0, react-dom 19.2.3 |
+| **HTTP client** | `fetch` wrapper in `src/lib/api.ts` (normalized `ApiError`, bearer token, global 401 handler) |
+| **Backend** | Express 5, TypeScript, `@supabase/supabase-js` (service-role), helmet, cors, express-rate-limit, jsonwebtoken, bcryptjs, multer |
+| **Database** | Supabase PostgreSQL (accessed via PostgREST from the server); schema in `server/schema.sql` |
 | **Linting** | ESLint 9 with eslint-config-expo |
 | **Package Manager** | npm |
 
-Full dependency list: `package.json:4-39`
+Full dependency list: app `package.json`, server `server/package.json`
 
 ---
 
@@ -89,7 +94,18 @@ FinalProject/
 │   │   ├── use-color-scheme.web.ts
 │   │   ├── use-theme.ts
 │   │   └── use-translation.ts
+│   ├── lib/
+│   │   ├── api.ts          # Central API client (fetch wrapper, ApiError, 401 handler)
+│   │   └── api-types.ts    # Shared response/row types for the API
 │   └── global.css          # Web CSS custom properties
+├── server/                 # Express 5 + TypeScript REST API
+│   ├── src/app.ts          # helmet, CORS allow-list, json limit, route mounts, error handler
+│   ├── src/server.ts       # HTTP listener (PORT, default 3000)
+│   ├── src/modules/        # farmer / admin / fieldOfficer / bankOfficer (routes + controller + service)
+│   ├── src/middleware/     # auth, role guards, security (helmet/cors/rate-limit)
+│   ├── src/config/supabase.ts   # Supabase service-role client (verifies key role)
+│   ├── src/lib/postgrest.ts     # Query helpers over Supabase PostgREST
+│   └── schema.sql          # Consolidated database schema (+ per-module *.sql)
 ├── app.json                # Expo config
 ├── tsconfig.json           # TS config (strict, @/ alias)
 ├── package.json
@@ -147,28 +163,36 @@ FinalProject/
 - **Farmer:** Custom bottom tab bar (Home, Transactions, Loans, Profile) — rendered manually in each screen, duplicated JSX
 - **Admin / Bank Officer / Field Officer:** expo-router `<Tabs>` via shared `RoleTabLayout` component
 
-### Provider Chain (Root Layout)
+### Provider Chain (Root Layout — `src/app/_layout.tsx`)
 
 ```
-ThemeProvider → LanguageProvider → NotificationProvider → AuthProvider
-  → TransactionProvider → LoanProvider → ProfileProvider → ThemeProvider (expo-router) → Slot
+AppThemeProvider → LanguageProvider → AuthProvider → NotificationProvider
+  → TransactionProvider → LoanProvider → ProfileProvider → ThemeProvider (expo-router) → AuthGate → Slot
 ```
+
+`AuthGate` holds the app on a splash while `AuthContext.isBootstrapping` is true.
+`RegistrationProvider` is **not** in this chain — it wraps only the farmer-registration
+stack (`src/app/view/FarmerRegistration/_layout.tsx`).
 
 ---
 
-## State Management (7 React Contexts)
+## State Management (8 React Contexts)
 
 | Context | File | Data |
 |---|---|---|
 | `ThemeContext` | `src/contexts/ThemeContext.tsx` | light/dark toggle, persists to localStorage (web) |
 | `LanguageContext` | `src/contexts/LanguageContext.tsx` | en/bn toggle |
-| `NotificationContext` | `src/contexts/NotificationContext.tsx` | Notifications[], CRUD + markRead |
-| `AuthContext` | `src/contexts/AuthContext.tsx` | user, isLoading, login/logout (useReducer) |
-| `TransactionContext` | `src/contexts/TransactionContext.tsx` | Transaction[], add/remove |
-| `LoanContext` | `src/contexts/LoanContext.tsx` | LoanApplication[], ActiveLoan[], CRUD |
-| `ProfileContext` | `src/contexts/ProfileContext.tsx` | FarmerProfile, updateProfile() |
+| `AuthContext` | `src/contexts/AuthContext.tsx` | user, isBootstrapping, API login/logout, bearer token |
+| `NotificationContext` | `src/contexts/NotificationContext.tsx` | Notification[], `loading`, `error`, `reload`, CRUD + markRead (farmer, API-backed) |
+| `TransactionContext` | `src/contexts/TransactionContext.tsx` | Transaction[], `loading`, `error`, `reload`, add/remove (farmer, API-backed) |
+| `LoanContext` | `src/contexts/LoanContext.tsx` | LoanApplication[], ActiveLoan[], `loading`, `error`, `reload`, addApplication (farmer, API-backed) |
+| `ProfileContext` | `src/contexts/ProfileContext.tsx` | FarmerProfile, `loading`, `error`, `reload`, updateProfile (farmer, API-backed) |
+| `RegistrationContext` | `src/contexts/RegistrationContext.tsx` | farmer-registration draft (`data`, `patch`, `reset`) — scoped to the registration stack |
 
-All data is **in-memory only** — no persistence (except theme on web via localStorage).
+Farmer domain data (transactions, loans, profile, notifications) is fetched from the
+Express API on login and refreshed on demand. Theme persists on web via localStorage.
+The auth bearer token lives in `src/lib/api.ts` module state and is **not** persisted
+to device storage in this milestone, so closing the app ends the session.
 
 ---
 
@@ -283,17 +307,45 @@ All data is **in-memory only** — no persistence (except theme on web via local
 
 ## Authentication Flow
 
-1. User enters credentials on login screen
-2. AuthContext compares against 4 hardcoded DEMO_USERS
-3. On match → dispatch LOGIN, router.replace() to role-specific route:
+1. User enters credentials on the login screen
+2. `AuthContext.login()` POSTs to the API (`/api/farmer/auth/login` or `/api/admin/auth/login` etc.)
+3. On success → store the returned bearer token via `setAuthToken()` in `src/lib/api.ts`,
+   set the user, `router.replace()` to the role-specific route:
    - farmer → `/view/FarmerDashboard/farmer-dashboard`
    - admin → `/officials/(admin)/`
    - bank-officer → `/officials/(bank-officer)/`
    - field-officer → `/officials/(field-officer)/`
-4. On mismatch → "Invalid credentials" alert
-5. Logout → dispatch LOGOUT → router.replace('/')
+4. On failure → `ApiError` surfaces a user-facing message ("Invalid credentials")
+5. Any authenticated request returning 401 → the global handler in `src/lib/api.ts`
+   clears the token and the app returns to the logged-out state
+6. Logout → clear token + user → `router.replace('/')`
 
-> **Note:** No route guards — all routes are technically accessible by URL. Navigation is controlled by the login flow and UI only.
+> **Note:** The server enforces access per role in middleware. The app has no
+> client-side route guards — client navigation is driven by the login flow and UI.
+
+---
+
+## Backend (`server/`)
+
+- **Entry:** `server/src/server.ts` starts the listener on `PORT` (default `3000`);
+  `server/src/app.ts` wires helmet → CORS allow-list → `express.json({ limit: '1mb' })`
+  → route mounts → 404 → error handler (never leaks stack traces).
+- **Route mounts:** `/api/farmer`, `/api/admin`, `/api/field-officer`, `/api/bank-officer`.
+- **Module shape:** each feature is `*.routes.ts` + `*.controller.ts` + `*.service.ts`
+  under `server/src/modules/<role>/<feature>/`.
+- **Data access:** `server/src/config/supabase.ts` creates a Supabase client with the
+  **service_role** key (it verifies the key's role on boot and refuses a wrong key);
+  `server/src/lib/postgrest.ts` wraps common query patterns.
+- **Security:** `server/src/middleware/` — JWT auth, per-role guards
+  (`admin.middleware.ts`, `bankOfficer.middleware.ts`, `fieldOfficer.middleware.ts`),
+  and `security.middleware.ts` (helmet, CORS allow-list, per-IP rate limiting).
+- **Database:** run `server/schema.sql` in the Supabase SQL editor. Per-module SQL
+  (`admin.sql`, `farmer_db.sql`, `fieldOfficer.sql`, `bankOfficer.sql`) is kept for reference.
+- **Env:** `server/.env` (git-ignored) — see `server/.env.example`.
+
+### Minimum-route example (`/api/farmer/transactions`)
+
+`GET /` (list) · `GET /:id` · `POST /` (create) · `PUT /:id` (update) · `DELETE /:id`
 
 ---
 
@@ -320,53 +372,50 @@ All data is **in-memory only** — no persistence (except theme on web via local
 
 1. **Re-export pattern for officials:** Route files in `src/app/officials/(role)/` are one-liners re-exporting from `src/features/officials/role/screens/`
 2. **Inconsistent tab bars:** Farmer uses custom manual tab bar (duplicated); officials use expo-router `<Tabs>`
-3. **No backend/API layer:** Zero API calls — everything is in-memory React Context
-4. **Multi-step forms as separate screens:** Registration and loan application each use separate route-level screens, not internal step state
-5. **Custom SVG charts:** Bar, Line, Donut charts built from scratch with `react-native-svg`
-6. **Cross-screen state via Context:** Registration saves incrementally to ProfileContext; loan application saves to LoanContext on final step
+3. **Single API client:** every network call goes through `src/lib/api.ts` (`api.get/post/put/patch/del`). It normalizes errors to `ApiError`, injects the bearer token, and clears auth on a 401.
+4. **Contexts own fetching + status:** farmer data contexts expose `loading` / `error` / `reload`; screens render a loading state and an error+retry state, not just the happy path.
+5. **Multi-step forms as separate screens:** Registration and loan application each use separate route-level screens; the registration draft is held in `RegistrationContext`.
+6. **Custom SVG charts:** Bar, Line, Donut charts built from scratch with `react-native-svg`
 
 ---
 
 ## Notable Absences (Future Work)
 
-- No persistence (AsyncStorage, SQLite, MMKV)
-- No API service layer (no fetch/axios)
-- No route guards / middleware
-- No testing (Jest, unit tests)
+- No on-device session persistence — the bearer token is in memory only, so
+  closing the app logs the user out
+- No client-side route guards (the server enforces roles; the client relies on UI/flow)
+- No automated testing (Jest / unit / e2e)
 - No CI/CD
-- No error boundaries
-- No env configuration (.env)
+- No React error boundaries
 - No reusable form abstractions beyond direct react-hook-form usage
 
 ---
 
 ## Getting Started
 
+### Backend
+
 ```bash
-# Install dependencies
+cd server
 npm install
+cp .env.example .env          # fill in SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+# run server/schema.sql in the Supabase SQL editor once
+npm run dev                    # http://localhost:3000
+```
 
-# Install any native modules (if errors)
-npx expo install
+### App
 
-# Start the app
-npx expo start
+```bash
+npm install
+cp .env.example .env           # optional: set EXPO_PUBLIC_API_URL
+npx expo start                 # or: npm run android / ios / web
 
-# Web
-npm run web
-
-# Android
-npm run android
-
-# iOS
-npm run ios
-
-# Lint
 npm run lint
-
-# Type check
 npm run typecheck
 ```
+
+On a physical device set `EXPO_PUBLIC_API_URL` to your machine's LAN IP
+(e.g. `http://192.168.1.10:3000`). Android emulators fall back to `http://10.0.2.2:3000`.
 
 ---
 

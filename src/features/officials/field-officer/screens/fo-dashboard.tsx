@@ -244,7 +244,12 @@ export default function FieldOfficerDashboardScreen() {
         ) : (
           <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
             {farmers.map((farmer, i) => (
-              <Pressable key={farmer.id} onPress={() => router.push('/officials/users')} style={({ pressed }) => pressed && styles.pressed}>
+              <Pressable
+                key={farmer.id}
+                onPress={() => router.push('/officials/users')}
+                accessibilityRole="button"
+                accessibilityLabel={`${farmer.name}, ${farmer.location}, ${farmer.status}`}
+                style={({ pressed }) => pressed && styles.pressed}>
                 <View style={styles.farmerRow}>
                   <Ionicons
                     name="person-circle"

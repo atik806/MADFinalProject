@@ -103,8 +103,10 @@ const mapProfile = (row: any): FarmerProfile => ({
 type ProfileContextType = {
   profile: FarmerProfile;
   loading: boolean;
+  error: string | null;
   updateProfile: (data: Partial<FarmerProfile>) => Promise<void>;
   refresh: () => Promise<void>;
+  reload: () => Promise<void>;
 };
 
 const ProfileContext = createContext<ProfileContextType | null>(null);
@@ -113,23 +115,30 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [profile, setProfile] = useState<FarmerProfile>(emptyProfile);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!isFarmerRole(user?.role)) return;
     try {
       setLoading(true);
+      setError(null);
       const row = await api.get<any>('/api/farmer/profile');
       setProfile(mapProfile(row));
-    } catch (error) {
-      // profile may not exist yet (e.g., right after registration)
-      console.warn('Profile refresh failed:', error);
+    } catch (e: any) {
+      // profile may legitimately not exist yet (e.g., right after registration);
+      // a 404 is not surfaced as an error, anything else is.
+      console.warn('Profile refresh failed:', e);
+      if (e?.status && e.status !== 404) {
+        setError(e?.message ?? 'Could not load profile.');
+      }
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    refresh();
+    const timer = setTimeout(() => void refresh(), 0);
+    return () => clearTimeout(timer);
   }, [refresh]);
 
   const updateProfile = useCallback(async (data: Partial<FarmerProfile>) => {
@@ -139,7 +148,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ProfileContext.Provider value={{ profile, loading, updateProfile, refresh }}>
+    <ProfileContext.Provider value={{ profile, loading, error, updateProfile, refresh, reload: refresh }}>
       {children}
     </ProfileContext.Provider>
   );

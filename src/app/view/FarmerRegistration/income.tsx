@@ -98,7 +98,7 @@ export default function IncomeScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()}>
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t('back')}>
             <Ionicons name="chevron-back" size={22} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
           <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
@@ -168,6 +168,9 @@ export default function IncomeScreen() {
           {otherSources.map((source, index) => (
             <TouchableOpacity
               key={source.label}
+              accessibilityRole="button"
+              accessibilityState={{ selected: source.selected }}
+              accessibilityLabel={source.label}
               style={[styles.sourceBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, source.selected && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
               onPress={() => toggleSource(index)}
             >
@@ -235,7 +238,7 @@ export default function IncomeScreen() {
           <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.occupation}</Text>
         )}
 
-        <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.deepGreen }]} onPress={handleNext}>
+        <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.deepGreen }]} onPress={handleNext} accessibilityRole="button" accessibilityLabel={t('nextStep')}>
           <Text style={styles.nextBtnText}>{t('nextStep')}</Text>
           <Ionicons name="chevron-forward" size={20} color="#fff" />
         </TouchableOpacity>

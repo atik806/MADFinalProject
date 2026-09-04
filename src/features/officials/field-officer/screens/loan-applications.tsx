@@ -169,6 +169,9 @@ export default function LoanApplicationsScreen() {
               <Pressable
                 key={tab.key}
                 onPress={() => setActiveTab(tab.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={tab.label}
                 style={[styles.tabBtn, active && { backgroundColor: colors.greenLight + '15' }]}>
                 <Text style={[styles.tabLabel, { color: active ? colors.greenLight : textSecondary }, active && styles.tabLabelActive]}>
                   {tab.label}
@@ -209,6 +212,9 @@ export default function LoanApplicationsScreen() {
               <View key={app.id} style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
                 <Pressable
                   onPress={() => setExpandedId(expanded ? null : app.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded }}
+                  accessibilityLabel={`${farmerName}, ${app.title}`}
                   style={({ pressed }) => pressed && styles.pressed}>
                   <View style={styles.cardHeader}>
                     <View style={styles.cardInfo}>
@@ -291,6 +297,9 @@ export default function LoanApplicationsScreen() {
                         <Pressable
                           onPress={() => handleVerify(app.id)}
                           disabled={verifyingId === app.id}
+                          accessibilityRole="button"
+                          accessibilityLabel="Verify Application"
+                          accessibilityState={{ disabled: verifyingId === app.id, busy: verifyingId === app.id }}
                           style={[styles.verifyBtn, { backgroundColor: colors.greenLight }, verifyingId === app.id && { opacity: 0.6 }]}>
                           <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
                           <Text style={styles.verifyBtnText}>{verifyingId === app.id ? 'Verifying…' : 'Verify Application'}</Text>

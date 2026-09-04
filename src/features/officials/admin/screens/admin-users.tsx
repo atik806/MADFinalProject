@@ -19,11 +19,13 @@ import { ScreenHeader } from '@/features/officials/shared/components/screen-head
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidth } from '@/features/officials/shared/constants/layout';
 import {
+  createBankOfficer,
   createFieldOfficer,
   fetchFieldOfficers,
   fetchRoleCounts,
   fetchUsers,
   resetFieldOfficerPassword,
+  setBankOfficerStatus,
   setFieldOfficerStatus,
   updateFieldOfficer,
   type AdminUserItem,
@@ -161,7 +163,7 @@ export default function AdminUsersScreen() {
   // ---- View modal ----
   const [viewItem, setViewItem] = useState<AdminUserItem | null>(null);
 
-  // ---- Field officer create/edit form ----
+  // ---- Officer create/edit form ----
   const emptyForm = {
     nameEn: '',
     nameBn: '',
@@ -174,9 +176,15 @@ export default function AdminUsersScreen() {
     supervisedDistrict: '',
     supervisedUpazila: '',
     officeAddress: '',
+    bankName: '',
+    branchName: '',
+    branchCode: '',
   };
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Which officer type the sheet is creating. Edit is field-officer-only (the
+  // backend has no bank-officer update endpoint).
+  const [formKind, setFormKind] = useState<'field_officer' | 'bank_officer'>('field_officer');
   const [form, setForm] = useState(emptyForm);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -184,6 +192,7 @@ export default function AdminUsersScreen() {
 
   const openCreate = () => {
     setEditingId(null);
+    setFormKind(activeTab === 'bank_officer' ? 'bank_officer' : 'field_officer');
     setForm(emptyForm);
     setFormErrors({});
     setShowPassword(false);
@@ -191,6 +200,7 @@ export default function AdminUsersScreen() {
   };
   const openEdit = (fo: AdminUserItem) => {
     setEditingId(fo.id);
+    setFormKind('field_officer');
     setForm({
       ...emptyForm,
       nameEn: fo.name ?? '',
@@ -248,6 +258,23 @@ export default function AdminUsersScreen() {
         });
         setFormOpen(false);
         Alert.alert('Saved', `${form.nameEn.trim()} has been updated.`);
+      } else if (formKind === 'bank_officer') {
+        await createBankOfficer({
+          nameEn: form.nameEn.trim(),
+          nameBn: form.nameBn.trim() || undefined,
+          nid: form.nid.trim(),
+          phone: form.phone.trim(),
+          password: form.password,
+          email: form.email.trim() || undefined,
+          employeeId: form.employeeId.trim() || undefined,
+          designation: form.designation.trim() || undefined,
+          bankName: form.bankName.trim() || undefined,
+          branchName: form.branchName.trim() || undefined,
+          branchCode: form.branchCode.trim() || undefined,
+        });
+        setFormOpen(false);
+        Alert.alert('Created', `Bank officer ${form.nameEn.trim()} has been created.`);
+        setActiveTab('bank_officer');
       } else {
         await createFieldOfficer({
           nameEn: form.nameEn.trim(),
@@ -275,17 +302,19 @@ export default function AdminUsersScreen() {
   };
 
   const changeStatus = (fo: AdminUserItem) => {
+    const isBank = fo.role === 'bank_officer';
     const current = (fo.status || 'active').toLowerCase();
     const nextStatus = current === 'active' ? 'suspended' : 'active';
     const verb = nextStatus === 'active' ? 'Reactivate' : 'Suspend';
-    Alert.alert(`${verb} field officer`, `${verb} ${fo.name}? This can be reversed.`, [
+    Alert.alert(`${verb} ${isBank ? 'bank' : 'field'} officer`, `${verb} ${fo.name}? This can be reversed.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: verb,
         style: nextStatus === 'active' ? 'default' : 'destructive',
         onPress: async () => {
           try {
-            await setFieldOfficerStatus(fo.id, nextStatus as 'active' | 'suspended');
+            const setStatus = isBank ? setBankOfficerStatus : setFieldOfficerStatus;
+            await setStatus(fo.id, nextStatus as 'active' | 'suspended');
             load('refresh');
           } catch (e: any) {
             Alert.alert('Error', e?.message ?? 'Failed to update status');
@@ -328,11 +357,14 @@ export default function AdminUsersScreen() {
     const sv = statusView(item);
     const bc = badgeColors(sv.kind);
     const isFO = item.role === 'field_officer';
+    const isBO = item.role === 'bank_officer';
     const fo = item as FieldOfficerItem;
     const color = avatarColor(item.id);
     const metaBits = isFO
       ? [item.designation || 'Field Officer', item.supervised_district || '—', `${fo.assigned_farmers ?? 0} farmers`]
-      : [item.location || '—', item.primary_crop || (item.role === 'bank_officer' ? 'Credit & Loans' : '—')];
+      : isBO
+        ? [item.designation || 'Bank Officer', item.employee_id || 'Credit & Loans']
+        : [item.location || '—', item.primary_crop || '—'];
 
     return (
       <View key={item.id} style={[styles.card, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.userBorder }]}>
@@ -355,36 +387,46 @@ export default function AdminUsersScreen() {
 
         <View style={styles.actionRow}>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`View ${item.name}`}
             style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.userView }, pressed && styles.pressed]}
             onPress={() => setViewItem(item)}>
             <Ionicons name="eye-outline" size={14} color={colors.userViewText} />
             <Text style={[styles.actionLabel, { color: colors.userViewText }]}>View</Text>
           </Pressable>
           {isFO && (
-            <>
-              <Pressable
-                style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.userEdit }, pressed && styles.pressed]}
-                onPress={() => openEdit(item)}>
-                <Ionicons name="create-outline" size={14} color={colors.userEditText} />
-                <Text style={[styles.actionLabel, { color: colors.userEditText }]}>Edit</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.userDeactivate }, pressed && styles.pressed]}
-                onPress={() => changeStatus(item)}>
-                <Ionicons
-                  name={(item.status || 'active').toLowerCase() === 'active' ? 'ban-outline' : 'refresh-outline'}
-                  size={14}
-                  color={colors.userDeactivateText}
-                />
-                <Text style={[styles.actionLabel, { color: colors.userDeactivateText }]}>
-                  {(item.status || 'active').toLowerCase() === 'active' ? 'Suspend' : 'Activate'}
-                </Text>
-              </Pressable>
-            </>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Edit ${item.name}`}
+              style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.userEdit }, pressed && styles.pressed]}
+              onPress={() => openEdit(item)}>
+              <Ionicons name="create-outline" size={14} color={colors.userEditText} />
+              <Text style={[styles.actionLabel, { color: colors.userEditText }]}>Edit</Text>
+            </Pressable>
+          )}
+          {(isFO || isBO) && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${(item.status || 'active').toLowerCase() === 'active' ? 'Suspend' : 'Activate'} ${item.name}`}
+              style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.userDeactivate }, pressed && styles.pressed]}
+              onPress={() => changeStatus(item)}>
+              <Ionicons
+                name={(item.status || 'active').toLowerCase() === 'active' ? 'ban-outline' : 'refresh-outline'}
+                size={14}
+                color={colors.userDeactivateText}
+              />
+              <Text style={[styles.actionLabel, { color: colors.userDeactivateText }]}>
+                {(item.status || 'active').toLowerCase() === 'active' ? 'Suspend' : 'Activate'}
+              </Text>
+            </Pressable>
           )}
         </View>
         {isFO && (
-          <Pressable onPress={() => setPwTarget(item)} style={styles.pwLink}>
+          <Pressable
+            onPress={() => setPwTarget(item)}
+            accessibilityRole="button"
+            accessibilityLabel={`Reset password for ${item.name}`}
+            style={styles.pwLink}>
             <Ionicons name="key-outline" size={13} color={colors.dashboard.textSecondary} />
             <Text style={[styles.pwLinkText, { color: colors.dashboard.textSecondary }]}>Reset password</Text>
           </Pressable>
@@ -448,7 +490,12 @@ export default function AdminUsersScreen() {
             autoCorrect={!isEmail}
           />
           {opts.secure ? (
-            <Pressable onPress={() => setShowPassword((s) => !s)} hitSlop={8} style={styles.fieldTrailing}>
+            <Pressable
+              onPress={() => setShowPassword((s) => !s)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+              style={styles.fieldTrailing}>
               <Ionicons
                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                 size={18}
@@ -515,6 +562,9 @@ export default function AdminUsersScreen() {
               <Pressable
                 key={tab.key}
                 onPress={() => setActiveTab(tab.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activeTab === tab.key }}
+                accessibilityLabel={tab.label}
                 style={[styles.tab, activeTab === tab.key && { backgroundColor: colors.deepGreen }]}>
                 <Text style={[styles.tabText, { color: colors.dashboard.textSecondary }, activeTab === tab.key && { color: '#FFFFFF' }]}>
                   {tab.label}
@@ -539,7 +589,7 @@ export default function AdminUsersScreen() {
             onChangeText={setSearchInput}
           />
           {searchInput.length > 0 && (
-            <Pressable onPress={() => setSearchInput('')}>
+            <Pressable onPress={() => setSearchInput('')} accessibilityRole="button" accessibilityLabel="Clear search">
               <Ionicons name="close-circle" size={18} color={colors.dashboard.textSecondary} />
             </Pressable>
           )}
@@ -553,7 +603,7 @@ export default function AdminUsersScreen() {
           <View style={styles.centerBox}>
             <Ionicons name="cloud-offline-outline" size={40} color={colors.dashboard.textSecondary} />
             <Text style={[styles.errorText, { color: colors.dashboard.textPrimary }]}>{error}</Text>
-            <Pressable onPress={() => load('initial')} style={[styles.retryBtn, { backgroundColor: colors.deepGreen }]}>
+            <Pressable onPress={() => load('initial')} accessibilityRole="button" accessibilityLabel="Retry" style={[styles.retryBtn, { backgroundColor: colors.deepGreen }]}>
               <Text style={styles.retryText}>Retry</Text>
             </Pressable>
           </View>
@@ -573,6 +623,8 @@ export default function AdminUsersScreen() {
             {page < totalPages && (
               <Pressable
                 onPress={loadMore}
+                accessibilityRole="button"
+                accessibilityLabel="Load more"
                 style={[styles.loadMore, { borderColor: colors.userBorder, backgroundColor: colors.dashboard.cardBg }]}>
                 {loadingMore ? (
                   <ActivityIndicator color={colors.deepGreen} size="small" />
@@ -589,18 +641,22 @@ export default function AdminUsersScreen() {
 
       <Pressable
         onPress={openCreate}
+        accessibilityRole="button"
+        accessibilityLabel={activeTab === 'bank_officer' ? 'Add Bank Officer' : 'Add Field Officer'}
         style={({ pressed }) => [{ backgroundColor: colors.deepGreen }, styles.fab, pressed && { opacity: 0.9 }]}>
         <Ionicons name="add" size={22} color="#FFFFFF" />
-        <Text style={styles.fabText}>Add Field Officer</Text>
+        <Text style={styles.fabText}>
+          {activeTab === 'bank_officer' ? 'Add Bank Officer' : 'Add Field Officer'}
+        </Text>
       </Pressable>
 
       {/* View modal */}
       <Modal visible={!!viewItem} transparent animationType="fade" onRequestClose={() => setViewItem(null)}>
-        <Pressable style={styles.overlay} onPress={() => setViewItem(null)}>
+        <Pressable style={styles.overlay} onPress={() => setViewItem(null)} accessibilityRole="button" accessibilityLabel="Close">
           <Pressable style={[styles.modalCard, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => {}}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.dashboard.textPrimary }]}>User Details</Text>
-              <Pressable onPress={() => setViewItem(null)}>
+              <Pressable onPress={() => setViewItem(null)} accessibilityRole="button" accessibilityLabel="Close">
                 <Ionicons name="close" size={22} color={colors.dashboard.textSecondary} />
               </Pressable>
             </View>
@@ -616,10 +672,10 @@ export default function AdminUsersScreen() {
         </Pressable>
       </Modal>
 
-      {/* Create / edit field officer */}
+      {/* Create / edit officer */}
       <Modal visible={formOpen} transparent animationType="slide" onRequestClose={() => setFormOpen(false)}>
         <KeyboardAvoidingView style={styles.sheetRoot} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={styles.sheetBackdrop} onPress={() => setFormOpen(false)} />
+          <Pressable style={styles.sheetBackdrop} onPress={() => setFormOpen(false)} accessibilityRole="button" accessibilityLabel="Close" />
           <View style={[styles.sheet, { backgroundColor: colors.dashboard.cardBg }]}>
             <View style={[styles.sheetGrabber, { backgroundColor: colors.userBorder }]} />
 
@@ -630,14 +686,20 @@ export default function AdminUsersScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.sheetTitle, { color: colors.dashboard.textPrimary }]}>
-                    {editingId ? 'Edit Field Officer' : 'Add Field Officer'}
+                    {editingId
+                      ? 'Edit Field Officer'
+                      : formKind === 'bank_officer'
+                        ? 'Add Bank Officer'
+                        : 'Add Field Officer'}
                   </Text>
                   <Text style={[styles.sheetSubtitle, { color: colors.dashboard.textSecondary }]}>
-                    {editingId ? 'Update this officer’s details' : 'Create a new field officer account'}
+                    {editingId
+                      ? 'Update this officer’s details'
+                      : `Create a new ${formKind === 'bank_officer' ? 'bank' : 'field'} officer account`}
                   </Text>
                 </View>
               </View>
-              <Pressable onPress={() => setFormOpen(false)} hitSlop={8}>
+              <Pressable onPress={() => setFormOpen(false)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
                 <Ionicons name="close" size={22} color={colors.dashboard.textSecondary} />
               </Pressable>
             </View>
@@ -677,18 +739,33 @@ export default function AdminUsersScreen() {
                 keyboardType: 'email-address',
               })}
 
-              {sectionHeader('briefcase-outline', 'Work assignment')}
-              {field('employeeId', 'Employee ID', 'e.g. FO-1042', { icon: 'id-card-outline' })}
-              {field('designation', 'Designation', 'e.g. Senior Field Officer', { icon: 'ribbon-outline' })}
-              {field('supervisedDistrict', 'Supervised district', 'e.g. Bhola', { icon: 'map-outline' })}
-              {field('supervisedUpazila', 'Supervised upazila', 'e.g. Char Fasson', { icon: 'navigate-outline' })}
-              {field('officeAddress', 'Office address', 'e.g. SOFOL Branch Office, Bhola Sadar', { icon: 'business-outline' })}
+              {formKind === 'bank_officer' ? (
+                <>
+                  {sectionHeader('business-outline', 'Bank posting')}
+                  {field('employeeId', 'Employee ID', 'e.g. BO-1042', { icon: 'id-card-outline' })}
+                  {field('designation', 'Designation', 'e.g. Senior Bank Officer', { icon: 'ribbon-outline' })}
+                  {field('bankName', 'Bank name', 'e.g. Sonali Bank', { icon: 'business-outline' })}
+                  {field('branchName', 'Branch name', 'e.g. Bhola Sadar Branch', { icon: 'map-outline' })}
+                  {field('branchCode', 'Branch code', 'e.g. 0123', { icon: 'barcode-outline' })}
+                </>
+              ) : (
+                <>
+                  {sectionHeader('briefcase-outline', 'Work assignment')}
+                  {field('employeeId', 'Employee ID', 'e.g. FO-1042', { icon: 'id-card-outline' })}
+                  {field('designation', 'Designation', 'e.g. Senior Field Officer', { icon: 'ribbon-outline' })}
+                  {field('supervisedDistrict', 'Supervised district', 'e.g. Bhola', { icon: 'map-outline' })}
+                  {field('supervisedUpazila', 'Supervised upazila', 'e.g. Char Fasson', { icon: 'navigate-outline' })}
+                  {field('officeAddress', 'Office address', 'e.g. SOFOL Branch Office, Bhola Sadar', { icon: 'business-outline' })}
+                </>
+              )}
             </ScrollView>
 
             <View style={[styles.sheetFooter, { borderTopColor: colors.dashboard.border }]}>
               <Pressable
                 onPress={() => setFormOpen(false)}
                 disabled={submitting}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
                 style={({ pressed }) => [
                   styles.sheetCancelBtn,
                   { borderColor: colors.userBorder },
@@ -699,6 +776,9 @@ export default function AdminUsersScreen() {
               <Pressable
                 onPress={submitForm}
                 disabled={submitting}
+                accessibilityRole="button"
+                accessibilityLabel={editingId ? 'Save changes' : 'Create officer'}
+                accessibilityState={{ disabled: submitting, busy: submitting }}
                 style={({ pressed }) => [
                   styles.sheetSubmitBtn,
                   { backgroundColor: colors.deepGreen },
@@ -709,7 +789,13 @@ export default function AdminUsersScreen() {
                 ) : (
                   <>
                     <Ionicons name={editingId ? 'checkmark-circle' : 'person-add'} size={18} color="#FFFFFF" />
-                    <Text style={styles.sheetSubmitText}>{editingId ? 'Save changes' : 'Create field officer'}</Text>
+                    <Text style={styles.sheetSubmitText}>
+                      {editingId
+                        ? 'Save changes'
+                        : formKind === 'bank_officer'
+                          ? 'Create bank officer'
+                          : 'Create field officer'}
+                    </Text>
                   </>
                 )}
               </Pressable>
@@ -721,11 +807,11 @@ export default function AdminUsersScreen() {
       {/* Reset password */}
       <Modal visible={!!pwTarget} transparent animationType="fade" onRequestClose={() => setPwTarget(null)}>
         <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={styles.overlay} onPress={() => setPwTarget(null)}>
+          <Pressable style={styles.overlay} onPress={() => setPwTarget(null)} accessibilityRole="button" accessibilityLabel="Close">
             <Pressable style={[styles.modalCard, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => {}}>
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: colors.dashboard.textPrimary }]}>Reset Password</Text>
-                <Pressable onPress={() => setPwTarget(null)}>
+                <Pressable onPress={() => setPwTarget(null)} accessibilityRole="button" accessibilityLabel="Close">
                   <Ionicons name="close" size={22} color={colors.dashboard.textSecondary} />
                 </Pressable>
               </View>
@@ -743,6 +829,9 @@ export default function AdminUsersScreen() {
               <Pressable
                 onPress={submitPassword}
                 disabled={pwSubmitting}
+                accessibilityRole="button"
+                accessibilityLabel="Reset password"
+                accessibilityState={{ disabled: pwSubmitting, busy: pwSubmitting }}
                 style={[styles.submitBtn, { backgroundColor: colors.deepGreen }, pwSubmitting && { opacity: 0.7 }]}>
                 {pwSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitText}>Reset password</Text>}
               </Pressable>

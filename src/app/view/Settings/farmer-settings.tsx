@@ -121,7 +121,11 @@ export default function FarmerSettingsScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={[styles.header, { backgroundColor: colors.dashboard.cardBg, borderBottomColor: colors.dashboard.border }]}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel={t('back')}>
           <Ionicons name="arrow-back" size={22} color={colors.dashboard.textPrimary} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('settings')}</Text>
@@ -138,6 +142,9 @@ export default function FarmerSettingsScreen() {
                   key={ii}
                   onPress={item.onPress}
                   disabled={item.type === 'toggle'}
+                  accessibilityRole={item.type === 'toggle' ? undefined : 'button'}
+                  accessibilityLabel={t((ITEM_LABEL_KEYS[item.label] ?? item.label) as any)}
+                  accessibilityHint={item.subtitle}
                   style={({ pressed }) => [
                     styles.settingRow,
                     ii < section.items.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.dashboard.border },
@@ -156,6 +163,7 @@ export default function FarmerSettingsScreen() {
                     <Switch
                       value={item.value as boolean}
                       onValueChange={item.onToggle}
+                      accessibilityLabel={t((ITEM_LABEL_KEYS[item.label] ?? item.label) as any)}
                       trackColor={{ false: colors.dashboard.border, true: colors.greenLight }}
                       thumbColor="#FFFFFF"
                     />
@@ -170,6 +178,8 @@ export default function FarmerSettingsScreen() {
 
         <Pressable
           onPress={handleLogout}
+          accessibilityRole="button"
+          accessibilityLabel={t('logout')}
           style={[styles.logoutBtn, { backgroundColor: colors.userRejected, borderColor: colors.userRejected }]}>
           <Ionicons name="log-out-outline" size={20} color={colors.dashboard.redDown} />
           <Text style={[styles.logoutText, { color: colors.dashboard.redDown }]}>{t('logout')}</Text>

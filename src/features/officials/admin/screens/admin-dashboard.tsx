@@ -123,7 +123,11 @@ export default function AdminDashboardScreen() {
           <View style={[styles.errorCard, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
             <Ionicons name="cloud-offline-outline" size={28} color={colors.dashboard.textSecondary} />
             <Text style={[styles.errorText, { color: colors.dashboard.textPrimary }]}>{error}</Text>
-            <Pressable onPress={() => load('initial')} style={[styles.retryBtn, { backgroundColor: colors.greenLight }]}>
+            <Pressable
+              onPress={() => load('initial')}
+              accessibilityRole="button"
+              accessibilityLabel="Retry"
+              style={[styles.retryBtn, { backgroundColor: colors.greenLight }]}>
               <Text style={styles.retryText}>Retry</Text>
             </Pressable>
           </View>

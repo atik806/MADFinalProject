@@ -128,7 +128,12 @@ export default function BankOfficerDashboardScreen() {
             <Text style={[styles.sectionLabel, { color: colors.dashboard.textSecondary }]}>Awaiting Review</Text>
             <View style={[styles.card, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
               {pending.slice(0, 4).map((row, i) => (
-                <Pressable key={row.id} onPress={() => router.push('/officials/approvals')} style={({ pressed }) => pressed && styles.pressed}>
+                <Pressable
+                  key={row.id}
+                  onPress={() => router.push('/officials/approvals')}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${row.title ?? 'Loan application'}, ${farmerName(row)}, ৳${num(row.amount).toLocaleString()}`}
+                  style={({ pressed }) => pressed && styles.pressed}>
                   <View style={styles.pendingRow}>
                     <View style={styles.pendingInfo}>
                       <Text style={[styles.pendingTitle, { color: colors.dashboard.textPrimary }]}>

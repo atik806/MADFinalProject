@@ -227,6 +227,8 @@ export default function PhotoScreen() {
       <TouchableOpacity
         style={[styles.photoBox, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}
         onPress={() => showPicker(type)}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}${photoUri ? ', ' + t('change') : ', ' + t('selectPhoto')}`}
       >
         {photoUri ? (
           <>
@@ -244,6 +246,8 @@ export default function PhotoScreen() {
               <TouchableOpacity
                 style={[styles.photoActionBtn, { backgroundColor: colors.userVerified }]}
                 onPress={() => pickImage(type)}
+                accessibilityRole="button"
+                accessibilityLabel={t('gallery')}
               >
                 <Ionicons name="images-outline" size={18} color={colors.deepGreen} />
                 <Text style={[styles.photoActionText, { color: colors.deepGreen }]}>{t('gallery')}</Text>
@@ -251,6 +255,8 @@ export default function PhotoScreen() {
               <TouchableOpacity
                 style={[styles.photoActionBtn, { backgroundColor: colors.userVerified }]}
                 onPress={() => takePhoto(type)}
+                accessibilityRole="button"
+                accessibilityLabel={t('camera')}
               >
                 <Ionicons name="camera-outline" size={18} color={colors.deepGreen} />
                 <Text style={[styles.photoActionText, { color: colors.deepGreen }]}>{t('camera')}</Text>
@@ -269,7 +275,7 @@ export default function PhotoScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()}>
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t('back')}>
             <Ionicons name="chevron-back" size={22} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
           <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
@@ -350,6 +356,9 @@ export default function PhotoScreen() {
           onPress={handleSubmit}
           disabled={submitting}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={t('submitRegistration')}
+          accessibilityState={{ disabled: submitting, busy: submitting }}
         >
           {submitting ? (
             <ActivityIndicator color="#fff" size="small" />

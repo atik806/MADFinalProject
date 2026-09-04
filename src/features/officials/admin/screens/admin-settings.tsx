@@ -56,7 +56,11 @@ function Row({
   );
   if (onPress) {
     return (
-      <Pressable onPress={onPress} style={({ pressed }) => pressed && { opacity: 0.6 }}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={value ? `${label}, ${value}` : label}
+        style={({ pressed }) => pressed && { opacity: 0.6 }}>
         {content}
       </Pressable>
     );
@@ -134,7 +138,11 @@ export default function AdminSettingsScreen() {
             icon="globe-outline"
             label="Language"
             right={
-              <Pressable onPress={toggleLang} style={[styles.langPill, { borderColor: colors.dashboard.border }]}>
+              <Pressable
+                onPress={toggleLang}
+                accessibilityRole="button"
+                accessibilityLabel={lang === 'en' ? 'Language, English. Switch to Bangla' : 'ভাষা, বাংলা। ইংরেজিতে পরিবর্তন করুন'}
+                style={[styles.langPill, { borderColor: colors.dashboard.border }]}>
                 <Text style={[styles.langPillText, { color: colors.dashboard.textPrimary }]}>{lang === 'en' ? 'English' : 'বাংলা'}</Text>
               </Pressable>
             }
@@ -166,11 +174,11 @@ export default function AdminSettingsScreen() {
 
       <Modal visible={pwOpen} transparent animationType="fade" onRequestClose={() => setPwOpen(false)}>
         <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={styles.overlay} onPress={() => setPwOpen(false)}>
+          <Pressable style={styles.overlay} onPress={() => setPwOpen(false)} accessibilityRole="button" accessibilityLabel="Close">
             <Pressable style={[styles.modalCard, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => {}}>
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: colors.dashboard.textPrimary }]}>Change Password</Text>
-                <Pressable onPress={() => setPwOpen(false)}>
+                <Pressable onPress={() => setPwOpen(false)} accessibilityRole="button" accessibilityLabel="Close">
                   <Ionicons name="close" size={22} color={colors.dashboard.textSecondary} />
                 </Pressable>
               </View>
@@ -192,6 +200,9 @@ export default function AdminSettingsScreen() {
               <Pressable
                 onPress={submitPassword}
                 disabled={submitting}
+                accessibilityRole="button"
+                accessibilityLabel="Update password"
+                accessibilityState={{ disabled: submitting, busy: submitting }}
                 style={[styles.submitBtn, { backgroundColor: colors.deepGreen }, submitting && { opacity: 0.7 }]}>
                 {submitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitText}>Update password</Text>}
               </Pressable>

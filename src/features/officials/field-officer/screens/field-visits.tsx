@@ -163,6 +163,9 @@ export default function FieldVisitsScreen() {
               <Pressable
                 key={tab}
                 onPress={() => setActiveTab(tab)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={tab === 'upcoming' ? 'Upcoming' : 'Completed'}
                 style={[styles.tabBtn, active && { backgroundColor: colors.greenLight + '15' }]}>
                 <Ionicons
                   name={tab === 'upcoming' ? 'calendar-outline' : 'checkmark-done-outline'}
@@ -213,6 +216,9 @@ export default function FieldVisitsScreen() {
               <View key={visit.id} style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
                 <Pressable
                   onPress={() => setExpandedId(expanded ? null : visit.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded }}
+                  accessibilityLabel={`${visit.farmerName}, ${visit.purpose}, ${visit.date}`}
                   style={({ pressed }) => pressed && styles.pressed}>
                   <View style={styles.visitHeader}>
                     <View style={styles.visitAvatar}>
@@ -245,6 +251,8 @@ export default function FieldVisitsScreen() {
                       <Text style={[styles.notesText, { color: textPrimary }]}>{visit.notes}</Text>
                       {activeTab === 'upcoming' && (
                         <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Start Visit"
                           style={[styles.actionBtn, { backgroundColor: colors.greenLight }]}
                           onPress={() => {
                             setUpcoming((prev) =>
@@ -275,6 +283,8 @@ export default function FieldVisitsScreen() {
       {/* FAB */}
       <Pressable
         onPress={() => setModalVisible(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Schedule visit"
         style={[styles.fab, { backgroundColor: colors.greenLight }]}>
         <Ionicons name="add" size={28} color="#FFFFFF" />
       </Pressable>
@@ -287,7 +297,7 @@ export default function FieldVisitsScreen() {
           <View style={[styles.modalContent, { backgroundColor: cardBg }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: textPrimary }]}>Schedule Visit</Text>
-              <Pressable onPress={() => setModalVisible(false)}>
+              <Pressable onPress={() => setModalVisible(false)} accessibilityRole="button" accessibilityLabel="Close">
                 <Ionicons name="close" size={24} color={textSecondary} />
               </Pressable>
             </View>
@@ -297,6 +307,9 @@ export default function FieldVisitsScreen() {
               <Text style={[styles.fieldLabel, { color: textSecondary }]}>Farmer</Text>
               <Pressable
                 onPress={() => setShowFarmerPicker(!showFarmerPicker)}
+                accessibilityRole="button"
+                accessibilityLabel={formFarmer ? `Farmer: ${formFarmer}` : 'Select a farmer'}
+                accessibilityState={{ expanded: showFarmerPicker }}
                 style={[styles.input, { backgroundColor: bg, borderColor: border }]}>
                 <Text style={{ color: formFarmer ? textPrimary : textSecondary, flex: 1 }}>
                   {formFarmer || 'Select a farmer'}
@@ -308,6 +321,9 @@ export default function FieldVisitsScreen() {
                   {assignedFarmers.map((f) => (
                     <Pressable
                       key={f.id}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: formFarmer === f.name }}
+                      accessibilityLabel={f.name}
                       onPress={() => {
                         setFormFarmer(f.name);
                         setShowFarmerPicker(false);
@@ -366,6 +382,9 @@ export default function FieldVisitsScreen() {
               <Pressable
                 onPress={handleScheduleVisit}
                 disabled={!formFarmer || !formDate || !formPurpose}
+                accessibilityRole="button"
+                accessibilityLabel="Schedule Visit"
+                accessibilityState={{ disabled: !formFarmer || !formDate || !formPurpose }}
                 style={[
                   styles.submitBtn,
                   { backgroundColor: colors.greenLight },

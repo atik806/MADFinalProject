@@ -136,7 +136,12 @@ export default function ResetPasswordScreen() {
         <View style={styles.root}>
           <View style={styles.langRow}>
             <View />
-            <TouchableOpacity onPress={toggleLang} hitSlop={8} style={[styles.langBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+            <TouchableOpacity
+              onPress={toggleLang}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={lang === 'en' ? 'Switch to Bangla' : 'Switch to English'}
+              style={[styles.langBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
               <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
             </TouchableOpacity>
           </View>
@@ -229,6 +234,9 @@ export default function ResetPasswordScreen() {
                     onPress={handleSendOtp}
                     disabled={loading}
                     activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('sendOtp')}
+                    accessibilityState={{ disabled: loading, busy: loading }}
                   >
                     {loading ? (
                       <ActivityIndicator color="#fff" size="small" />
@@ -273,6 +281,8 @@ export default function ResetPasswordScreen() {
                     style={[styles.primaryBtn, { backgroundColor: colors.deepGreen }]}
                     onPress={handleVerifyOtp}
                     activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('verifyOtp')}
                   >
                     <Text style={styles.primaryBtnText}>{t('verifyOtp')}</Text>
                     <Ionicons name="arrow-forward" size={18} color="#fff" />
@@ -283,6 +293,9 @@ export default function ResetPasswordScreen() {
                     onPress={handleResendOtp}
                     disabled={otpTimer > 0 || loading}
                     activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('resendOtp')}
+                    accessibilityState={{ disabled: otpTimer > 0 || loading }}
                   >
                     {loading ? (
                       <ActivityIndicator color={colors.deepGreen} size="small" />
@@ -319,6 +332,8 @@ export default function ResetPasswordScreen() {
                       onPress={() => setShowNewPwd((p) => !p)}
                       style={styles.eyeButton}
                       hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={showNewPwd ? t('hidePassword') : t('showPassword')}
                     >
                       <Ionicons
                         name={showNewPwd ? 'eye-off-outline' : 'eye-outline'}
@@ -348,6 +363,8 @@ export default function ResetPasswordScreen() {
                       onPress={() => setShowConfirmPwd((p) => !p)}
                       style={styles.eyeButton}
                       hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={showConfirmPwd ? t('hidePassword') : t('showPassword')}
                     >
                       <Ionicons
                         name={showConfirmPwd ? 'eye-off-outline' : 'eye-outline'}
@@ -363,6 +380,8 @@ export default function ResetPasswordScreen() {
                     style={[styles.primaryBtn, { backgroundColor: colors.deepGreen }]}
                     onPress={handleResetPassword}
                     activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('resetPasswordBtn')}
                   >
                     <Ionicons name="checkmark-circle" size={18} color="#fff" style={{ marginRight: 6 }} />
                     <Text style={styles.primaryBtnText}>{t('resetPasswordBtn')}</Text>
@@ -374,6 +393,8 @@ export default function ResetPasswordScreen() {
                 style={styles.backLink}
                 onPress={() => router.push('/view/login')}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t('backToLogin')}
               >
                 <Ionicons name="arrow-back" size={16} color={colors.deepGreen} style={styles.backIcon} />
                 <Text style={[styles.backLinkText, { color: colors.deepGreen }]}>{t('backToLogin')}</Text>

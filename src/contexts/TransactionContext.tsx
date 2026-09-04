@@ -20,9 +20,11 @@ export type Transaction = {
 type TransactionContextType = {
   transactions: Transaction[];
   loading: boolean;
+  error: string | null;
   addTransaction: (tx: Omit<Transaction, 'id'>) => Promise<void>;
   removeTransaction: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
+  reload: () => Promise<void>;
 };
 
 const TransactionContext = createContext<TransactionContextType | null>(null);
@@ -31,23 +33,26 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!isFarmerRole(user?.role)) return;
     try {
       setLoading(true);
+      setError(null);
       const res = await api.get<{ data: Transaction[] }>('/api/farmer/transactions');
       setTransactions(res.data ?? []);
-    } catch (error) {
-      console.warn('Transaction refresh failed:', error);
-      setTransactions([]);
+    } catch (e: any) {
+      console.warn('Transaction refresh failed:', e);
+      setError(e?.message ?? 'Could not load transactions.');
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
-    refresh();
+    const timer = setTimeout(() => void refresh(), 0);
+    return () => clearTimeout(timer);
   }, [refresh]);
 
   const addTransaction = useCallback(
@@ -67,7 +72,8 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <TransactionContext.Provider value={{ transactions, loading, addTransaction, removeTransaction, refresh }}>
+    <TransactionContext.Provider
+      value={{ transactions, loading, error, addTransaction, removeTransaction, refresh, reload: refresh }}>
       {children}
     </TransactionContext.Provider>
   );
