@@ -143,7 +143,7 @@ export default function BankOfficerDashboardScreen() {
             <Text style={[styles.sectionLabel, { color: textSecondary }]}>Recent Applications</Text>
             <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
               {recent.map((app, i) => (
-                <Pressable key={app.id} onPress={() => router.push('/officials/approvals')} style={({ pressed }) => pressed && styles.pressed}>
+                <Pressable key={app.id} onPress={() => router.push('/officials/(bank-officer)/approvals')} style={({ pressed }) => pressed && styles.pressed}>
                   <View style={styles.pendingRow}>
                     <View style={styles.pendingInfo}>
                       <Text style={[styles.pendingTitle, { color: textPrimary }]}>
@@ -164,9 +164,9 @@ export default function BankOfficerDashboardScreen() {
 
         <Text style={[styles.sectionLabel, { color: textSecondary }]}>Quick Actions</Text>
         <View style={styles.actionsGrid}>
-          <ActionCard icon="checkmark-circle-outline" iconBg="#22C55E" title="Review Applications" onPress={() => router.push('/officials/approvals')} />
-          <ActionCard icon="cash-outline" iconBg="#3B82F6" title="Loan Management" onPress={() => router.push('/officials/loans')} />
-          <ActionCard icon="settings-outline" iconBg="#F59E0B" title="Settings" onPress={() => router.push('/officials/settings')} />
+          <ActionCard icon="checkmark-circle-outline" iconBg="#22C55E" title="Review Applications" onPress={() => router.push('/officials/(bank-officer)/approvals')} />
+          <ActionCard icon="cash-outline" iconBg="#3B82F6" title="Loan Management" onPress={() => router.push('/officials/(bank-officer)/loans')} />
+          <ActionCard icon="settings-outline" iconBg="#F59E0B" title="Settings" onPress={() => router.push('/officials/(bank-officer)/settings')} />
         </View>
 
         <View style={{ height: 32 }} />

@@ -63,6 +63,18 @@ export default function DashboardScreen() {
   const farmerInitials = profile.nameEn ? getInitials(profile.nameEn) : 'ফা';
   const locationText = [profile.village, profile.district].filter(Boolean).join(', ') || '—';
 
+  // Credit score band is derived from the live profile value (0-850): the
+  // risk label, dot colour and progress bar all follow the score instead of
+  // being hardcoded.
+  const creditScore = Number(profile.creditScore) || 0;
+  const scorePct = Math.min(Math.max((creditScore / 850) * 100, 0), 100);
+  const { riskKey, riskColor } =
+    creditScore >= 670
+      ? { riskKey: 'lowRisk' as const, riskColor: colors.dashboard.greenUp }
+      : creditScore >= 580
+        ? { riskKey: 'moderateRisk' as const, riskColor: '#F59E0B' }
+        : { riskKey: 'highRisk' as const, riskColor: colors.dashboard.redDown };
+
   const tabs: TabDef[] = [
     { key: "home", activeIcon: "home", inactiveIcon: "home-outline", labelKey: "home" },
     { key: "transactions", activeIcon: "repeat", inactiveIcon: "repeat-outline", labelKey: "transactionsTab" },
@@ -164,12 +176,12 @@ export default function DashboardScreen() {
             </View>
             <View style={styles.scoreMeta}>
               <View style={styles.riskBadge}>
-                <View style={[styles.riskDot, { backgroundColor: colors.dashboard.greenUp }]} />
-                <Text style={styles.riskText}>{t('lowRisk')}</Text>
+                <View style={[styles.riskDot, { backgroundColor: riskColor }]} />
+                <Text style={styles.riskText}>{t(riskKey)}</Text>
               </View>
             </View>
             <View style={styles.ratingBarTrack}>
-              <View style={[styles.ratingBarFill, { width: "85%" }]} />
+              <View style={[styles.ratingBarFill, { width: `${scorePct}%` }]} />
             </View>
             <View style={styles.ratingLabels}>
               <Text style={styles.ratingLabel}>{t('poor')}</Text>

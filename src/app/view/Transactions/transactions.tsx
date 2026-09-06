@@ -74,6 +74,10 @@ export default function TransactionsScreen() {
 
   const netSavings = totalIncome - totalExpense;
 
+  // "Net savings as of" period label — derived from the current month rather
+  // than a hardcoded date string.
+  const periodLabel = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
   const filtered: Transaction[] =
     filter === 'all'
       ? transactions
@@ -127,7 +131,7 @@ export default function TransactionsScreen() {
           </View>
           <View style={[styles.netRow, { borderTopColor: colors.dashboard.border }]}>
             <Feather name="bar-chart-2" size={18} color={netSavings >= 0 ? colors.dashboard.greenUp : colors.dashboard.redDown} />
-            <Text style={[styles.netLabel, { color: colors.dashboard.textSecondary }]}>{t('netSavings')} (June 2024)</Text>
+            <Text style={[styles.netLabel, { color: colors.dashboard.textSecondary }]}>{t('netSavings')} ({periodLabel})</Text>
             <Text
               style={[
                 styles.netValue,

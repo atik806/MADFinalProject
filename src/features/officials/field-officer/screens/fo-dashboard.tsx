@@ -183,9 +183,9 @@ export default function FieldOfficerDashboardScreen() {
               iconBg={action.iconBg}
               title={action.title}
               onPress={() => {
-                if (i === 0) router.push('/officials/users');
-                else if (i === 1) router.push('/officials/visits');
-                else if (i === 2) router.push('/officials/applications');
+                if (i === 0) router.push('/officials/(field-officer)/applications');
+                else if (i === 1) router.push('/officials/(field-officer)/visits');
+                else if (i === 2) router.push('/officials/(field-officer)/applications');
                 else if (i === 3) Alert.alert('Success', 'Documents uploaded successfully');
               }}
             />
@@ -244,7 +244,7 @@ export default function FieldOfficerDashboardScreen() {
         ) : (
           <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
             {farmers.map((farmer, i) => (
-              <Pressable key={farmer.id} onPress={() => router.push('/officials/users')} style={({ pressed }) => pressed && styles.pressed}>
+              <Pressable key={farmer.id} onPress={() => router.push('/officials/(field-officer)/applications')} style={({ pressed }) => pressed && styles.pressed}>
                 <View style={styles.farmerRow}>
                   <Ionicons
                     name="person-circle"

@@ -117,7 +117,7 @@ export default function AdminDashboardScreen() {
     <View style={[styles.screen, { backgroundColor: colors.dashboard.bg }]}>
       <ScreenHeader
         title="Admin Dashboard"
-        actions={[{ icon: 'notifications-outline', accessibilityLabel: 'Notifications', onPress: () => router.push('/view/Notifications/notifications' as unknown as any) }]}
+        actions={[{ icon: 'notifications-outline', accessibilityLabel: 'Notifications' }]}
       />
       <ScrollView
         style={styles.container}
