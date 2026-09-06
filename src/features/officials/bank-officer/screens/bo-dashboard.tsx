@@ -1,37 +1,74 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { LinearGradient } from 'expo-linear-gradient';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ActionCard } from '@/features/officials/shared/components/action-card';
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
 import { StatCard } from '@/features/officials/shared/components/stat-card';
-import { StatusBadge } from '@/features/officials/shared/components/status-badge';
-import { borderRadius, contentMaxWidthWide, shadows } from '@/features/officials/shared/constants/layout';
+import { StatusBadge, type StatusType } from '@/features/officials/shared/components/status-badge';
+import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/shared/constants/layout';
 import { useColors } from '@/features/officials/shared/constants/theme';
-import { useLoans } from '@/contexts/LoanContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
+import type { ApiResponse, BankOfficerProfileRow, BankOfficerQueueRow, ListResult } from '@/lib/api-types';
+
+const BANK_STATUSES = new Set(['pending', 'under_review', 'approved', 'rejected', 'active']);
+
+const STATUS_AS_BADGE = (status?: string): StatusType =>
+  BANK_STATUSES.has(status ?? '') ? (status as StatusType) : 'pending';
+
+const formatDate = (value?: string | null): string => {
+  if (!value) return '—';
+  const d = new Date(String(value));
+  if (!Number.isFinite(d.getTime())) return String(value);
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
 
 export default function BankOfficerDashboardScreen() {
   const router = useRouter();
   const colors = useColors();
-  const { applications, activeLoans } = useLoans();
+  const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [officer, setOfficer] = useState<BankOfficerProfileRow | null>(null);
+  const [items, setItems] = useState<BankOfficerQueueRow[]>([]);
+
+  const loadDashboard = useCallback(async () => {
+    try {
+      // The officer's own profile (shared { success, message, data } shape)
+      // plus the shared bank queue — server-scoped by the bearer token.
+      const [profileRes, queueRes] = await Promise.all([
+        api.get<ApiResponse<BankOfficerProfileRow>>('/api/bank-officer/profile/me'),
+        api.get<ApiResponse<ListResult<BankOfficerQueueRow>>>('/api/bank-officer/loans?pageSize=100'),
+      ]);
+      setOfficer(profileRes?.data ?? null);
+      setItems(queueRes?.data?.items ?? []);
+      setLoadError(null);
+    } catch (err: any) {
+      setLoadError(err?.message ?? 'Could not load your dashboard.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 800);
+    const timer = setTimeout(() => void loadDashboard(), 0);
     return () => clearTimeout(timer);
-  }, []);
+  }, [loadDashboard]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
+    loadDashboard().finally(() => setRefreshing(false));
+  }, [loadDashboard]);
 
-  const pendingApps = applications.filter(a => a.status === 'pending');
-  const approvedApps = applications.filter(a => a.status === 'approved');
-  const totalDisbursed = applications.reduce((s, a) => s + (a.status === 'approved' ? a.amount : 0), 0);
+  const pendingApps = items.filter((a) => a.status === 'pending');
+  const underReviewApps = items.filter((a) => a.status === 'under_review');
+  const approvedApps = items.filter((a) => a.status === 'approved');
+  const rejectedApps = items.filter((a) => a.status === 'rejected');
+  const totalDisbursed = approvedApps.reduce((s, a) => s + Number(a.approved_amount ?? a.amount ?? 0), 0);
+  const recent = items.slice(0, 5);
 
   if (loading) {
     return (
@@ -39,7 +76,7 @@ export default function BankOfficerDashboardScreen() {
         <ScreenHeader title="Bank Officer Dashboard" />
         <View style={styles.loadingContainer}>
           {[...Array(4)].map((_, i) => (
-            <View key={i} style={[styles.skeletonCard, { backgroundColor: colors.dashboard.cardBg }]}>
+            <View key={i} style={[styles.skeletonCard, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
               <ActivityIndicator color={colors.greenLight} />
             </View>
           ))}
@@ -48,97 +85,87 @@ export default function BankOfficerDashboardScreen() {
     );
   }
 
+  const bg = colors.dashboard.bg;
+  const cardBg = colors.dashboard.cardBg;
+  const textPrimary = colors.dashboard.textPrimary;
+  const textSecondary = colors.dashboard.textSecondary;
+  const border = colors.dashboard.border;
+
   return (
-    <View style={[styles.screen, { backgroundColor: colors.dashboard.bg }]}>
+    <View style={[styles.screen, { backgroundColor: bg }]}>
       <ScreenHeader title="Bank Officer Dashboard" />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.greenLight} />}
       >
-        <LinearGradient
-          colors={['#1E40AF', '#3B82F6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroCard}>
+        {loadError ? (
+          <View style={[styles.card, { backgroundColor: cardBg, borderColor: colors.dashboard.redDown }]}>
+            <View style={styles.emptyInner}>
+              <Ionicons name="cloud-offline-outline" size={36} color={colors.dashboard.redDown} />
+              <Text style={[styles.emptyTitle, { color: textPrimary }]}>Could not load your data</Text>
+              <Text style={[styles.emptySubtitle, { color: textSecondary }]}>{loadError}</Text>
+              <Text style={[styles.emptySubtitle, { color: textSecondary }]}>Pull down to retry.</Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Hero Card */}
+        <View style={[styles.heroCard, { backgroundColor: colors.deepGreen }]}>
           <View style={styles.heroRow}>
             <View style={styles.heroAvatar}>
               <Ionicons name="person" size={24} color="#FFFFFF" />
             </View>
             <View style={styles.heroTextCol}>
               <Text style={styles.heroGreeting}>Good morning,</Text>
-              <Text style={styles.heroName}>Ayesha Khatun</Text>
-              <Text style={styles.heroRole}>Bank Officer • Sonali Bank</Text>
+              <Text style={styles.heroName}>{officer?.name_en ?? officer?.name_bn ?? user?.name ?? 'Bank Officer'}</Text>
+              <Text style={styles.heroRole}>
+                {[officer?.designation, officer?.bank_name ?? officer?.branch_name].filter(Boolean).join(' • ') || 'Bank Officer • SOFOL'}
+              </Text>
             </View>
           </View>
           <View style={styles.heroStatsRow}>
             <StatCard hero icon="document-text" iconBg="#FFFFFF" value={String(pendingApps.length)} label="Pending Applications" />
-            <StatCard hero icon="checkmark-circle" iconBg="#FFFFFF" value={String(activeLoans.length)} label="Active Loans" />
+            <StatCard hero icon="eye" iconBg="#FFFFFF" value={String(underReviewApps.length)} label="Under Review" />
           </View>
-        </LinearGradient>
-
-        <Text style={[styles.sectionLabel, { color: colors.dashboard.textSecondary }]}>Overview</Text>
-        <View style={styles.statsGrid}>
-          <StatCard icon="document-text-outline" iconBg="#3A9BD5" value={String(applications.length)} label="Total Applications" sub="All time" />
-          <StatCard icon="checkmark-circle-outline" iconBg="#22C55E" value={String(approvedApps.length)} label="Approved This Month" />
-          <StatCard icon="cash-outline" iconBg="#8B5CF6" value={String(activeLoans.length)} label="Active Loans" />
-          <StatCard icon="wallet-outline" iconBg="#F59E0B" value={`৳${(totalDisbursed / 100000).toFixed(1)}L`} label="Disbursed Amount" />
         </View>
 
-        {pendingApps.length > 0 && (
+        <Text style={[styles.sectionLabel, { color: textSecondary }]}>Overview</Text>
+        <View style={styles.statsGrid}>
+          <StatCard icon="documents-outline" iconBg="#3A9BD5" value={String(items.length)} label="Forwarded Applications" sub="All time" />
+          <StatCard icon="checkmark-circle-outline" iconBg="#22C55E" value={String(approvedApps.length)} label="Approved" />
+          <StatCard icon="close-circle-outline" iconBg="#EF4444" value={String(rejectedApps.length)} label="Rejected" />
+          <StatCard icon="wallet-outline" iconBg="#F59E0B" value={`৳${totalDisbursed.toLocaleString()}`} label="Sanctioned Amount" />
+        </View>
+
+        {recent.length > 0 && (
           <>
-            <Text style={[styles.sectionLabel, { color: colors.dashboard.textSecondary }]}>Pending Applications</Text>
-            <View style={[styles.card, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
-              {pendingApps.slice(0, 3).map((app, i) => (
+            <Text style={[styles.sectionLabel, { color: textSecondary }]}>Recent Applications</Text>
+            <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
+              {recent.map((app, i) => (
                 <Pressable key={app.id} onPress={() => router.push('/officials/approvals')} style={({ pressed }) => pressed && styles.pressed}>
                   <View style={styles.pendingRow}>
                     <View style={styles.pendingInfo}>
-                      <Text style={[styles.pendingTitle, { color: colors.dashboard.textPrimary }]}>{app.title}</Text>
-                      <Text style={[styles.pendingMeta, { color: colors.dashboard.textSecondary }]}>
-                        ৳{app.amount.toLocaleString()} • {app.date}
+                      <Text style={[styles.pendingTitle, { color: textPrimary }]}>
+                        {app.farmer?.name_en ?? app.farmer?.name_bn ?? 'Farmer'}
+                      </Text>
+                      <Text style={[styles.pendingMeta, { color: textSecondary }]}>
+                        ৳{(app.amount ?? 0).toLocaleString()} • Forwarded {formatDate(app.forwarded_at)}
                       </Text>
                     </View>
-                    <StatusBadge status={app.status === 'under_review' ? 'pending' : app.status} />
+                    <StatusBadge status={STATUS_AS_BADGE(app.status)} />
                   </View>
-                  {i < pendingApps.length - 1 && <View style={[styles.divider, { backgroundColor: colors.dashboard.border }]} />}
+                  {i < recent.length - 1 && <View style={[styles.divider, { backgroundColor: border }]} />}
                 </Pressable>
               ))}
             </View>
           </>
         )}
 
-        {activeLoans.length > 0 && (
-          <>
-            <Text style={[styles.sectionLabel, { color: colors.dashboard.textSecondary }]}>Active Loans</Text>
-            <View style={[styles.card, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
-              {activeLoans.map((loan, i) => (
-                <View key={loan.id}>
-                  <View style={styles.activeLoanRow}>
-                    <View style={styles.activeLoanInfo}>
-                      <Text style={[styles.activeLoanTitle, { color: colors.dashboard.textPrimary }]}>{loan.title}</Text>
-                      <Text style={[styles.activeLoanMeta, { color: colors.dashboard.textSecondary }]}>
-                        ৳{loan.amount.toLocaleString()} • {loan.duration} • {loan.interest}
-                      </Text>
-                    </View>
-                    <View style={styles.activeLoanRight}>
-                      <Text style={[styles.activeLoanProgress, { color: colors.greenLight }]}>{loan.progress}%</Text>
-                      <View style={[styles.progressBarSmall, { backgroundColor: colors.dashboard.border }]}>
-                        <View style={[styles.progressFillSmall, { backgroundColor: colors.greenLight, width: `${loan.progress}%` }]} />
-                      </View>
-                    </View>
-                  </View>
-                  {i < activeLoans.length - 1 && <View style={[styles.divider, { backgroundColor: colors.dashboard.border }]} />}
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
-        <Text style={[styles.sectionLabel, { color: colors.dashboard.textSecondary }]}>Quick Actions</Text>
+        <Text style={[styles.sectionLabel, { color: textSecondary }]}>Quick Actions</Text>
         <View style={styles.actionsGrid}>
           <ActionCard icon="checkmark-circle-outline" iconBg="#22C55E" title="Review Applications" onPress={() => router.push('/officials/approvals')} />
-          <ActionCard icon="cash-outline" iconBg="#3B82F6" title="Manage Loans" onPress={() => router.push('/officials/loans')} />
-          <ActionCard icon="bar-chart-outline" iconBg="#8B5CF6" title="View Reports" onPress={() => router.push('/officials/reports')} />
+          <ActionCard icon="cash-outline" iconBg="#3B82F6" title="Loan Management" onPress={() => router.push('/officials/loans')} />
           <ActionCard icon="settings-outline" iconBg="#F59E0B" title="Settings" onPress={() => router.push('/officials/settings')} />
         </View>
 
@@ -151,9 +178,9 @@ export default function BankOfficerDashboardScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   scroll: { flex: 1 },
-  content: { padding: 16, maxWidth: contentMaxWidthWide, alignSelf: 'center', width: '100%' },
+  content: { padding: 16, maxWidth: contentMaxWidth, alignSelf: 'center', width: '100%' },
   loadingContainer: { flex: 1, padding: 16, gap: 12 },
-  skeletonCard: { height: 80, borderRadius: borderRadius.md, justifyContent: 'center', alignItems: 'center' },
+  skeletonCard: { height: 80, borderRadius: borderRadius.md, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
   heroCard: { borderRadius: borderRadius.xl, padding: 16, marginBottom: 16 },
   heroRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   heroAvatar: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
@@ -170,14 +197,9 @@ const styles = StyleSheet.create({
   pendingTitle: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
   pendingMeta: { fontSize: 12 },
   divider: { height: 1, marginHorizontal: 14 },
-  activeLoanRow: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
-  activeLoanInfo: { flex: 1 },
-  activeLoanTitle: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
-  activeLoanMeta: { fontSize: 12 },
-  activeLoanRight: { alignItems: 'flex-end', gap: 4 },
-  activeLoanProgress: { fontSize: 16, fontWeight: '800' },
-  progressBarSmall: { height: 4, width: 60, borderRadius: 2, overflow: 'hidden' },
-  progressFillSmall: { height: 4, borderRadius: 2 },
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  emptyInner: { alignItems: 'center', padding: 24, gap: 8 },
+  emptyTitle: { fontSize: 16, fontWeight: '600' },
+  emptySubtitle: { fontSize: 13, textAlign: 'center' },
   pressed: { opacity: 0.7 },
 });

@@ -214,6 +214,64 @@ export type BankOfficerProfileRow = {
   name_bn?: string | null;
   phone?: string | null;
   email?: string | null;
+  designation?: string | null;
+  employee_id?: string | null;
+  bank_name?: string | null;
+  branch_name?: string | null;
+  branch_code?: string | null;
+  dob?: string | null;
+  gender?: string | null;
+  nid?: string | null;
+  created_at?: string | null;
+};
+
+// The farmer / field-officer / banker summary the bank-officer review
+// endpoints embed on each queue row and on the detail response (never
+// client-supplied; resolved server-side and scoped to the application).
+export type ProfileSummary = {
+  id: string;
+  role?: string;
+  name_en?: string | null;
+  name_bn?: string | null;
+  farmer_id?: string | null;
+  phone?: string | null;
+  district?: string | null;
+  is_verified?: boolean | null;
+  credit_score?: number | null;
+};
+
+// A bank-officer queue/detail row: the full loan application plus the review
+// stamps the bank reads/writes (forwarded_at, reviewed_at, decision_at,
+// approved_amount, decision_notes) and the embedded summaries.
+export type BankOfficerQueueRow = {
+  id: string;
+  farmer_id?: string;
+  field_officer_id?: string | null;
+  title: string;
+  amount: number;
+  duration?: string | null;
+  purpose?: string | null;
+  installment_type?: string | null;
+  emi?: number | null;
+  interest?: number | null;
+  status?: string;
+  verification_status?: string;
+  application_date?: string | null;
+  created_at?: string;
+  verified_at?: string | null;
+  reviewed_at?: string | null;
+  forwarded_at?: string | null;
+  forwarded_by?: string | null;
+  bank_officer_id?: string | null;
+  decision_at?: string | null;
+  approved_amount?: number | null;
+  recommended_amount?: number | null;
+  decision_notes?: string | null;
+  timeline?: LoanTimelineStep[];
+  farmer?: ProfileSummary | null;
+  field_officer?: ProfileSummary | null;
+  forwarded_by_officer?: ProfileSummary | null;
+  bank_officer?: ProfileSummary | null;
 };
 
 export type FieldVisitRow = {
