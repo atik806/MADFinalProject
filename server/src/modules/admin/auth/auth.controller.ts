@@ -85,9 +85,13 @@ export const changePassword = async (req: Request, res: Response) => {
 };
 
 // Re-seeds the admin user on demand. Useful in dev / when the .env was
-// just changed.
+// just changed. Hard-disabled in production so a public reseed can never
+// touch the admin account.
 export const reseed = async (_req: Request, res: Response) => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ message: 'Admin seeding is disabled in production' });
+    }
     const result = await authService.ensureAdminUser();
     return res.status(200).json({
       success: true,

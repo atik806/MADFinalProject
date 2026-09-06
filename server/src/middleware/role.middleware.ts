@@ -8,12 +8,6 @@ export const farmerOnly = async (req: Request, res: Response, next: NextFunction
             return res.status(401).json({ message: 'Unauthorized' });
         }
 
-        const authRole = String(
-            (req.user.user_metadata as any)?.role ?? (req.user.app_metadata as any)?.role ?? '',
-        )
-            .trim()
-            .toLowerCase();
-
         // maybeSingle so a missing profile is distinguishable from a real
         // DB error. single() raises PGRST116 when the row is missing, which
         // would otherwise be conflated with a genuine "row not found" 403.
@@ -66,28 +60,12 @@ export const farmerOnly = async (req: Request, res: Response, next: NextFunction
             return next();
         }
 
-        // Some legacy users have the correct role in auth metadata but an old
-        // or blank role value in profiles. Trust auth metadata here and repair
-        // the profile row to prevent repeated 403s on farmer endpoints.
-        if (authRole === 'farmer') {
-            const { error: roleFixError } = await supabase
-                .from('profiles')
-                .update({ role: 'farmer' })
-                .eq('id', req.user.id);
-
-            if (roleFixError) {
-                console.error('Failed to self-heal profile role:', roleFixError);
-                return res.status(403).json({ message: 'Forbidden: User is not a farmer' });
-            }
-
-            return next();
-        }
-
-        if (normalizedRole !== 'farmer') {
-            return res.status(403).json({ message: 'Forbidden: User is not a farmer' });
-        }
-
-        next();
+        // The profile row is the source of truth. Auth metadata is client-
+        // writable, so it is never consulted to repair a profile role — but
+        // the missing-profile self-heal above is safe because it can only
+        // ever mint the lowest-privilege role (farmer), which is no more than
+        // a user already gets from the public /register endpoint.
+        return res.status(403).json({ message: 'Forbidden: User is not a farmer' });
     } catch (error) {
         console.error('Error checking user role:', error);
         res.status(500).json({ message: 'Role verification failed' });

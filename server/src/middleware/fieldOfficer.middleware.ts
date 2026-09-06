@@ -7,12 +7,6 @@ export const fieldOfficerOnly = async (req: Request, res: Response, next: NextFu
             return res.status(401).json({ message: 'Unauthorized' });
         }
 
-        const authRole = String(
-            (req.user.user_metadata as any)?.role ?? (req.user.app_metadata as any)?.role ?? '',
-        )
-            .trim()
-            .toLowerCase();
-
         // maybeSingle so a missing profile is distinguishable from a real
         // DB error. single() raises PGRST116 when the row is missing, which
         // would otherwise be conflated with a genuine "row not found" 403.
@@ -27,29 +21,15 @@ export const fieldOfficerOnly = async (req: Request, res: Response, next: NextFu
             return res.status(500).json({ message: 'Role verification failed' });
         }
 
+        // The admin user's `profiles` row is the single source of truth for
+        // field-officer identity. Field-officer accounts are always created
+        // by an admin via POST /api/admin/field-officers (which writes the
+        // profile). A missing or non-field_officer profile is a hard 403:
+        // never self-heal or promote from auth metadata — a client can
+        // rewrite its own user_metadata.role, so trusting it would let any
+        // authenticated user mint themselves a field officer.
         if (!profile) {
-            // The auth user exists but the profile row is missing — this can
-            // happen when a previous registration wrote the auth user but
-            // failed to insert the profile. Self-heal by creating a minimal
-            // profile so the field officer can keep using the app. They can
-            // fill in the rest of their data via the Edit Profile screen.
-            const { error: insertError } = await supabase
-                .from('profiles')
-                .insert({
-                    id: req.user.id,
-                    role: 'field_officer',
-                    status: 'pending',
-                    phone: req.user.phone ?? null,
-                    email: req.user.email ?? null,
-                    name_en: req.user.user_metadata?.full_name ?? null,
-                });
-
-            if (insertError) {
-                console.error('Failed to self-heal missing profile:', insertError);
-                return res.status(403).json({ message: 'Forbidden: User role not found' });
-            }
-
-            return next();
+            return res.status(403).json({ message: 'Forbidden: User role not found' });
         }
 
         const normalizedRole = String(profile.role ?? '').trim().toLowerCase();
@@ -57,8 +37,6 @@ export const fieldOfficerOnly = async (req: Request, res: Response, next: NextFu
             // Re-read the account status on every request rather than trusting
             // the JWT: an admin suspending an officer must take effect
             // immediately, while the officer's token is still valid.
-            // 'pending' and 'active' both pass — officer accounts are
-            // admin-created as active, and pending is the self-heal default.
             const normalizedStatus = String(profile.status ?? '').trim().toLowerCase();
             if (normalizedStatus === 'inactive' || normalizedStatus === 'suspended') {
                 return res.status(403).json({ message: 'Forbidden: Field officer account is not active' });
@@ -66,28 +44,7 @@ export const fieldOfficerOnly = async (req: Request, res: Response, next: NextFu
             return next();
         }
 
-        // Some legacy users have the correct role in auth metadata but an old
-        // or blank role value in profiles. Trust auth metadata here and repair
-        // the profile row to prevent repeated 403s on field-officer endpoints.
-        if (authRole === 'field_officer') {
-            const { error: roleFixError } = await supabase
-                .from('profiles')
-                .update({ role: 'field_officer' })
-                .eq('id', req.user.id);
-
-            if (roleFixError) {
-                console.error('Failed to self-heal profile role:', roleFixError);
-                return res.status(403).json({ message: 'Forbidden: User is not a field officer' });
-            }
-
-            return next();
-        }
-
-        if (normalizedRole !== 'field_officer') {
-            return res.status(403).json({ message: 'Forbidden: User is not a field officer' });
-        }
-
-        next();
+        return res.status(403).json({ message: 'Forbidden: User is not a field officer' });
     } catch (error) {
         console.error('Error checking user role:', error);
         res.status(500).json({ message: 'Role verification failed' });

@@ -13,7 +13,9 @@ const uploadMiddleware = multer({ limits: { fileSize: 5 * 1024 * 1024 } });
 router.post('/register', authLimiter, authController.register);
 router.post('/login', authLimiter, authController.login);
 router.post('/reset-password', authLimiter, authController.resetPassword);
-router.post('/upload', uploadMiddleware.single('file'), authController.upload);
+// Upload is authenticated: registration photos can contain PII and must not
+// be writable by anonymous callers.
+router.post('/upload', authenticateUser, uploadMiddleware.single('file'), authController.upload);
 router.get('/me', authenticateUser, authController.getMe);
 
 export default router;

@@ -2,15 +2,14 @@ import { NextFunction, Request, Response } from 'express';
 import { supabase, supabaseAdmin } from '../config/supabase';
 
 // adminOnly: gates an endpoint to authenticated users whose profile has
-// role = 'admin'. Mirrors the fieldOfficerOnly middleware: it reads the
-// role from profiles, self-heals missing rows from auth metadata, and
-// repairs a stale profile role by trusting the auth metadata.
+// role = 'admin'. The profile row is the single source of truth; auth
+// user_metadata.role is NEVER trusted here (a client can rewrite their own
+// metadata, so trusting it would let anyone mint themselves an admin).
 //
-// Source-of-truth for the *primary* admin is the env-configured
-// ADMIN_EMAIL — the account seeded by ensureAdminUser(). If the token
-// email matches that, we always allow access, even if the profile row
-// is missing or stale, so admin login keeps working while admin.sql
-// is being applied.
+// The only self-heal is for the env-configured primary admin (ADMIN_EMAIL,
+// seeded by ensureAdminUser()): if that account's profile row is missing or
+// stale we still admit the request so admin login keeps working while
+// admin.sql is being applied.
 const PRIMARY_ADMIN_EMAIL = String(process.env.ADMIN_EMAIL ?? 'admin@gmail.com')
     .trim()
     .toLowerCase();
@@ -23,12 +22,6 @@ export const adminOnly = async (req: Request, res: Response, next: NextFunction)
 
         const tokenEmail = String(req.user.email ?? '').trim().toLowerCase();
         const isPrimaryAdmin = tokenEmail && tokenEmail === PRIMARY_ADMIN_EMAIL;
-
-        const authRole = String(
-            (req.user.user_metadata as any)?.role ?? (req.user.app_metadata as any)?.role ?? '',
-        )
-            .trim()
-            .toLowerCase();
 
         // The configured admin email short-circuits role/profile checks.
         // We still try to ensure the profile row exists so dependent
@@ -49,27 +42,9 @@ export const adminOnly = async (req: Request, res: Response, next: NextFunction)
             return res.status(500).json({ message: 'Role verification failed' });
         }
 
+        // No self-heal for non-primary admins: a missing profile is a 403,
+        // never a reason to fabricate one from client-writable metadata.
         if (!profile) {
-            // Self-heal a missing profile from auth metadata so admins who
-            // are also acting as another role in a separate context can
-            // still hit /api/admin endpoints. Only attempt if the auth
-            // metadata already claims admin.
-            if (authRole === 'admin') {
-                const { error: insertError } = await supabaseAdmin.from('profiles').insert({
-                    id: req.user.id,
-                    role: 'admin',
-                    status: 'active',
-                    email: req.user.email ?? null,
-                    phone: req.user.phone ?? null,
-                    name_en: req.user.user_metadata?.full_name ?? null,
-                });
-
-                if (insertError && !/duplicate key|already exists/i.test(insertError.message)) {
-                    console.error('Failed to self-heal missing admin profile:', insertError);
-                    return res.status(403).json({ message: 'Forbidden: User role not found' });
-                }
-                return next();
-            }
             return res.status(403).json({ message: 'Forbidden: User role not found' });
         }
 
@@ -77,19 +52,6 @@ export const adminOnly = async (req: Request, res: Response, next: NextFunction)
         if (normalizedRole === 'admin') {
             if (profile.status && String(profile.status).toLowerCase() === 'inactive') {
                 return res.status(403).json({ message: 'Forbidden: Admin account is inactive' });
-            }
-            return next();
-        }
-
-        if (authRole === 'admin') {
-            const { error: roleFixError } = await supabaseAdmin
-                .from('profiles')
-                .update({ role: 'admin' })
-                .eq('id', req.user.id);
-
-            if (roleFixError) {
-                console.error('Failed to self-heal admin profile role:', roleFixError);
-                return res.status(403).json({ message: 'Forbidden: User is not an admin' });
             }
             return next();
         }

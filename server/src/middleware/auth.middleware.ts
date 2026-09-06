@@ -22,7 +22,9 @@ export const authenticateUser = async (req:Request, res:Response, next:NextFunct
     req.user = user;
     next();
 }catch(error) {
-    console.error('Error authenticating user:', error);
+    // Log only sanitized metadata; never the raw error object, which can
+    // contain request/response payloads.
+    console.error('Authentication failure:', req.method, req.path, error instanceof Error ? error.name : 'UnknownError');
     res.status(500).json({ message: 'Authentication Failed' });
 }
 

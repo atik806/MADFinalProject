@@ -355,7 +355,12 @@ const resolveFarmerId = async (identifier: string): Promise<string | null> => {
 // DEMO password reset: verifies that a farmer account exists for the given
 // phone/NID/email, then sets the new password via the Supabase admin API.
 // The OTP step in the app is cosmetic — there is no real OTP verification here.
+// This is account takeover by design in a sandboxed demo, so it is hard-
+// disabled in production.
 export const resetFarmerPassword = async (identifier: string, newPassword: string) => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Password reset is disabled in production');
+  }
   if (!identifier || !newPassword) {
     throw new Error('Identifier and new password are required');
   }
