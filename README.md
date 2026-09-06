@@ -54,6 +54,8 @@ Request flow: **Route → Middleware (authenticate → requireRole) → Controll
 │   ├── admin.sql            # admin/officer/audit/loan-review schema (run second)
 │   └── .env.example         # copy to server/.env
 ├── README.md            # this file
+├── README_AI.md         # concise AI/agent orientation + role/permission matrix
+├── README_USER.md       # end-user / roles guide
 └── AI_README.md         # detailed technical status / project memory
 ```
 
