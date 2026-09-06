@@ -76,7 +76,7 @@ const login = async (identifier, password) => {
   r = await req('POST', '/api/admin/bank-officers', { token: ADMIN_TOKEN, json: true, body: {
     nameEn: 'Dup', nid: boNid, phone: '0181' + stamp.slice(-7), password: 'bankofficer123',
   }});
-  report('admin bank officer duplicate NID 400', r.status === 400, `msg=${r.data?.message}`);
+  report('admin bank officer duplicate NID 409', r.status === 409, `msg=${r.data?.message}`);
 
   // missing required fields rejected
   r = await req('POST', '/api/admin/bank-officers', { token: ADMIN_TOKEN, json: true, body: { nameEn: 'Incomplete' } });

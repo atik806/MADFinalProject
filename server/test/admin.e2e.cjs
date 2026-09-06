@@ -328,6 +328,40 @@ const login = async (identifier, password) => {
   r = await req('PATCH', `/api/admin/users/${officerId}/status`, { token: ADMIN_TOKEN, json: true, body: { status: 'active', role: 'admin' } });
   report('role in body ignored on status change', r.status === 200 && r.data?.data?.role === 'field_officer', `role=${r.data?.data?.role}`);
 
+  // ================= H. SELF/ADMIN ACCOUNT + DASHBOARD + OFFICER DIRECTORY =================
+  r = await req('GET', '/api/admin/auth/me', { token: ADMIN_TOKEN });
+  report('auth/me 200', r.status === 200 && r.data?.success === true && typeof r.data?.message === 'string');
+
+  r = await req('POST', '/api/admin/auth/change-password', { token: ADMIN_TOKEN, json: true, body: { currentPassword: 'wrong-password', newPassword: 'rotatedpass123' } });
+  report('change-password wrong current 400', r.status === 400, `msg=${r.data?.message ?? '?'}`);
+
+  r = await req('GET', '/api/admin/dashboard/stats', { token: ADMIN_TOKEN });
+  const dashStats = r.data?.data ?? null;
+  report('dashboard stats 200', r.status === 200 && dashStats && typeof dashStats === 'object', `keys=${dashStats ? Object.keys(dashStats).join(',') : 'none'}`);
+
+  r = await req('GET', '/api/admin/dashboard/registration-trend?months=12', { token: ADMIN_TOKEN });
+  report('registration-trend 200', r.status === 200 && Array.isArray(r.data?.data), `months=${Array.isArray(r.data?.data) ? r.data.data.length : 'n/a'}`);
+
+  r = await req('GET', '/api/admin/dashboard/registration-trend?months=999', { token: ADMIN_TOKEN });
+  report('registration-trend months clamped', r.status === 200 && Array.isArray(r.data?.data) && r.data.data.length <= 24, `months=${Array.isArray(r.data?.data) ? r.data.data.length : 'n/a'}`);
+
+  r = await req('GET', '/api/admin/dashboard/loan-analytics?months=3', { token: ADMIN_TOKEN });
+  report('loan-analytics 200', r.status === 200 && Array.isArray(r.data?.data), `months=${Array.isArray(r.data?.data) ? r.data.data.length : 'n/a'}`);
+
+  r = await req('GET', '/api/admin/dashboard/recent-activity?limit=5', { token: ADMIN_TOKEN });
+  report('recent-activity limit honored', r.status === 200 && Array.isArray(r.data?.data?.items ?? r.data?.data), `rows=${Array.isArray(r.data?.data?.items ?? r.data?.data) ? (r.data?.data?.items ?? r.data?.data).length : 'n/a'}`);
+
+  // Field-officer directory GET list + detail (create was exercised in setup).
+  r = await req('GET', '/api/admin/field-officers?pageSize=100', { token: ADMIN_TOKEN });
+  const foItems = r.data?.data?.items ?? [];
+  report('field-officers list 200', r.status === 200 && Array.isArray(foItems) && foItems.some((u) => u.id === officerId), `count=${foItems.length}`);
+
+  r = await req('GET', `/api/admin/field-officers/${officerId}`, { token: ADMIN_TOKEN });
+  report('field-officer detail 200', r.status === 200 && r.data?.data?.id === officerId, `role=${r.data?.data?.role ?? '?'}`);
+
+  r = await req('GET', `/api/admin/field-officers/${officerId}`, { token: FO_TOKEN });
+  report('field-officer detail non-admin 403', r.status === 403, `msg=${r.data?.message ?? '?'}`);
+
   // ================= SAVE + SUMMARY =================
   saveCleanup();
   const pass = results.filter((x) => x.ok).length;

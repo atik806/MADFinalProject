@@ -335,6 +335,32 @@ async function resolveOfficerToken(stamp, cleanupOfficerIds) {
   r = await req('GET', '/api/farmer/dashboard', { token: OFFICER_TOKEN });
   report('dashboard GET officer token 403', r.status === 403, `status=${r.status}`);
 
+  // ---------- notifications: list / mark-read / delete ----------
+  // The loan application above generated a notification for farmer A.
+  r = await req('GET', '/api/farmer/notifications', { token: TA });
+  const notes = r.data?.data ?? r.data?.notifications ?? [];
+  report('notifications list 200', r.status === 200 && Array.isArray(notes) && notes.length >= 1, `count=${notes.length}`);
+  report('notifications standard envelope', r.data?.success === true && typeof r.data?.message === 'string' && !!r.data?.data,
+    `hasData=${!!r.data?.data}`);
+  const noteId = notes[0]?.id ?? null;
+
+  r = await req('GET', '/api/farmer/notifications', { token: OFFICER_TOKEN });
+  report('notifications officer token 403', r.status === 403, `status=${r.status}`);
+
+  if (noteId) {
+    r = await req('PUT', `/api/farmer/notifications/${noteId}/read`, { token: TA, json: true, body: {} });
+    report('notification mark-as-read 200', r.status === 200 && r.data?.success === true, `msg=${r.data?.message ?? '?'}`);
+
+    r = await req('PUT', `/api/farmer/notifications/${noteId}/read`, { token: TB, json: true, body: {} });
+    report('notification mark-as-read cross-user rejected', r.status !== 200 && r.status !== 401, `status=${r.status}`);
+
+    r = await req('DELETE', `/api/farmer/notifications/${noteId}`, { token: TA });
+    report('notification delete 200', r.status === 200 && r.data?.success === true, `msg=${r.data?.message ?? '?'}`);
+  }
+
+  r = await req('GET', '/api/farmer/notifications');
+  report('notifications no token 401', r.status === 401, `status=${r.status}`);
+
   // ---------- summary ----------
   const passed = results.filter((x) => x.ok).length;
   console.log(`==== ${passed}/${results.length} passed ====`);

@@ -51,6 +51,7 @@ export const getMe = async (req: Request, res: Response) => {
     const profile = await authService.getProfileById(req.user.id);
     return res.status(200).json({
       success: true,
+      message: 'Admin profile fetched successfully',
       data: req.user,
       profile,
     });

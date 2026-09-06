@@ -152,7 +152,7 @@ async function req(method, url, opts = {}) {
   // 13. Verification - verify the farmer
   r = await req('POST', `/api/field-officer/verification/farmers/${farmerId}`, { token: TOKEN, json: true, body: { status: 'verified', notes: 'All documents verified on site.' } });
   const verificationId = r.data?.data?.verification?.id;
-  report('verification verify 200', r.status === 200, `status=${r.data?.data?.verification?.status ?? '?'} is_verified=${r.data?.data?.is_verified ?? '?'}`);
+  report('verification verify 201', r.status === 201, `status=${r.data?.data?.verification?.status ?? '?'} is_verified=${r.data?.data?.is_verified ?? '?'}`);
 
   // 13b. Update the officer-owned verification record
   r = await req('PUT', `/api/field-officer/verification/${verificationId}`, { token: TOKEN, json: true, body: { notes: 'Updated after second document review.' } });
@@ -168,7 +168,7 @@ async function req(method, url, opts = {}) {
 
   // 16. Verification - reject -> is_verified back to false
   r = await req('POST', `/api/field-officer/verification/farmers/${farmerId}`, { token: TOKEN, json: true, body: { status: 'rejected', notes: 'Found mismatch in land documents.' } });
-  report('verification reject 200', r.status === 200, `is_verified=${r.data?.data?.is_verified ?? '?'} (expect false)`);
+  report('verification reject 201', r.status === 201, `is_verified=${r.data?.data?.is_verified ?? '?'} (expect false)`);
 
   // 17. Invalid verification status -> 400
   r = await req('POST', `/api/field-officer/verification/farmers/${farmerId}`, { token: TOKEN, json: true, body: { status: 'hacked' } });

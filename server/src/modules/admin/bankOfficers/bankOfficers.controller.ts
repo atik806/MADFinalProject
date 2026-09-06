@@ -43,7 +43,7 @@ export const create = async (req: Request, res: Response) => {
     // Only this module's own validation messages pass through; the parked
     // schema surfaces raw Postgres 42703 text that must not reach clients.
     const message = safeErrorMessage(error, 'Failed to create bank officer');
-    const status = /required|must be|already registered/i.test(message) ? 400 : 500;
+    const status = /already registered/i.test(message) ? 409 : /required|must be/i.test(message) ? 400 : 500;
     return res.status(status).json({ message });
   }
 };

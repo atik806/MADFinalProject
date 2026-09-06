@@ -49,6 +49,7 @@ export const getMe = async (req: Request, res: Response) => {
     const profile = await authService.getProfileById(req.user.id);
     return res.status(200).json({
       success: true,
+      message: 'Profile fetched successfully',
       data: req.user,
       profile,
     });
@@ -80,7 +81,7 @@ export const upload = async (req: Request, res: Response) => {
     }
     const type = typeof req.body.type === 'string' ? req.body.type : 'misc';
     const url = await uploadService.uploadPhoto(req.file, type);
-    return res.status(201).json({ success: true, url });
+    return res.status(201).json({ success: true, message: 'File uploaded successfully', data: { url }, url });
   } catch (error: any) {
     return res.status(500).json({ message: 'Upload failed' });
   }

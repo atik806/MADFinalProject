@@ -3,8 +3,13 @@ import * as notificationService from './notifications.service';
 
 export const getNotification = async (req: Request, res: Response) => {
   try {
-    const data = await notificationService.getNotifications(req.user?.id);
-    return res.status(200).json({ notifications: data, success: true });
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const data = await notificationService.getNotifications(req.user.id);
+    // Standard envelope: { success, message, data }. `notifications` is kept
+    // as a compatibility alias for the current client provider.
+    return res.status(200).json({ success: true, message: 'Notifications fetched', data, notifications: data });
   } catch (error: any) {
     return res.status(500).json({
       message: 'An error occurred while fetching notifications.',
@@ -15,14 +20,14 @@ export const getNotification = async (req: Request, res: Response) => {
 export const markAsRead = async (req: Request, res: Response) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ message: 'Unauthorized' });
     }
     const id = req.params.id;
     if (!id) {
-      return res.status(400).json({ error: 'Notification id is required' });
+      return res.status(400).json({ message: 'Notification id is required' });
     }
     await notificationService.markAsRead(req.user.id, String(id));
-    return res.status(200).json({ message: 'Notification marked as read.', success: true });
+    return res.status(200).json({ message: 'Notification marked as read.', success: true, data: { id: String(id) } });
   } catch (error: any) {
     return res.status(500).json({
       message: 'An error occurred while marking notification as read.',
@@ -33,14 +38,14 @@ export const markAsRead = async (req: Request, res: Response) => {
 export const deleteNotification = async (req: Request, res: Response) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ message: 'Unauthorized' });
     }
     const id = req.params.id;
     if (!id) {
-      return res.status(400).json({ error: 'Notification id is required' });
+      return res.status(400).json({ message: 'Notification id is required' });
     }
     await notificationService.deleteNotification(req.user.id, String(id));
-    return res.status(200).json({ message: 'Notification deleted successfully.', success: true });
+    return res.status(200).json({ message: 'Notification deleted successfully.', success: true, data: { id: String(id) } });
   } catch (error: any) {
     return res.status(500).json({
       message: 'An error occurred while deleting notification.',

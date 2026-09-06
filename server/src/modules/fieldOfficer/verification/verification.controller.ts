@@ -32,7 +32,7 @@ export const create = async (req: Request, res: Response) => {
       verificationInput(body),
       { id: req.user.id, name: req.user.user_metadata?.full_name ?? null },
     );
-    return res.status(200).json({
+    return res.status(201).json({
       success: true,
       message: 'Farmer verification recorded successfully',
       data,
