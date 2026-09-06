@@ -1,5 +1,6 @@
 import { supabase } from '../../../config/supabase';
 import { recordAuditLog } from '../../admin/audit/audit.service';
+import { notifyFarmer } from '../../farmer/notifications/notifications.service';
 import { assertAssigned, fetchAssignedFarmerIdSet } from '../farmers/farmers.service';
 import { optionalText, parseIsoDate, requireText, requireUuid } from '../validation';
 
@@ -366,12 +367,11 @@ export const submitLoanApplication = async (
     { loan_application_id: loanId, step: 2, label: 'Under Review', completed: false },
     { loan_application_id: loanId, step: 3, label: 'Decision', completed: false },
   ]);
-  await supabase.from('notifications').insert({
-    user_id: existing.farmer_id,
-    title: 'Loan Application Submitted',
-    description: 'Your loan application has been submitted for review.',
-    read: false,
-  });
+  await notifyFarmer(
+    existing.farmer_id,
+    'Loan Application Submitted',
+    'Your loan application has been submitted for review.',
+  );
 
   void recordAuditLog({
     actorId: officerId,
@@ -443,15 +443,13 @@ export const verifyLoanApplication = async (
 
   // The bank only sees applications the officer has signed off on: mark
   // verification as officer-linked and notify the farmer of the verdict.
-  await supabase.from('notifications').insert({
-    user_id: existing.farmer_id,
-    title: verdict === 'verified' ? 'Loan Application Verified' : 'Loan Application Rejected by Field Officer',
-    description:
-      verdict === 'verified'
-        ? 'Your loan application passed field verification and will be forwarded to the bank.'
-        : 'Your loan application did not pass field verification. Please contact your field officer.',
-    read: false,
-  });
+  await notifyFarmer(
+    existing.farmer_id,
+    verdict === 'verified' ? 'Loan Application Verified' : 'Loan Application Rejected by Field Officer',
+    verdict === 'verified'
+      ? 'Your loan application passed field verification and will be forwarded to the bank.'
+      : 'Your loan application did not pass field verification. Please contact your field officer.',
+  );
 
   void recordAuditLog({
     actorId: officerId,
@@ -519,12 +517,11 @@ export const forwardLoanApplication = async (
     throw new Error('Loan application not found');
   }
 
-  await supabase.from('notifications').insert({
-    user_id: existing.farmer_id,
-    title: 'Loan Application Forwarded to Bank',
-    description: 'Your verified loan application has been forwarded to the bank for approval.',
-    read: false,
-  });
+  await notifyFarmer(
+    existing.farmer_id,
+    'Loan Application Forwarded to Bank',
+    'Your verified loan application has been forwarded to the bank for approval.',
+  );
 
   void recordAuditLog({
     actorId: officerId,

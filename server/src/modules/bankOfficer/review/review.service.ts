@@ -1,5 +1,6 @@
 import { supabase } from '../../../config/supabase';
 import { recordAuditLog } from '../../admin/audit/audit.service';
+import { notifyFarmer } from '../../farmer/notifications/notifications.service';
 import {
   BankDecisionStatus,
   optionalText,
@@ -189,19 +190,6 @@ const completeTimelineStep = async (loanId: string, step: number, label?: string
       .eq('step', step);
   } catch (err) {
     console.warn('loan_timeline update failed (non-fatal):', err);
-  }
-};
-
-const notifyFarmer = async (farmerId: string, title: string, description: string) => {
-  try {
-    await supabase.from('notifications').insert({
-      user_id: farmerId,
-      title,
-      description,
-      read: false,
-    });
-  } catch (err) {
-    console.warn('notification insert failed (non-fatal):', err);
   }
 };
 

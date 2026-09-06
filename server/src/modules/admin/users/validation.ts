@@ -81,7 +81,7 @@ export const safeErrorMessage = (error: unknown, fallback: string): string => {
   const message = error && typeof error === 'object' && 'message' in error
     ? String((error as { message?: unknown }).message ?? '')
     : '';
-  if (/must be|required|invalid|cannot be|not found|no longer|must not/i.test(message)) {
+  if (/must be|required|invalid|cannot be|already registered|not found|no longer|must not/i.test(message)) {
     return message;
   }
   return fallback;

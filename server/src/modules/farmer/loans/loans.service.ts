@@ -1,5 +1,6 @@
 import { supabase } from '../../../config/supabase';
 import { recordAuditLog } from '../../admin/audit/audit.service';
+import { notifyFarmer } from '../notifications/notifications.service';
 import {
   requireInstallmentType,
   requireText,
@@ -107,12 +108,11 @@ export const applyForLoan = async (
     { loan_application_id: data.id, step: 2, label: 'Under Review', completed: false },
     { loan_application_id: data.id, step: 3, label: 'Decision', completed: false },
   ]);
-  await supabase.from('notifications').insert({
-    user_id: farmerId,
-    title: 'Loan Application Submitted',
-    description: 'Your loan application has been submitted successfully.',
-    read: false,
-  });
+  await notifyFarmer(
+    farmerId,
+    'Loan Application Submitted',
+    'Your loan application has been submitted successfully.',
+  );
 
   void recordAuditLog({
     actorId: farmerId,
