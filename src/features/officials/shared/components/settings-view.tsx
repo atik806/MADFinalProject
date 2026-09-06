@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidth } from '@/features/officials/shared/constants/layout';
@@ -15,6 +15,7 @@ type SettingsItem = {
   value?: string | boolean;
   type?: 'switch';
   onSwitchChange?: (value: boolean) => void;
+  onPress?: () => void;
 };
 
 type SettingsSection = {
@@ -46,14 +47,16 @@ export function SettingsView({ sections }: SettingsViewProps) {
             <View style={[settingsCardStyles.card, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
               {section.items.map((item, ii) => (
                 <View key={ii}>
-                  <SettingsRow
-                    icon={item.icon}
-                    label={item.label}
-                    value={item.type === 'switch' ? undefined : (item.value as string | undefined)}
-                    showSwitch={item.type === 'switch'}
-                    switchValue={item.type === 'switch' ? Boolean(item.value) : undefined}
-                    onSwitchChange={item.onSwitchChange}
-                  />
+                  <Pressable onPress={item.onPress} disabled={!item.onPress}>
+                    <SettingsRow
+                      icon={item.icon}
+                      label={item.label}
+                      value={item.type === 'switch' ? undefined : (item.value as string | undefined)}
+                      showSwitch={item.type === 'switch'}
+                      switchValue={item.type === 'switch' ? Boolean(item.value) : undefined}
+                      onSwitchChange={item.onSwitchChange}
+                    />
+                  </Pressable>
                   {ii < section.items.length - 1 && <View style={[settingsCardStyles.divider, { backgroundColor: colors.dashboard.border }]} />}
                 </View>
               ))}

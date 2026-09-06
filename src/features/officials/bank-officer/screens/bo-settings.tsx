@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { SettingsView } from '@/features/officials/shared/components/settings-view';
 import { useThemeContext } from '@/contexts/ThemeContext';
@@ -11,28 +11,34 @@ type ProfileItem = {
   value: string;
 };
 
+type ProfileState = 'loading' | 'ready' | 'error';
+
 export default function BankOfficerSettingsScreen() {
   const { isDark, toggleTheme } = useThemeContext();
   const [officer, setOfficer] = useState<BankOfficerProfileRow | null>(null);
+  const [profileState, setProfileState] = useState<ProfileState>('loading');
 
-  useEffect(() => {
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      try {
-        const res = await api.get<ApiResponse<BankOfficerProfileRow>>('/api/bank-officer/profile/me');
-        if (!cancelled) setOfficer(res?.data ?? null);
-      } catch {
-        // Profile is cosmetic in settings; the dashboard already surfaces it.
-      }
-    }, 0);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
+  const loadProfile = useCallback(async () => {
+    setProfileState('loading');
+    try {
+      const res = await api.get<ApiResponse<BankOfficerProfileRow>>('/api/bank-officer/profile/me');
+      setOfficer(res?.data ?? null);
+      setProfileState('ready');
+    } catch {
+      setOfficer(null);
+      setProfileState('error');
+    }
   }, []);
 
+  useEffect(() => {
+    // Kickoff deferred out of the effect body (repo lint rule); state
+    // updates happen only after the fetch resolves.
+    const timer = setTimeout(() => void loadProfile(), 0);
+    return () => clearTimeout(timer);
+  }, [loadProfile]);
+
   const profileItems: ProfileItem[] = [];
-  if (officer) {
+  if (officer && profileState === 'ready') {
     profileItems.push({ icon: 'person-outline', label: 'Name', value: officer.name_en ?? officer.name_bn ?? '—' });
     const posting = [officer.bank_name, officer.branch_name, officer.branch_code].filter(Boolean).join(' • ');
     if (posting) profileItems.push({ icon: 'business-outline', label: 'Posting', value: posting });
@@ -45,14 +51,15 @@ export default function BankOfficerSettingsScreen() {
   return (
     <SettingsView
       sections={[
-        ...(profileItems.length > 0
-          ? [
-              {
-                title: 'My Profile',
-                items: profileItems.map((item) => ({ icon: item.icon, label: item.label, value: item.value })),
-              },
-            ]
-          : []),
+        {
+          title: 'My Profile',
+          items:
+            profileState === 'loading'
+              ? [{ icon: 'hourglass-outline' as const, label: 'Loading profile…' }]
+              : profileState === 'error'
+                ? [{ icon: 'alert-circle-outline' as const, label: 'Profile could not be loaded', value: 'Tap to retry', onPress: () => void loadProfile() }]
+                : profileItems.map((item) => ({ icon: item.icon, label: item.label, value: item.value })),
+        },
         {
           title: 'General',
           items: [

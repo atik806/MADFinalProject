@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useColors } from '@/features/officials/shared/constants/theme';
@@ -27,14 +27,22 @@ export default function AdminReportsScreen() {
   // numbers the dashboard hero shows. The previous hardcoded values
   // (510/234/72%/89) were mock data.
   const [stats, setStats] = useState<AdminStatsRow | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState(false);
 
   const loadStats = useCallback(async () => {
+    setStatsLoading(true);
+    setStatsError(false);
     try {
       const res = await api.get<ApiResponse<AdminStatsRow>>('/api/admin/dashboard/stats');
       setStats(res?.data ?? null);
     } catch {
-      // Stat tiles fall back to 0 rather than fake numbers.
+      // Stat tiles fall back to 0 rather than fake numbers; the banner below
+      // gives the user a way to retry.
       setStats(null);
+      setStatsError(true);
+    } finally {
+      setStatsLoading(false);
     }
   }, []);
 
@@ -68,6 +76,18 @@ export default function AdminReportsScreen() {
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.dashboard.bg }]} contentContainerStyle={styles.content}>
       <Text style={[styles.brand, { color: colors.greenLight }]}>SOFOL</Text>
+
+      {statsError ? (
+        <Pressable style={styles.statusBanner} onPress={() => void loadStats()}>
+          <Ionicons name="refresh" size={14} color="#B45309" />
+          <Text style={styles.statusBannerText}>Statistics could not be loaded — tap to retry</Text>
+        </Pressable>
+      ) : statsLoading ? (
+        <View style={styles.statusBanner}>
+          <ActivityIndicator size="small" color="#B45309" />
+          <Text style={styles.statusBannerText}>Loading statistics…</Text>
+        </View>
+      ) : null}
 
       <View style={styles.statsRow}>
         {STATS.map((stat, i) => (
@@ -133,6 +153,21 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginTop: 8,
     marginBottom: 16,
+  },
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: '#FEF3C7',
+    marginBottom: 12,
+  },
+  statusBannerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400E',
   },
   statsRow: {
     flexDirection: 'row',

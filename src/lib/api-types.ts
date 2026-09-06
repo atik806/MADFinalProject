@@ -97,14 +97,6 @@ export type ProfileRow = {
   member_since?: string | null;
 };
 
-// GET /api/farmer/auth/me — legacy shape: { data: authUser, profile }
-export type AuthMeResponse = {
-  success?: boolean;
-  message?: string;
-  data?: { id: string; email?: string | null; phone?: string | null };
-  profile?: ProfileRow;
-};
-
 // ---------------------------------------------------------------------------
 // Transactions (farmer)
 // ---------------------------------------------------------------------------
@@ -118,14 +110,6 @@ export type TransactionRow = {
   amount: number;
   category: 'income' | 'expense';
   created_at?: string;
-};
-
-export type TransactionInput = {
-  title: string;
-  description?: string;
-  date: string;
-  amount: number;
-  category: 'income' | 'expense';
 };
 
 // ---------------------------------------------------------------------------
@@ -163,16 +147,6 @@ export type LoanRow = {
   loan_timeline?: LoanTimelineStep[];
   // Embedded by the field-officer loans endpoints only.
   farmer?: { id: string; name_en?: string | null; name_bn?: string | null } | null;
-};
-
-export type LoanApplicationInput = {
-  title: string;
-  amount: number;
-  duration: string;
-  purpose: string;
-  installmentType: 'monthly' | 'seasonal';
-  emi?: number;
-  interest?: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -285,15 +259,6 @@ export type FieldVisitRow = {
   location?: string | null;
   visit_type?: string | null;
   status?: string;
-};
-
-export type VisitInput = {
-  farmerId: string;
-  visitDate?: string;
-  purpose?: string;
-  notes?: string;
-  location?: string;
-  visitType?: string;
 };
 
 // ---------------------------------------------------------------------------
