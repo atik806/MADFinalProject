@@ -9,8 +9,11 @@ import { supabase, supabaseAdmin } from '../config/supabase';
 // The only self-heal is for the env-configured primary admin (ADMIN_EMAIL,
 // seeded by ensureAdminUser()): if that account's profile row is missing or
 // stale we still admit the request so admin login keeps working while
-// admin.sql is being applied.
-const PRIMARY_ADMIN_EMAIL = String(process.env.ADMIN_EMAIL ?? 'admin@gmail.com')
+// admin.sql is being applied. The dev fallback email is spec-defined only;
+// in production a missing ADMIN_EMAIL disables the short-circuit entirely.
+const PRIMARY_ADMIN_EMAIL = (process.env.NODE_ENV === 'production'
+    ? String(process.env.ADMIN_EMAIL ?? '')
+    : String(process.env.ADMIN_EMAIL ?? 'admin@gmail.com'))
     .trim()
     .toLowerCase();
 

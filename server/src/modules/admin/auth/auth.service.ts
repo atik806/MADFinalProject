@@ -5,15 +5,24 @@ import { config } from 'dotenv';
 config();
 
 // Admin credentials are pulled from environment variables so the seed
-// account can be rotated without redeploying. The default matches the
-// spec: admin@gmail.com / 123456.
+// account can be rotated without redeploying. The development default
+// matches the spec: admin@gmail.com / 123456. In production the env vars
+// become mandatory — a silent default would expose a known-credential admin
+// account.
 const DEFAULT_ADMIN_EMAIL = 'admin@gmail.com';
 const DEFAULT_ADMIN_PASSWORD = '123456';
 
-export const getAdminCredentials = () => ({
-  email: (process.env.ADMIN_EMAIL || DEFAULT_ADMIN_EMAIL).trim().toLowerCase(),
-  password: process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD,
-});
+export const getAdminCredentials = () => {
+  const email = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD || '';
+  if (process.env.NODE_ENV === 'production' && (!email || !password)) {
+    throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD must be set when NODE_ENV is production');
+  }
+  return {
+    email: email || DEFAULT_ADMIN_EMAIL,
+    password: password || DEFAULT_ADMIN_PASSWORD,
+  };
+};
 
 const shortHex = (): string => {
   return Math.floor(Math.random() * 0xffffff)
