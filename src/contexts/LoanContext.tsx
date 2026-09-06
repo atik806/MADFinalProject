@@ -119,13 +119,6 @@ const timelineFor = (row: LoanRow): TimelineEntry[] => {
   });
 };
 
-// Find the first not-yet-completed step so the detail screen's "current"
-// indicator points at the live pipeline position.
-const firstCurrentIndex = (timeline: TimelineEntry[]): number => {
-  const idx = timeline.findIndex((entry) => entry.status === 'pending');
-  return idx === -1 ? timeline.length - 1 : idx;
-};
-
 // The list endpoint returns rows without loan_timeline (only the detail
 // endpoint embeds it), so list items get a status-derived timeline; opening
 // the detail re-fetches with the real rows.
@@ -224,10 +217,8 @@ export function LoanProvider({ children }: { children: ReactNode }) {
 
   // Exposed for the detail screen to swap the status-derived timeline for
   // the server's real timeline rows once the specific loan is loaded.
-  const [, setCurrentDetailIndex] = useState<number | null>(null);
   const applyDetailTimeline = useCallback((loanId: string, row: LoanRow) => {
     setApplications((prev) => prev.map((a) => (a.id === loanId ? { ...a, timeline: timelineFor(row) } : a)));
-    setCurrentDetailIndex(firstCurrentIndex(timelineFor(row)));
   }, []);
 
   return (
