@@ -13,8 +13,8 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
 - **Frontend** — Expo (SDK 56) / React Native / TypeScript at the repo root (`src/`).
   File-based routing (`expo-router`), state in React Context. Farmer, field-officer and
   admin screens run on the real backend through the typed client in `src/lib/api.ts`
-  with response contracts in `src/lib/api-types.ts`; bank-officer screens remain
-  local/mock (parked schema).
+  with response contracts in `src/lib/api-types.ts`; bank-officer screens are wired to
+  the live `/api/bank-officer` review API.
 - **Backend** — Express 5 + TypeScript in `server/`. Modular:
   `server/src/modules/<role>/<feature>/{controller,routes,service}`. All business logic and
   the only Supabase access live here.
@@ -32,11 +32,10 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
 **Live database note:** the connected Supabase project has the admin/officer schema applied
 (audit_logs, admin/field-officer columns, loan review columns, etc. exist live, with prior data).
 `farmer_db.sql` and `admin.sql` reproduce that schema for a fresh project.
-> ⚠️ **The Milestone 5 bank-officer columns are NOT applied live.** `profiles.bank_name`,
-> `branch_name`, `branch_code` and `loan_applications.bank_officer_id`, `reviewed_at`,
-> `decision_at`, `decision_notes`, `approved_amount` all return Postgres `42703` on the
-> connected project. Run the bank-officer block of `admin.sql` in the Supabase SQL editor
-> before using or testing `/api/bank-officer`.
+> ✅ **The bank-officer columns are applied live** (`profiles.bank_name`, `branch_name`,
+> `branch_code`, `loan_applications.bank_officer_id`, `reviewed_at`, `decision_at`,
+> `decision_notes`, `approved_amount`), and `/api/bank-officer` is verified live by
+> `server/test/bank-officer.e2e.cjs` (94/94).
 
 ---
 
@@ -44,10 +43,10 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
 
 | Role          | Status                | Notes                                                                 |
 | ------------- | --------------------- | --------------------------------------------------------------------- |
-| Admin         | Implemented (core) — **verified live this milestone (71/71)** | auth (login/me/change-password/seed), dashboard (stats incl. bank-officer counts/trends/loan-analytics/recent-activity/overview), audit trail, field-officer management (list/get/create/update/status/reset — create + status now live-tested), bank-officer management (list/get/create/status — create blocked by parked schema), and the **unified user directory** (`GET /users`, `GET /users/:id`, `PATCH /users/:id/status`) plus **farmer directory** (`GET /farmers`, `GET /farmers/:id`) are mounted at `/api/admin` and verified live by `server/test/admin.e2e.cjs` (71/71, self-provisioning). Reports and settings screens remain planned. |
-| Farmer        | Implemented (backend + frontend, verified live) | auth (register/login/reset/upload/me), profile (`GET/PUT /me` + `/profile` alias, privileged columns filtered), read-only credit profile, dashboard, transactions (full CRUD, whitelisted updates, sign-convention amounts), loans (list/get/apply, pinned `pending`, shared lifecycle), notifications — mounted at `/api/farmer` and verified live (farmer E2E 72/72). Frontend wired (typed contexts, loading/error/retry states, double-submit guards, session-scoped caches). |
+| Admin         | Implemented (core) — **verified live (81/81)** | auth (login/me/change-password/seed), dashboard (stats incl. bank-officer counts/trends/loan-analytics/recent-activity/overview), audit trail, field-officer management (list/get/create/update/status/reset), bank-officer management (list/get/create/status — duplicate NID now 409), and the **unified user directory** (`GET /users`, `GET /users/:id`, `PATCH /users/:id/status`) plus **farmer directory** (`GET /farmers`, `GET /farmers/:id`) are mounted at `/api/admin` and verified live by `server/test/admin.e2e.cjs` (81/81, self-provisioning). |
+| Farmer        | Implemented (backend + frontend, verified live) | auth (register/login/reset/upload/me), profile (`GET/PUT /me` + `/profile` alias, privileged columns filtered), read-only credit profile, dashboard, transactions (full CRUD, whitelisted updates, sign-convention amounts), loans (list/get/apply, pinned `pending`, shared lifecycle), notifications (list/mark-read/delete) — mounted at `/api/farmer` and verified live (farmer E2E 79/79). Frontend wired (typed contexts, loading/error/retry states, double-submit guards, session-scoped caches). |
 | Field Officer | Implemented (core + loans, backend + frontend) | Profile, assigned-farmer management/registration, verification history/update, field visits, and the loan-application workflow (draft → submit → verify → forward) are mounted at `/api/field-officer` and verified live (50/50 + 48/48). Frontend wired (dashboard with real counts/officer profile, visits with farmer-name resolution, applications with verify/forward). |
-| Bank Officer  | **Implemented (backend) — NOT live-verified (schema blocked)** | Profile (`GET/PUT /profile/me`), forwarded-application review queue, application detail, `pending → under_review`, and the `approved`/`rejected` decision are written, type-checked (`npm run build` passes) and mounted at `/api/bank-officer`. The 89-assertion E2E suite exists and has been **desk-checked line-by-line against the implementation** (routes, guards, state transitions, validation messages, cleanup ordering all match), but **has never been executed**: the `admin.sql` bank-officer columns are still absent from the connected Supabase project (Postgres `42703` on all 8 — re-probed this session, twice, 45s apart to rule out schema-cache lag). The owner is applying the block via the SQL editor; live verification resumes the moment the columns exist. Treat every behaviour below as *intended and reviewed*, not *proven*. Disbursement and repayment are out of scope. |
+| Bank Officer  | **Implemented (backend + frontend) — verified live (94/94)** | Profile (`GET/PUT /profile/me`), forwarded-application review queue, application detail, `pending → under_review`, `approved`/`rejected` decision, notification hook-in — mounted at `/api/bank-officer` and verified live by `server/test/bank-officer.e2e.cjs` (94/94). Frontend wired: dashboard (live profile + queue stats + recent applications), loan management (live queue with search/status filters/timeline), approvals (start-review/decision workbench with client-side rules mirroring the server), settings (live "My Profile"). Disbursement and repayment are out of scope. |
 
 ---
 
@@ -92,11 +91,10 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
   `PUT /:id`, `PATCH /:id/status`, `POST /:id/reset-password` (guarded). Creates a
   `field_officer` auth user + profile; edits via a field white-list.
 - `bankOfficers/*` — `GET /` (list + per-officer decision count), `GET /:id` (role-scoped
-  detail; decision count degrades to 0 while the bank schema is parked), `POST /` (create —
-  blocked live by the parked schema), `PATCH /:id/status` (guarded). Exists because the
-  `bank_officer` role had **no** provisioning path at all: without it `/api/bank-officer`
-  is unreachable. Status changes are the admin's kill switch for an officer who holds
-  approval authority.
+  detail), `POST /` (create; duplicate NID → 409), `PATCH /:id/status` (guarded). Exists
+  because the `bank_officer` role had **no** provisioning path at all: without it
+  `/api/bank-officer` is unreachable. Status changes are the admin's kill switch for an
+  officer who holds approval authority.
 - `users/*` — **Milestone 6.** Unified directory over `profiles` for ALL roles:
   `GET /` (paginated; role/status filters; search on name/email/phone/farmer_id/employee_id,
   with ilike-wildcards escaped), `GET /:id` (any role, full profile), and
@@ -861,27 +859,24 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 5. ~~**CORS is `*`.** Must be scoped before production.~~ **Fixed (Milestone 8)** — allow-list via `CORS_ORIGINS`; blanket wildcard removed and verified live. *(closed)*
 6. ~~**Security hardening absent.** No helmet, no rate limiting.~~ **Fixed (Milestone 8)** — helmet headers, tiered per-IP rate limits (auth + admin mutations), 1 MiB body cap, all verified live. *(closed)*
 7. **`tsconfig` `types: []`.** `tsc --noEmit` can error on Node globals; runtime uses `--transpile-only`. *(open)*
-8. **Unused deps.** `jsonwebtoken`, `bcryptjs` unused (auth is Supabase-based). *(open)*
-9. ~~Field Officer loan workflow.~~ **Fixed (Milestone 3)** — officer-facing loan application
+8. ~~Unused deps.~~ **Fixed (finalization)** — `jsonwebtoken`, `bcryptjs`, the
+   `finalproject` self-dependency and five unused Expo packages were removed; zero dead
+   component files remain. *(closed)*
+9. ~~Field Officer loan workflow.~~ **Fixed (Milestone 3 + 7)** — officer-facing loan application
    create/list/get/update/submit/verify/forward is implemented and verified live; the
-   officer loan screen remains local/mock until frontend wiring. *(frontend part open)*
+   officer loan screen was wired to the live API in Milestone 7. *(closed)*
 10. ~~Shared-client session leak on farmer login.~~ **Fixed (Milestone 3)** —
    `POST /api/farmer/auth/login` used to poison the shared Supabase client with the
    logged-in user's session (later requests ran under the user's JWT and hit RLS).
    Login now uses a throwaway client.
-11. ~~Bank Officer role had no provisioning path.~~ **Fixed (Milestone 5)** —
-   `POST /api/admin/bank-officers` + `PATCH /:id/status` added. *(not yet live-verified)*
-12. **Milestone 5 schema is not applied to the live project.** The `admin.sql`
-   bank-officer block exists in the repo but the connected Supabase database still
-   returns `42703` for every new column (all 8, re-probed in the finalization session
-   twice, 45s apart, with a fake-column control probe confirming the error comes from
-   Postgres itself). Two SQL-editor attempts by the owner did not take effect (most
-   likely the editor was open on a different project/tab). `/api/bank-officer/loans`
-   degrades to an empty queue and every write path would fail. **This is the single
-   blocking item.** `supabase-js` cannot execute DDL; no `exec_sql`-style RPC exists;
-   no `SUPABASE_ACCESS_TOKEN`/`DATABASE_URL` is configured. **Owner decision: schema
-   work is parked until env details are shared** (then the block can be applied via
-   the Management API or a one-off Postgres connection). *(open — user action pending)*
+11. ~~Bank Officer role had no provisioning path.~~ **Fixed (Milestone 5) —
+    live-verified in the finalization session** — `POST /api/admin/bank-officers`
+    (create; duplicate NID → 409) + `PATCH /:id/status` exercised by
+    `server/test/bank-officer.e2e.cjs` (94/94). *(closed)*
+12. ~~Milestone 5 schema not applied live.~~ **Fixed (finalization session)** — the
+    bank-officer columns were applied to the connected Supabase project by the owner;
+    `/api/bank-officer` (queue, review, decision, profile) now runs against the live
+    schema and the full bank-officer E2E suite is green (94/94). *(closed)*
 13. **Schema is applied by hand, with no migration history.** `farmer_db.sql` and
    `admin.sql` are idempotent scripts pasted into the SQL editor; there is no
    `supabase/migrations/` directory and nothing records which project is at which
@@ -905,21 +900,33 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
    real counts against fixtures so a silent zero fails loudly. Lesson recorded:
    HTTP-status-only verification is not verification.
 16. ~~Suspension had no enforcement.~~ **Fixed (Milestone 6)** — admin status endpoints
-   existed but `farmerOnly`/`fieldOfficerOnly` never read `profiles.status`, so a
-   suspended officer kept full API access until token expiry. Both guards now re-read
-   the status per request, matching `bankOfficerOnly`; verified live both directions.
+    existed but `farmerOnly`/`fieldOfficerOnly` never read `profiles.status`, so a
+    suspended officer kept full API access until token expiry. Both guards now re-read
+    the status per request, matching `bankOfficerOnly`; verified live both directions.
+17. ~~Client-writable `user_metadata.role` could mint privileges.~~ **Fixed (finalization
+    session)** — Supabase lets any client rewrite its own `user_metadata.role`, and
+    `adminOnly`, `fieldOfficerOnly` and `farmerOnly` trusted it to self-heal or *promote*
+    the `profiles` row (an attacker could create an admin/field_officer profile for
+    themselves). All three guards now treat `profiles` as the only source of truth:
+    metadata is never read for authorization. The env `ADMIN_EMAIL` short-circuit and the
+    farmer-only missing-profile recovery (which can only mint the lowest-privilege role)
+    remain. Also in this pass: the demo reset-password and the admin reseed endpoints are
+    hard-disabled under `NODE_ENV=production`; the public `/upload` route is now
+    authenticated; the auth middleware no longer logs raw error objects; the dashboard
+    `months`/`limit` windows are clamped; and `ADMIN_EMAIL`/`ADMIN_PASSWORD` become
+    mandatory under production. Verified: security suite 25/25 + full regression after
+    the change.
 
 ---
 
 ## Cross-cutting backlog
 
-- **Bank Officer frontend wiring** (Milestone 7 wired farmer, field-officer, and
-  admin; bank-officer screens intentionally remain local/mock until the parked
-  schema lands and the module is live-verified).
-- **Apply the `admin.sql` bank-officer block to the live project and run
-  `node test/bank-officer.e2e.cjs` + the three existing suites** (blocking; see audit
-  finding 12 — parked on the owner sharing Supabase env details; the E2E has been
-  desk-checked against the implementation in the meantime).
+- ~~**Bank Officer frontend wiring**~~ **Done (finalization session)** — dashboard,
+  loan-management, approvals and settings are wired to the live `/api/bank-officer` API.
+- ~~**Apply the `admin.sql` bank-officer block to the live project and run
+  `node test/bank-officer.e2e.cjs` + the three existing suites`**~~ **Done (finalization
+  session)** — columns applied by the owner; the bank-officer suite runs green (94/94)
+  alongside the other five suites.
 - Adopt versioned migrations instead of hand-pasted SQL (audit finding 13).
 - Standardize `{ success, message, data }` across farmer handlers.
 - Add central request validation (Zod available).
@@ -943,9 +950,11 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
 - ~~Remove the superseded JS `backend/` skeleton.~~ **Done (Milestone 8b)** —
   deleted; nothing referenced it.
 - ~~Standardize `{ success, message, data }` across farmer handlers.~~ Long-closed
-  (Milestone 4 follow-up); the one deliberate legacy hold-out is
-  `GET /api/farmer/notifications` returning `{ notifications, success }` — accepted
-  and handled by the frontend's `NotificationsEnvelope` type.
+  (Milestone 4 follow-up); the one deliberate legacy hold-out was
+  `GET /api/farmer/notifications` returning `{ notifications, success }` — **closed in
+  the finalization session**: it now returns the standard envelope with `notifications`
+  retained as a compatibility alias, so both the frontend provider and the strict
+  envelope work.
 
 ---
 

@@ -4,10 +4,11 @@ SOFOL is a mobile platform that builds **credit profiles for farmers** so banks 
 informed lending decisions. It serves four roles — **Farmer**, **Field Officer**,
 **Bank Officer**, and **Admin** — from a single Expo app backed by an Express + Supabase API.
 
-> **Status:** The Expo frontend is built. The backend is under active development on the
-> `feature/akash` branch. Farmer and Field Officer APIs are implemented and verified
-> against a live database; the Bank Officer API is implemented but **awaiting a schema
-> migration and its first live run**. See [AI_README.md](AI_README.md) for the detailed,
+> **Status:** The Expo frontend and the Express backend are complete and verified against a
+> live database on the `feature/akash` branch. All four roles — Farmer, Field Officer,
+> **Bank Officer**, and Admin — are wired to the live API and covered by E2E
+> (security 25, admin 81, farmer 79, field-officer 50, field-officer-loans 48,
+> bank-officer 94). See [AI_README.md](AI_README.md) for the detailed,
 > honest per-feature implementation status.
 
 ---
@@ -118,11 +119,11 @@ npm start       # node dist/server.js
 Both files are **idempotent** — re-run [`server/admin.sql`](server/admin.sql) after pulling
 changes that add columns. It only ever adds what is missing and never drops data.
 
-> **Existing projects:** the bank-officer columns added for the Bank Officer API
+> **Existing/fresh projects:** the bank-officer columns for the Bank Officer API
 > (`profiles.bank_name/branch_name/branch_code` and
 > `loan_applications.bank_officer_id/reviewed_at/decision_at/decision_notes/approved_amount`)
-> are **not** applied automatically. `supabase-js` cannot execute DDL, so re-run
-> `server/admin.sql` in the SQL editor. Verify with:
+> are applied via `server/admin.sql`. `supabase-js` cannot execute DDL, so for a fresh
+> project paste `server/admin.sql` into the SQL editor. Verify with:
 >
 > ```sql
 > select column_name from information_schema.columns
@@ -158,9 +159,12 @@ Android emulator). Override with `EXPO_PUBLIC_API_URL` in a root `.env` (see
 > real server-scoped counts and the officer's own profile; visit cards resolve
 > farmer names from the officer's assigned-farmer list. Admin reports read
 > live dashboard statistics. Password reset calls the real
-> `/api/farmer/auth/reset-password` endpoint (the OTP steps remain UI-only
-> until an SMS/email provider exists). Bank-officer screens remain
-> local/mock — that role's backend schema is still parked.
+> `/api/farmer/auth/reset-password` endpoint (the OTP verification step is
+> disabled under `NODE_ENV=production` and remains UI-only until an SMS/email
+> provider exists). Bank-officer screens run against the live
+> `/api/bank-officer` review API: dashboard (profile + queue stats),
+> loan management (searchable queue + timelines), approvals (start-review /
+> decision workbench) and settings (live profile).
 
 ---
 
@@ -247,12 +251,9 @@ application to the bank (`forwarded_at`/`forwarded_by`). Bank-officer decisions
 
 ### Bank Officer API
 
-> ⚠️ **Status: implemented but not live-verified (blocked on schema).** These endpoints
-> require the bank-officer columns from [`server/admin.sql`](server/admin.sql), which are
-> **not yet applied** to the development Supabase project (all 8 columns re-probed and
-> still returning `42703`). The E2E suite is written and desk-checked against the
-> implementation, but has not been executed. Apply the columns (see
-> [Supabase setup](#supabase-setup)) before using this section.
+> ✅ **Status: implemented and live-verified (94/94).** These endpoints run against
+> the bank-officer columns from [`server/admin.sql`](server/admin.sql), which are applied
+> to the development Supabase project and exercised by `server/test/bank-officer.e2e.cjs`.
 
 All endpoints require `Authorization: Bearer <supabase-access-token>` and a server-side
 **active** `bank_officer` profile. Bank officer accounts are created by an admin via
@@ -428,10 +429,8 @@ in the lifecycle for disbursement and repayment, which are **not yet implemented
   back-to-back, raise `RATE_LIMIT_AUTH_MAX` / `RATE_LIMIT_ADMIN_MUTATION_MAX` in local
   `.env` (see [Security middleware](#security-middleware-milestone-8)).
 - `node test/bank-officer.e2e.cjs` (bank officer profile + loan review/decision) is
-  also self-provisioning but requires the bank-officer columns to be applied first
-  (see [Supabase setup](#supabase-setup)). **This suite has not yet been executed** —
-  the schema is still outstanding; it has been desk-checked against the implementation
-  and is ready to run the moment the columns exist.
+  also self-provisioning and **has been executed: 94/94** (the bank-officer columns are
+  applied live; see [Supabase setup](#supabase-setup)).
 - The admin suite's cleanup manifest **merges across runs** so consecutive runs cannot
   orphan fixtures; the security suite's manifest does the same.
 - After any run, `node test/cleanup.cjs` and `node test/cleanup-sweep.cjs` remove the

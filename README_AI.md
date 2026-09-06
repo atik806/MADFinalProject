@@ -17,9 +17,15 @@ architecture, response contract, role/permission model, where the code lives, an
 
 - **Documented ≠ proven.** Nothing counts as "implemented" in `AI_README.md` until it has been
   **run and verified live**. Desk-checked code is explicitly labelled "not live-verified".
-- **DB schema work is parked.** No PostgreSQL/Supabase DDL, migrations, or RLS changes until the
-  bank-officer columns are applied. Everything below that touches the bank-officer API is
-  implemented but **not live-verified**.
+- **DB schema work is parked.** Do **not** run new DDL/migrations/RLS changes unplanned. The
+  bank-officer columns from `server/admin.sql` **are applied live** and the whole bank-officer
+  module is **verified live (94/94)**; treat any unapplied-schema notes in older doc history as
+  superseded.
+- **Roles are server-resolved, never client-trusted.** The role guard reads `profiles`.role and
+  status on every request; Supabase `user_metadata.role` is **never** used for authorization
+  (it is client-writable and was the source of a privilege-escalation vector, now closed).
+  Demo-only endpoints (`farmer/auth/reset-password`, admin `auth/reseed`) are hard-disabled
+  under `NODE_ENV=production`, and `ADMIN_EMAIL`/`ADMIN_PASSWORD` are mandatory in production.
 - **Branch discipline.** Work on `feature/akash`, never `main`, never force-push.
 - **Secrets.** `.env` files are git-ignored; commit only `.env.example` placeholders.
 
@@ -47,7 +53,7 @@ bank-officer modules all follow it.
 
 Every failure becomes an `ApiError` (`src/lib/api.ts`) with a user-safe message. A **401 clears the
 session** so the app cannot stay falsely authenticated. Farmers/officers/admin differ only by role;
-bank-officer screens are local/mock (parked schema).
+bank-officer screens run against the live `/api/bank-officer` review API.
 
 ---
 
@@ -99,10 +105,11 @@ npm run build                              # tsc → dist/
 npm run dev                                # http://localhost:3000
 
 # E2E (against a running server, from server/). All self-provisioning + self-cleaning.
-node test/admin.e2e.cjs                    # 71/71
-node test/farmer.e2e.cjs                   # 72/72
+node test/admin.e2e.cjs                    # 81/81
+node test/farmer.e2e.cjs                   # 79/79
 node test/field-officer.e2e.cjs            # 50/50
 node test/field-officer-loans.e2e.cjs      # 48/48
+node test/bank-officer.e2e.cjs             # 94/94
 node test/security.e2e.cjs                 # 25/25
 node test/cleanup.cjs && node test/cleanup-sweep.cjs   # remove test fixtures
 
@@ -111,6 +118,6 @@ npm run typecheck                          # tsc --noEmit
 npm run lint                               # expo lint
 ```
 
-> `node test/bank-officer.e2e.cjs` is written + desk-checked but **not live-verified** — it needs
-> the bank-officer columns applied to Supabase first (see README/AI_README). Do not run it against
-> the current DB; it will fail on missing columns.
+> The **bank-officer schema is applied live** and `/api/bank-officer` is verified by the
+> bank-officer suite (94/94). Run the suites against the current server: if the server was
+> started earlier, `touch server/src/server.ts` first (see above).
