@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -18,6 +19,7 @@ import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/sha
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { api } from '@/lib/api';
 import type { ApiResponse, FieldVisitRow, ListResult, ProfileRow } from '@/lib/api-types';
+import { isIsoDate, isTodayOrFuture } from '@/lib/validation';
 
 type VisitStatus = 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
 
@@ -66,6 +68,7 @@ function getStatusConfig(status: VisitStatus) {
 
 export default function FieldVisitsScreen() {
   const colors = useColors();
+  const params = useLocalSearchParams<{ new?: string }>();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'completed'>('upcoming');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -83,6 +86,7 @@ export default function FieldVisitsScreen() {
   const [formPurpose, setFormPurpose] = useState('');
   const [formNotes, setFormNotes] = useState('');
   const [showFarmerPicker, setShowFarmerPicker] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ farmer?: string; date?: string; purpose?: string }>({});
 
   const loadVisits = useCallback(async () => {
     try {
@@ -114,6 +118,14 @@ export default function FieldVisitsScreen() {
     return () => clearTimeout(timer);
   }, [loadVisits]);
 
+  // Deep link from the dashboard "Record Visit" quick action opens the
+  // schedule-visit form straight away.
+  useEffect(() => {
+    if (!params.new) return;
+    const timer = setTimeout(() => setModalVisible(true), 0);
+    return () => clearTimeout(timer);
+  }, [params.new]);
+
   const bg = colors.dashboard.bg;
   const cardBg = colors.dashboard.cardBg;
   const textPrimary = colors.dashboard.textPrimary;
@@ -122,27 +134,43 @@ export default function FieldVisitsScreen() {
 
   const visits = activeTab === 'upcoming' ? upcoming : completed;
 
+  const validateVisitForm = (): boolean => {
+    const errs: { farmer?: string; date?: string; purpose?: string } = {};
+    if (!formFarmer) errs.farmer = 'Select a farmer.';
+    if (!formDate.trim()) errs.date = 'Please enter a visit date.';
+    else if (!isIsoDate(formDate)) errs.date = 'Enter the date as YYYY-MM-DD.';
+    else if (!isTodayOrFuture(formDate)) errs.date = 'The visit date cannot be in the past.';
+    if (!formPurpose.trim()) errs.purpose = 'Please enter a purpose.';
+    setFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleScheduleVisit = async () => {
-    if (!formFarmer || !formDate || !formPurpose || submitting) return;
+    if (submitting) return;
+    if (!validateVisitForm()) return;
 
     const farmer = assignedFarmers.find((f) => f.name === formFarmer);
-    if (!farmer) return;
+    if (!farmer) {
+      setFormErrors((p) => ({ ...p, farmer: 'Select a farmer.' }));
+      return;
+    }
 
     setSubmitting(true);
     try {
-      // visitDate accepts an ISO date; the backend validates and scopes the
-      // visit to the officer's assignment for that farmer.
+      // visitDate is a normalised ISO date (YYYY-MM-DD); the backend validates
+      // and scopes the visit to the officer's assignment for that farmer.
       await api.post<ApiResponse<FieldVisitRow>>('/api/field-officer/visits', {
         farmerId: farmer.id,
-        visitDate: formDate,
-        purpose: formPurpose,
-        notes: formNotes,
+        visitDate: formDate.trim(),
+        purpose: formPurpose.trim(),
+        notes: formNotes.trim(),
       });
       setModalVisible(false);
       setFormFarmer('');
       setFormDate('');
       setFormPurpose('');
       setFormNotes('');
+      setFormErrors({});
       await loadVisits();
     } catch (err: any) {
       Alert.alert('Schedule Visit', err?.message ?? 'Could not schedule the visit.');
@@ -316,6 +344,7 @@ export default function FieldVisitsScreen() {
                 </Text>
                 <Ionicons name="chevron-down" size={16} color={textSecondary} />
               </Pressable>
+              {formErrors.farmer && <Text style={[styles.fieldError, { color: colors.dashboard.redDown }]}>{formErrors.farmer}</Text>}
               {showFarmerPicker && (
                 <View style={[styles.pickerDropdown, { backgroundColor: cardBg, borderColor: border }]}>
                   {assignedFarmers.map((f) => (
@@ -327,6 +356,7 @@ export default function FieldVisitsScreen() {
                       onPress={() => {
                         setFormFarmer(f.name);
                         setShowFarmerPicker(false);
+                        setFormErrors((p) => ({ ...p, farmer: undefined }));
                       }}
                       style={({ pressed }) => [
                         styles.pickerItem,
@@ -345,22 +375,26 @@ export default function FieldVisitsScreen() {
               {/* Date */}
               <Text style={[styles.fieldLabel, { color: textSecondary }]}>Date</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: bg, borderColor: border, color: textPrimary }]}
-                placeholder="e.g. 10 Jul 2026"
+                style={[styles.input, { backgroundColor: bg, borderColor: formErrors.date ? colors.dashboard.redDown : border, color: textPrimary }]}
+                placeholder="YYYY-MM-DD (e.g. 2026-07-10)"
                 placeholderTextColor={textSecondary}
                 value={formDate}
-                onChangeText={setFormDate}
+                onChangeText={(v) => { setFormDate(v); setFormErrors((p) => ({ ...p, date: undefined })); }}
+                keyboardType="numbers-and-punctuation"
+                autoCapitalize="none"
               />
+              {formErrors.date && <Text style={[styles.fieldError, { color: colors.dashboard.redDown }]}>{formErrors.date}</Text>}
 
               {/* Purpose */}
               <Text style={[styles.fieldLabel, { color: textSecondary }]}>Purpose</Text>
               <TextInput
-                style={[styles.input, { backgroundColor: bg, borderColor: border, color: textPrimary }]}
+                style={[styles.input, { backgroundColor: bg, borderColor: formErrors.purpose ? colors.dashboard.redDown : border, color: textPrimary }]}
                 placeholder="e.g. Crop Inspection"
                 placeholderTextColor={textSecondary}
                 value={formPurpose}
-                onChangeText={setFormPurpose}
+                onChangeText={(v) => { setFormPurpose(v); setFormErrors((p) => ({ ...p, purpose: undefined })); }}
               />
+              {formErrors.purpose && <Text style={[styles.fieldError, { color: colors.dashboard.redDown }]}>{formErrors.purpose}</Text>}
 
               {/* Notes */}
               <Text style={[styles.fieldLabel, { color: textSecondary }]}>Notes</Text>
@@ -381,14 +415,14 @@ export default function FieldVisitsScreen() {
               {/* Submit */}
               <Pressable
                 onPress={handleScheduleVisit}
-                disabled={!formFarmer || !formDate || !formPurpose}
+                disabled={submitting}
                 accessibilityRole="button"
                 accessibilityLabel="Schedule Visit"
-                accessibilityState={{ disabled: !formFarmer || !formDate || !formPurpose }}
+                accessibilityState={{ disabled: submitting, busy: submitting }}
                 style={[
                   styles.submitBtn,
                   { backgroundColor: colors.greenLight },
-                  (!formFarmer || !formDate || !formPurpose) && { opacity: 0.5 },
+                  submitting && { opacity: 0.5 },
                 ]}>
                 <Ionicons name="calendar" size={18} color="#FFFFFF" />
                 <Text style={styles.submitBtnText}>Schedule Visit</Text>
@@ -577,6 +611,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 6,
     marginTop: 12,
+  },
+  fieldError: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 4,
   },
   input: {
     flexDirection: 'row',

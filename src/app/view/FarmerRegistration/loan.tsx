@@ -14,6 +14,7 @@ import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
 import { loanSources } from '@/data';
 import { useRegistration } from "../../../contexts/RegistrationContext";
+import { MAX_LOAN_AMOUNT, parseAmount } from "../../../lib/validation";
 
 type FormErrors = {
   hasLoan?: string;
@@ -39,10 +40,13 @@ export default function LoanScreen() {
     }
 
     if (hasLoan === true) {
+      const amountN = parseAmount(loanAmount);
       if (!loanAmount.trim()) {
         newErrors.loanAmount = t('errLoanAmountRequired');
-      } else if (isNaN(Number(loanAmount)) || Number(loanAmount) <= 0) {
+      } else if (!Number.isFinite(amountN) || amountN <= 0) {
         newErrors.loanAmount = t('errLoanAmountValid');
+      } else if (amountN > MAX_LOAN_AMOUNT) {
+        newErrors.loanAmount = t('errLoanAmountRange');
       }
 
       if (!loanPurpose.trim()) {

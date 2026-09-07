@@ -237,6 +237,9 @@ export default function AdminUsersScreen() {
     if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       e.email = 'Enter a valid email address';
     }
+    if (!editingId && formKind === 'bank_officer' && form.branchCode.trim() && !/^\d+$/.test(form.branchCode.trim())) {
+      e.branchCode = 'Branch code must be digits only';
+    }
     setFormErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -652,8 +655,14 @@ export default function AdminUsersScreen() {
 
       {/* View modal */}
       <Modal visible={!!viewItem} transparent animationType="fade" onRequestClose={() => setViewItem(null)}>
-        <Pressable style={styles.overlay} onPress={() => setViewItem(null)} accessibilityRole="button" accessibilityLabel="Close">
-          <Pressable style={[styles.modalCard, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => {}}>
+        <View style={styles.overlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setViewItem(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          />
+          <View style={[styles.modalCard, { backgroundColor: colors.dashboard.cardBg }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.dashboard.textPrimary }]}>User Details</Text>
               <Pressable onPress={() => setViewItem(null)} accessibilityRole="button" accessibilityLabel="Close">
@@ -668,8 +677,8 @@ export default function AdminUsersScreen() {
                 </View>
               ))}
             </ScrollView>
-          </Pressable>
-        </Pressable>
+          </View>
+        </View>
       </Modal>
 
       {/* Create / edit officer */}
@@ -807,36 +816,40 @@ export default function AdminUsersScreen() {
       {/* Reset password */}
       <Modal visible={!!pwTarget} transparent animationType="fade" onRequestClose={() => setPwTarget(null)}>
         <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={styles.overlay} onPress={() => setPwTarget(null)} accessibilityRole="button" accessibilityLabel="Close">
-            <Pressable style={[styles.modalCard, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => {}}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.dashboard.textPrimary }]}>Reset Password</Text>
-                <Pressable onPress={() => setPwTarget(null)} accessibilityRole="button" accessibilityLabel="Close">
-                  <Ionicons name="close" size={22} color={colors.dashboard.textSecondary} />
-                </Pressable>
-              </View>
-              <Text style={[styles.fieldLabel, { color: colors.dashboard.textSecondary }]}>
-                New password for {pwTarget?.name}
-              </Text>
-              <TextInput
-                style={[styles.input, { color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.bg, borderColor: colors.userBorder }]}
-                placeholder="Min 6 characters"
-                placeholderTextColor={colors.dashboard.textSecondary}
-                secureTextEntry
-                value={pwValue}
-                onChangeText={setPwValue}
-              />
-              <Pressable
-                onPress={submitPassword}
-                disabled={pwSubmitting}
-                accessibilityRole="button"
-                accessibilityLabel="Reset password"
-                accessibilityState={{ disabled: pwSubmitting, busy: pwSubmitting }}
-                style={[styles.submitBtn, { backgroundColor: colors.deepGreen }, pwSubmitting && { opacity: 0.7 }]}>
-                {pwSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitText}>Reset password</Text>}
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setPwTarget(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          />
+          <View style={[styles.modalCard, { backgroundColor: colors.dashboard.cardBg }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.dashboard.textPrimary }]}>Reset Password</Text>
+              <Pressable onPress={() => setPwTarget(null)} accessibilityRole="button" accessibilityLabel="Close">
+                <Ionicons name="close" size={22} color={colors.dashboard.textSecondary} />
               </Pressable>
+            </View>
+            <Text style={[styles.fieldLabel, { color: colors.dashboard.textSecondary }]}>
+              New password for {pwTarget?.name}
+            </Text>
+            <TextInput
+              style={[styles.input, { color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.bg, borderColor: colors.userBorder }]}
+              placeholder="Min 6 characters"
+              placeholderTextColor={colors.dashboard.textSecondary}
+              secureTextEntry
+              value={pwValue}
+              onChangeText={setPwValue}
+            />
+            <Pressable
+              onPress={submitPassword}
+              disabled={pwSubmitting}
+              accessibilityRole="button"
+              accessibilityLabel="Reset password"
+              accessibilityState={{ disabled: pwSubmitting, busy: pwSubmitting }}
+              style={[styles.submitBtn, { backgroundColor: colors.deepGreen }, pwSubmitting && { opacity: 0.7 }]}>
+              {pwSubmitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitText}>Reset password</Text>}
             </Pressable>
-          </Pressable>
+          </View>
         </KeyboardAvoidingView>
       </Modal>
     </View>

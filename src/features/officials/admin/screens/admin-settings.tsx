@@ -105,6 +105,7 @@ export default function AdminSettingsScreen() {
     setErr(null);
     if (!current || !next) return setErr('Enter your current and new password.');
     if (next.length < 6) return setErr('New password must be at least 6 characters.');
+    if (next === current) return setErr('The new password must be different from the current one.');
     if (next !== confirm) return setErr('New passwords do not match.');
     setSubmitting(true);
     try {
@@ -174,40 +175,44 @@ export default function AdminSettingsScreen() {
 
       <Modal visible={pwOpen} transparent animationType="fade" onRequestClose={() => setPwOpen(false)}>
         <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <Pressable style={styles.overlay} onPress={() => setPwOpen(false)} accessibilityRole="button" accessibilityLabel="Close">
-            <Pressable style={[styles.modalCard, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => {}}>
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: colors.dashboard.textPrimary }]}>Change Password</Text>
-                <Pressable onPress={() => setPwOpen(false)} accessibilityRole="button" accessibilityLabel="Close">
-                  <Ionicons name="close" size={22} color={colors.dashboard.textSecondary} />
-                </Pressable>
-              </View>
-
-              {(['current', 'next', 'confirm'] as const).map((f) => (
-                <TextInput
-                  key={f}
-                  style={[styles.input, { color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.bg, borderColor: colors.dashboard.border }]}
-                  placeholder={f === 'current' ? 'Current password' : f === 'next' ? 'New password' : 'Confirm new password'}
-                  placeholderTextColor={colors.dashboard.textSecondary}
-                  secureTextEntry
-                  value={f === 'current' ? current : f === 'next' ? next : confirm}
-                  onChangeText={f === 'current' ? setCurrent : f === 'next' ? setNext : setConfirm}
-                />
-              ))}
-
-              {err ? <Text style={[styles.errText, { color: colors.dashboard.redDown }]}>{err}</Text> : null}
-
-              <Pressable
-                onPress={submitPassword}
-                disabled={submitting}
-                accessibilityRole="button"
-                accessibilityLabel="Update password"
-                accessibilityState={{ disabled: submitting, busy: submitting }}
-                style={[styles.submitBtn, { backgroundColor: colors.deepGreen }, submitting && { opacity: 0.7 }]}>
-                {submitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitText}>Update password</Text>}
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setPwOpen(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          />
+          <View style={[styles.modalCard, { backgroundColor: colors.dashboard.cardBg }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.dashboard.textPrimary }]}>Change Password</Text>
+              <Pressable onPress={() => setPwOpen(false)} accessibilityRole="button" accessibilityLabel="Close">
+                <Ionicons name="close" size={22} color={colors.dashboard.textSecondary} />
               </Pressable>
+            </View>
+
+            {(['current', 'next', 'confirm'] as const).map((f) => (
+              <TextInput
+                key={f}
+                style={[styles.input, { color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.bg, borderColor: colors.dashboard.border }]}
+                placeholder={f === 'current' ? 'Current password' : f === 'next' ? 'New password' : 'Confirm new password'}
+                placeholderTextColor={colors.dashboard.textSecondary}
+                secureTextEntry
+                value={f === 'current' ? current : f === 'next' ? next : confirm}
+                onChangeText={f === 'current' ? setCurrent : f === 'next' ? setNext : setConfirm}
+              />
+            ))}
+
+            {err ? <Text style={[styles.errText, { color: colors.dashboard.redDown }]}>{err}</Text> : null}
+
+            <Pressable
+              onPress={submitPassword}
+              disabled={submitting}
+              accessibilityRole="button"
+              accessibilityLabel="Update password"
+              accessibilityState={{ disabled: submitting, busy: submitting }}
+              style={[styles.submitBtn, { backgroundColor: colors.deepGreen }, submitting && { opacity: 0.7 }]}>
+              {submitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitText}>Update password</Text>}
             </Pressable>
-          </Pressable>
+          </View>
         </KeyboardAvoidingView>
       </Modal>
     </View>
