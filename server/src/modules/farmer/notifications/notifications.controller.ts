@@ -26,7 +26,10 @@ export const markAsRead = async (req: Request, res: Response) => {
     if (!id) {
       return res.status(400).json({ message: 'Notification id is required' });
     }
-    await notificationService.markAsRead(req.user.id, String(id));
+    const data = await notificationService.markAsRead(req.user.id, String(id));
+    if (!data) {
+      return res.status(404).json({ message: 'Notification not found', success: false });
+    }
     return res.status(200).json({ message: 'Notification marked as read.', success: true, data: { id: String(id) } });
   } catch (error: any) {
     return res.status(500).json({

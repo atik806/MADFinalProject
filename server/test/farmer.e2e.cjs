@@ -352,7 +352,7 @@ async function resolveOfficerToken(stamp, cleanupOfficerIds) {
     report('notification mark-as-read 200', r.status === 200 && r.data?.success === true, `msg=${r.data?.message ?? '?'}`);
 
     r = await req('PUT', `/api/farmer/notifications/${noteId}/read`, { token: TB, json: true, body: {} });
-    report('notification mark-as-read cross-user rejected', r.status !== 200 && r.status !== 401, `status=${r.status}`);
+    report('notification mark-as-read cross-user 404', r.status === 404 && r.status !== 401, `status=${r.status}`);
 
     r = await req('DELETE', `/api/farmer/notifications/${noteId}`, { token: TA });
     report('notification delete 200', r.status === 200 && r.data?.success === true, `msg=${r.data?.message ?? '?'}`);

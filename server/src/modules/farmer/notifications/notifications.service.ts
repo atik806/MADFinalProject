@@ -132,7 +132,7 @@ export const markAsRead = async (userId: string, notificationId: string) => {
     .eq('user_id', userId)
     .eq('id', notificationId)
     .select()
-    .single();
+    .maybeSingle();
   if (error) {
     throw new Error(error.message);
   }
