@@ -420,7 +420,7 @@ in the lifecycle for disbursement and repayment, which are **not yet implemented
   (user directory/status enforcement/officer management/dashboard/audit), and
   `node test/security.e2e.cjs` (cross-cutting auth guards) against a running server.
 - Frontend: `npm run typecheck` and `npm run lint` from the repo root (both clean).
-- **All five runnable suites are self-provisioning**: each one logs in the
+- **All six runnable suites are self-provisioning**: each one logs in the
   admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD` in `server/.env`, provisions its own throwaway
   officers/farmers through the public and admin APIs, and cleans up every fixture via
   `node test/cleanup.cjs`. No manual token files are needed anymore — the old

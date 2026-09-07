@@ -64,8 +64,9 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
 - `middleware/auth.middleware.ts` — `authenticateUser`: Bearer → `supabase.auth.getUser` →
   `req.user`; `401` on missing/invalid.
 - `middleware/role.middleware.ts` (`farmerOnly`), `admin.middleware.ts` (`adminOnly`),
-  `fieldOfficer.middleware.ts` — role guards; read role from `profiles`, self-heal, fall back
-  to auth metadata, `403` otherwise. `adminOnly` also short-circuits for the env `ADMIN_EMAIL`.
+  `fieldOfficer.middleware.ts` — role guards read role and status from `profiles`; client
+  auth metadata is never trusted for authorization. `adminOnly` also short-circuits for the
+  env `ADMIN_EMAIL`.
 - `middleware/bankOfficer.middleware.ts` — `bankOfficerOnly`. Deliberately **stricter** than the
   other guards: it does **not** self-heal a missing profile (bank officers are always
   admin-provisioned, so a missing row is never legitimate — self-healing it would let any
@@ -134,7 +135,7 @@ session can resume without guessing. Human-facing setup lives in [README.md](REA
   used by the Field Officer handlers/services.
 
 **Bank Officer module** (`modules/bankOfficer/*`, mounted at `/api/bank-officer`)
-— *written and type-checked, E2E desk-checked, not yet executed live (schema blocked)*:
+— *implemented, type-checked, and live-verified (94/94)*:
 - `profile/*` — guarded `GET /profile/me` and `PUT /profile/me`. The update white-list covers
   personal fields only; the bank posting (`bank_name`, `branch_name`, `branch_code`) is set by the
   admin at provisioning time and is **not** self-editable, so an officer cannot reassign
