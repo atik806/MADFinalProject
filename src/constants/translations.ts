@@ -413,6 +413,32 @@ export const translations = {
   yr: { en: 'yr', bn: 'বছর' },
   month: { en: 'mo', bn: 'মা' },
   months: { en: 'months', bn: 'মাস' },
+
+  // Shared form-validation messages (src/lib/validation.ts)
+  errNameEnLetters: { en: 'Use letters only for the English name', bn: 'ইংরেজি নামে শুধু অক্ষর ব্যবহার করুন' },
+  errDobFormat: { en: 'Enter date of birth as YYYY-MM-DD', bn: 'জন্ম তারিখ YYYY-MM-DD আকারে দিন' },
+  errDobImplausible: { en: 'Enter a valid past date of birth', bn: 'একটি বৈধ অতীত জন্ম তারিখ দিন' },
+  errConfirmPasswordRequired: { en: 'Please re-enter the password', bn: 'পাসওয়ার্ডটি আবার লিখুন' },
+  errLeasedLandValid: { en: 'Enter a valid amount', bn: 'সঠিক পরিমাণ লিখুন' },
+  errLandBreakdown: { en: 'Own + leased land cannot exceed total land', bn: 'নিজস্ব + ইজারা জমি মোট জমির বেশি হতে পারে না' },
+  errLandTooLarge: { en: 'Enter land in acres (too large)', bn: 'একরে জমির পরিমাণ দিন (অনেক বড়)' },
+  errFamilyRange: { en: 'Enter a number between 1 and 30', bn: '১ থেকে ৩০ এর মধ্যে একটি সংখ্যা দিন' },
+  errOccupationShort: { en: 'Enter a valid occupation', bn: 'একটি বৈধ পেশা লিখুন' },
+  errAmountRequired: { en: 'Please enter an amount', bn: 'একটি পরিমাণ লিখুন' },
+  errAmountValid: { en: 'Enter a valid amount greater than 0', bn: '০ এর বেশি একটি বৈধ পরিমাণ লিখুন' },
+  errAmountTooLarge: { en: 'This amount is too large', bn: 'এই পরিমাণটি অনেক বড়' },
+  errLoanAmountRange: {
+    en: 'Loan amount must be between ৳1,000 and ৳1,00,00,000',
+    bn: 'ঋণের পরিমাণ ৳১,০০০ থেকে ৳১,০০,০০,০০০ এর মধ্যে হতে হবে',
+  },
+  errTitleRequired: { en: 'Please enter a title', bn: 'একটি শিরোনাম লিখুন' },
+  errTitleTooLong: { en: 'Keep the title under 80 characters', bn: 'শিরোনাম ৮০ অক্ষরের কম রাখুন' },
+  errVisitDateRequired: { en: 'Please enter a visit date', bn: 'পরিদর্শনের তারিখ দিন' },
+  errVisitDateFormat: { en: 'Enter the date as YYYY-MM-DD', bn: 'তারিখ YYYY-MM-DD আকারে দিন' },
+  errVisitDatePast: { en: 'The visit date cannot be in the past', bn: 'পরিদর্শনের তারিখ অতীতে হতে পারে না' },
+  errPurposeRequired: { en: 'Please enter a purpose', bn: 'একটি উদ্দেশ্য লিখুন' },
+  errNewPasswordSame: { en: 'The new password must be different from the current one', bn: 'নতুন পাসওয়ার্ড বর্তমানটির থেকে আলাদা হতে হবে' },
+  errBranchCodeDigits: { en: 'Branch code must be digits only', bn: 'শাখা কোড শুধু সংখ্যা হতে হবে' },
 };
 
 export type TranslationKey = keyof typeof translations;
