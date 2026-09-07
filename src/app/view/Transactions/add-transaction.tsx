@@ -17,6 +17,9 @@ import {
 import { useTransactions } from '../../../contexts/TransactionContext';
 import { useColors } from '../../../features/officials/shared/constants/theme';
 import { useTranslation } from '../../../hooks/use-translation';
+import { MAX_TRANSACTION_AMOUNT, parseAmount } from '../../../lib/validation';
+
+type FormErrors = { title?: string; amount?: string };
 
 export default function AddTransactionScreen() {
   const colors = useColors();
@@ -26,14 +29,29 @@ export default function AddTransactionScreen() {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<'Income' | 'Expense'>('Expense');
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const [saving, setSaving] = useState(false);
 
+  const validate = (): { ok: boolean; amount: number } => {
+    const next: FormErrors = {};
+    if (!title.trim()) next.title = t('errTitleRequired');
+    else if (title.trim().length > 80) next.title = t('errTitleTooLong');
+
+    const numericAmount = parseAmount(amount);
+    if (!amount.trim()) next.amount = t('errAmountRequired');
+    else if (!Number.isFinite(numericAmount) || numericAmount <= 0) next.amount = t('errAmountValid');
+    else if (numericAmount > MAX_TRANSACTION_AMOUNT) next.amount = t('errAmountTooLarge');
+
+    setErrors(next);
+    return { ok: Object.keys(next).length === 0, amount: numericAmount };
+  };
+
   //handeling the save transaction logic
   const handleSave = async () => {
-    if (saving || !title.trim() || !amount.trim()) return;
-    const numericAmount = parseFloat(amount.replace(/,/g, ''));
-    if (isNaN(numericAmount) || numericAmount <= 0) return;
+    if (saving) return;
+    const { ok, amount: numericAmount } = validate();
+    if (!ok) return;
 
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-GB', {
@@ -109,12 +127,14 @@ export default function AddTransactionScreen() {
 
           <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('titleLabel')}</Text>
           <TextInput
-            style={[styles.input, { borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.cardBg }]}
+            style={[styles.input, { borderColor: errors.title ? colors.dashboard.redDown : colors.dashboard.border, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.cardBg }]}
             placeholder={t('titlePlaceholder')}
             placeholderTextColor={colors.dashboard.textSecondary}
             value={title}
-            onChangeText={setTitle}
+            onChangeText={(v) => { setTitle(v); setErrors((p) => ({ ...p, title: undefined })); }}
+            maxLength={100}
           />
+          {errors.title && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.title}</Text>}
 
           <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('descOptional')}</Text>
           <TextInput
@@ -127,13 +147,14 @@ export default function AddTransactionScreen() {
 
           <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('amountLabel')}</Text>
           <TextInput
-            style={[styles.input, { borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.cardBg }]}
+            style={[styles.input, { borderColor: errors.amount ? colors.dashboard.redDown : colors.dashboard.border, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.cardBg }]}
             placeholder={t('amountPlaceholder')}
             placeholderTextColor={colors.dashboard.textSecondary}
             keyboardType="decimal-pad"
             value={amount}
-            onChangeText={setAmount}
+            onChangeText={(v) => { setAmount(v); setErrors((p) => ({ ...p, amount: undefined })); }}
           />
+          {errors.amount && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.amount}</Text>}
         </ScrollView>
 
         <View style={[styles.footer, { backgroundColor: colors.dashboard.cardBg, borderTopColor: colors.dashboard.border }]}>
@@ -219,6 +240,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     fontSize: 15,
+  },
+  error: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 4,
   },
   footer: {
     paddingHorizontal: 18,

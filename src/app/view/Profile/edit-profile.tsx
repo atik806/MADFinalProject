@@ -16,6 +16,25 @@ import { useProfile } from '../../../contexts/ProfileContext';
 import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
 import { CROPS, INCOME_SOURCES, GENDERS } from '@/data';
+import {
+  isBdPhone,
+  isFarmerNid,
+  isNonNegativeNumber,
+  isPlausibleDob,
+  isPositiveInteger,
+  parseAmount,
+  MAX_FAMILY_MEMBERS,
+  MAX_LAND_ACRES,
+  MAX_LOAN_AMOUNT,
+} from '../../../lib/validation';
+
+type FormErrors = Partial<Record<
+  | 'nameBn' | 'nameEn' | 'nid' | 'phone' | 'dob'
+  | 'totalLand' | 'ownLand' | 'leasedLand' | 'location'
+  | 'farmingIncome' | 'otherIncome' | 'familyMembers' | 'occupation'
+  | 'loanAmount' | 'loanPurpose' | 'loanSource',
+  string
+>>;
 
 export default function EditProfileScreen() {
   const colors = useColors();
@@ -43,6 +62,9 @@ export default function EditProfileScreen() {
   const [loanPurpose, setLoanPurpose] = useState(profile.hasLoan ? profile.loanPurpose : '');
   const [loanSource, setLoanSource] = useState(profile.hasLoan ? profile.loanSource : '');
   const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  const clearError = (key: keyof FormErrors) => setErrors((p) => ({ ...p, [key]: undefined }));
 
   // The profile is fetched asynchronously, so it may still be empty when this
   // screen first mounts. Re-seed the form fields whenever the profile changes
@@ -82,8 +104,59 @@ export default function EditProfileScreen() {
     );
   };
 
+  const validate = (): boolean => {
+    const e: FormErrors = {};
+
+    if (!nameBn.trim()) e.nameBn = t('errNameBnRequired');
+    if (!nameEn.trim()) e.nameEn = t('errNameEnRequired');
+    else if (!/^[A-Za-z][A-Za-z .'-]*$/.test(nameEn.trim())) e.nameEn = t('errNameEnLetters');
+
+    if (!nid.trim()) e.nid = t('errNidRequired');
+    else if (!isFarmerNid(nid)) e.nid = t('errNidFormat');
+
+    if (!phone.trim()) e.phone = t('errPhoneRequired');
+    else if (!isBdPhone(phone)) e.phone = t('errPhoneFormat');
+
+    if (dob.trim() && !isPlausibleDob(dob)) e.dob = t('errDobFormat');
+
+    if (!location.trim()) e.location = t('errLocationRequired');
+
+    if (totalLand.trim() && !isNonNegativeNumber(totalLand)) e.totalLand = t('errTotalLandValid');
+    if (ownLand.trim() && !isNonNegativeNumber(ownLand)) e.ownLand = t('errOwnLandValid');
+    if (leasedLand.trim() && !isNonNegativeNumber(leasedLand)) e.leasedLand = t('errLeasedLandValid');
+    const totalN = parseAmount(totalLand) || 0;
+    const ownN = parseAmount(ownLand) || 0;
+    const leasedN = parseAmount(leasedLand) || 0;
+    if (!e.totalLand && totalN > MAX_LAND_ACRES) e.totalLand = t('errLandTooLarge');
+    if (!e.ownLand && !e.leasedLand && !e.totalLand && totalN > 0 && ownN + leasedN > totalN) {
+      e.ownLand = t('errLandBreakdown');
+    }
+
+    if (farmingIncome.trim() && !isNonNegativeNumber(farmingIncome)) e.farmingIncome = t('errFarmingIncomeValid');
+    if (otherIncome.trim() && !isNonNegativeNumber(otherIncome)) e.otherIncome = t('errOtherIncomeValid');
+
+    if (familyMembers.trim()) {
+      if (!isPositiveInteger(familyMembers)) e.familyMembers = t('errFamilyValid');
+      else if (Number(familyMembers) > MAX_FAMILY_MEMBERS) e.familyMembers = t('errFamilyRange');
+    }
+
+    if (occupation.trim() && occupation.trim().length < 2) e.occupation = t('errOccupationShort');
+
+    if (hasLoan) {
+      if (!loanAmount.trim()) e.loanAmount = t('errLoanAmountRequired');
+      else if (!isNonNegativeNumber(loanAmount) || parseAmount(loanAmount) <= 0) e.loanAmount = t('errLoanAmountValid');
+      else if (parseAmount(loanAmount) > MAX_LOAN_AMOUNT) e.loanAmount = t('errLoanAmountRange');
+      if (!loanPurpose.trim()) e.loanPurpose = t('errLoanPurposeRequired');
+      if (!loanSource.trim()) e.loanSource = t('errLoanSourceRequired');
+    }
+
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
   const handleSave = async () => {
     if (isSaving) return;
+    if (!validate()) return;
     try {
       setIsSaving(true);
       await updateProfile({
@@ -151,34 +224,37 @@ export default function EditProfileScreen() {
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('nameBnLabel')}</Text>
         <TextInput
-          style={[styles.input, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary }]}
+          style={[styles.input, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.nameBn ? colors.dashboard.redDown : colors.dashboard.border, color: colors.dashboard.textPrimary }]}
           value={nameBn}
-          onChangeText={setNameBn}
+          onChangeText={(v) => { setNameBn(v); clearError('nameBn'); }}
           placeholder={t('nameBnPlaceholder')}
           placeholderTextColor={colors.dashboard.textSecondary}
         />
+        {errors.nameBn && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.nameBn}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('nameEnLabel')}</Text>
         <TextInput
-          style={[styles.input, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary }]}
+          style={[styles.input, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.nameEn ? colors.dashboard.redDown : colors.dashboard.border, color: colors.dashboard.textPrimary }]}
           value={nameEn}
-          onChangeText={setNameEn}
+          onChangeText={(v) => { setNameEn(v); clearError('nameEn'); }}
           placeholder={t('nameEnPlaceholder')}
           placeholderTextColor={colors.dashboard.textSecondary}
         />
+        {errors.nameEn && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.nameEn}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('nidLabel')}</Text>
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.nid ? colors.dashboard.redDown : colors.dashboard.border }]}>
           <Ionicons name="document-text-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
             style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={nid}
-            onChangeText={setNid}
+            onChangeText={(v) => { setNid(v); clearError('nid'); }}
             keyboardType="number-pad"
             placeholder={t('nidPlaceholder')}
             placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
+        {errors.nid && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.nid}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('phoneLabel2')}</Text>
         <View style={styles.phoneContainer}>
@@ -186,26 +262,28 @@ export default function EditProfileScreen() {
             <Text style={[styles.countryCodeText, { color: colors.dashboard.textPrimary }]}>+880</Text>
           </View>
           <TextInput
-            style={[styles.phoneInput, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary }]}
+            style={[styles.phoneInput, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.phone ? colors.dashboard.redDown : colors.dashboard.border, color: colors.dashboard.textPrimary }]}
             value={phone}
-            onChangeText={setPhone}
+            onChangeText={(v) => { setPhone(v); clearError('phone'); }}
             keyboardType="phone-pad"
             placeholder={t('phonePlaceholder2')}
             placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
+        {errors.phone && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.phone}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('dobLabel')}</Text>
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.dob ? colors.dashboard.redDown : colors.dashboard.border }]}>
           <Ionicons name="calendar-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
             style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={dob}
-            onChangeText={setDob}
+            onChangeText={(v) => { setDob(v); clearError('dob'); }}
             placeholder={t('dobPlaceholder')}
             placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
+        {errors.dob && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.dob}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('genderLabel')}</Text>
         <View style={styles.genderRow}>
@@ -229,43 +307,46 @@ export default function EditProfileScreen() {
         <Text style={[styles.sectionLabel, { color: colors.deepGreen }]}>{t('landCropsSection')}</Text>
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('totalLandLabel')}</Text>
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.totalLand ? colors.dashboard.redDown : colors.dashboard.border }]}>
           <Ionicons name="map-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
             style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={totalLand}
-            onChangeText={setTotalLand}
+            onChangeText={(v) => { setTotalLand(v); setErrors((p) => ({ ...p, totalLand: undefined, ownLand: undefined })); }}
             keyboardType="decimal-pad"
             placeholder={t('totalLandPlaceholder')}
             placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
+        {errors.totalLand && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.totalLand}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('ownLandLabel')}</Text>
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.ownLand ? colors.dashboard.redDown : colors.dashboard.border }]}>
           <Ionicons name="home-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
             style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={ownLand}
-            onChangeText={setOwnLand}
+            onChangeText={(v) => { setOwnLand(v); setErrors((p) => ({ ...p, ownLand: undefined })); }}
             keyboardType="decimal-pad"
             placeholder={t('ownLandPlaceholder')}
             placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
+        {errors.ownLand && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.ownLand}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('leasedLandLabel')}</Text>
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.leasedLand ? colors.dashboard.redDown : colors.dashboard.border }]}>
           <Ionicons name="document-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
             style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={leasedLand}
-            onChangeText={setLeasedLand}
+            onChangeText={(v) => { setLeasedLand(v); setErrors((p) => ({ ...p, leasedLand: undefined, ownLand: undefined })); }}
             keyboardType="decimal-pad"
             placeholder={t('leasedLandPlaceholder')}
             placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
+        {errors.leasedLand && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.leasedLand}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('mainCropsLabel')}</Text>
         <View style={styles.chipContainer}>
@@ -286,32 +367,34 @@ export default function EditProfileScreen() {
         </View>
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('locationLabel')}</Text>
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.location ? colors.dashboard.redDown : colors.dashboard.border }]}>
           <Ionicons name="location-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
             style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={location}
-            onChangeText={setLocation}
+            onChangeText={(v) => { setLocation(v); clearError('location'); }}
             placeholder={t('locationPlaceholder')}
             placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
+        {errors.location && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.location}</Text>}
 
         <View style={[styles.divider, { backgroundColor: colors.dashboard.border }]} />
         <Text style={[styles.sectionLabel, { color: colors.deepGreen }]}>{t('incomeSection')}</Text>
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('annualFarmingLabel')}</Text>
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.farmingIncome ? colors.dashboard.redDown : colors.dashboard.border }]}>
           <Ionicons name="cash-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
             style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={farmingIncome}
-            onChangeText={setFarmingIncome}
+            onChangeText={(v) => { setFarmingIncome(v); clearError('farmingIncome'); }}
             keyboardType="decimal-pad"
             placeholder={t('annualFarmingPlaceholder')}
             placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
+        {errors.farmingIncome && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.farmingIncome}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('otherSourcesLabel')}</Text>
         <View style={styles.chipContainer}>
@@ -332,42 +415,45 @@ export default function EditProfileScreen() {
         </View>
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('otherIncomeLabel')}</Text>
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.otherIncome ? colors.dashboard.redDown : colors.dashboard.border }]}>
           <Ionicons name="wallet-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
             style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={otherIncome}
-            onChangeText={setOtherIncome}
+            onChangeText={(v) => { setOtherIncome(v); clearError('otherIncome'); }}
             keyboardType="decimal-pad"
             placeholder={t('otherIncomePlaceholder')}
             placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
+        {errors.otherIncome && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.otherIncome}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('familyLabel')}</Text>
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.familyMembers ? colors.dashboard.redDown : colors.dashboard.border }]}>
           <Ionicons name="people-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
             style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={familyMembers}
-            onChangeText={setFamilyMembers}
+            onChangeText={(v) => { setFamilyMembers(v); clearError('familyMembers'); }}
             keyboardType="number-pad"
             placeholder={t('familyPlaceholder')}
             placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
+        {errors.familyMembers && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.familyMembers}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('occupationLabel')}</Text>
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.occupation ? colors.dashboard.redDown : colors.dashboard.border }]}>
           <Ionicons name="briefcase-outline" size={20} color={colors.dashboard.textSecondary} />
           <TextInput
             style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={occupation}
-            onChangeText={setOccupation}
+            onChangeText={(v) => { setOccupation(v); clearError('occupation'); }}
             placeholder={t('occupationPlaceholder')}
             placeholderTextColor={colors.dashboard.textSecondary}
           />
         </View>
+        {errors.occupation && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.occupation}</Text>}
 
         <View style={[styles.divider, { backgroundColor: colors.dashboard.border }]} />
         <Text style={[styles.sectionLabel, { color: colors.deepGreen }]}>{t('loanInfoSection')}</Text>
@@ -410,41 +496,44 @@ export default function EditProfileScreen() {
         {hasLoan && (
           <>
             <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('loanAmountLabel2')}</Text>
-            <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+            <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.loanAmount ? colors.dashboard.redDown : colors.dashboard.border }]}>
               <Ionicons name="trending-down-outline" size={20} color={colors.dashboard.textSecondary} />
               <TextInput
                 style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
                 value={loanAmount}
-                onChangeText={setLoanAmount}
+                onChangeText={(v) => { setLoanAmount(v); clearError('loanAmount'); }}
                 keyboardType="decimal-pad"
                 placeholder={t('loanAmountPlaceholder')}
                 placeholderTextColor={colors.dashboard.textSecondary}
               />
             </View>
+            {errors.loanAmount && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.loanAmount}</Text>}
 
             <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('purposeLabel')}</Text>
-            <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+            <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.loanPurpose ? colors.dashboard.redDown : colors.dashboard.border }]}>
               <Ionicons name="flag-outline" size={20} color={colors.dashboard.textSecondary} />
               <TextInput
                 style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
                 value={loanPurpose}
-                onChangeText={setLoanPurpose}
+                onChangeText={(v) => { setLoanPurpose(v); clearError('loanPurpose'); }}
                 placeholder={t('purposePlaceholder')}
                 placeholderTextColor={colors.dashboard.textSecondary}
               />
             </View>
+            {errors.loanPurpose && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.loanPurpose}</Text>}
 
             <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('sourceLabel')}</Text>
-            <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+            <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.loanSource ? colors.dashboard.redDown : colors.dashboard.border }]}>
               <Ionicons name="business-outline" size={20} color={colors.dashboard.textSecondary} />
               <TextInput
                 style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
                 value={loanSource}
-                onChangeText={setLoanSource}
+                onChangeText={(v) => { setLoanSource(v); clearError('loanSource'); }}
                 placeholder={t('sourcePlaceholder')}
                 placeholderTextColor={colors.dashboard.textSecondary}
               />
             </View>
+            {errors.loanSource && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.loanSource}</Text>}
           </>
         )}
 
@@ -529,6 +618,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     fontWeight: '600',
     fontSize: 13,
+  },
+  error: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 4,
   },
   input: {
     height: 54,
