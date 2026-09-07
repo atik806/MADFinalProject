@@ -14,6 +14,7 @@ import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
 import { otherSources as defaultOtherSources } from '@/data';
 import { useRegistration } from "../../../contexts/RegistrationContext";
+import { isPositiveInteger, MAX_FAMILY_MEMBERS } from "../../../lib/validation";
 
 type IncomeSource = {
   label: string;
@@ -58,12 +59,16 @@ export default function IncomeScreen() {
 
     if (!familyMembers.trim()) {
       newErrors.familyMembers = t('errFamilyRequired');
-    } else if (isNaN(Number(familyMembers)) || Number(familyMembers) <= 0) {
+    } else if (!isPositiveInteger(familyMembers)) {
       newErrors.familyMembers = t('errFamilyValid');
+    } else if (Number(familyMembers) > MAX_FAMILY_MEMBERS) {
+      newErrors.familyMembers = t('errFamilyRange');
     }
 
     if (!occupation.trim()) {
       newErrors.occupation = t('errOccupationRequired');
+    } else if (occupation.trim().length < 2) {
+      newErrors.occupation = t('errOccupationShort');
     }
 
     setErrors(newErrors);

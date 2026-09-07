@@ -14,10 +14,12 @@ import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
 import { useRegistration } from "../../../contexts/RegistrationContext";
 import { REGISTRATION_CROPS } from '@/data';
+import { MAX_LAND_ACRES, parseAmount } from "../../../lib/validation";
 
 type FormErrors = {
   totalLand?: string;
   ownLand?: string;
+  leasedLand?: string;
   crops?: string;
   location?: string;
 };
@@ -43,16 +45,34 @@ export default function LandScreen() {
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
 
+    const totalN = parseAmount(totalLand);
+    const ownN = parseAmount(ownLand);
+    const leasedN = parseAmount(leasedLand);
+
     if (!totalLand.trim()) {
       newErrors.totalLand = t('errTotalLandRequired');
-    } else if (isNaN(Number(totalLand)) || Number(totalLand) <= 0) {
+    } else if (!Number.isFinite(totalN) || totalN <= 0) {
       newErrors.totalLand = t('errTotalLandValid');
+    } else if (totalN > MAX_LAND_ACRES) {
+      newErrors.totalLand = t('errLandTooLarge');
     }
 
     if (!ownLand.trim()) {
       newErrors.ownLand = t('errOwnLandRequired');
-    } else if (isNaN(Number(ownLand)) || Number(ownLand) < 0) {
+    } else if (!Number.isFinite(ownN) || ownN < 0) {
       newErrors.ownLand = t('errOwnLandValid');
+    }
+
+    if (leasedLand.trim() && (!Number.isFinite(leasedN) || leasedN < 0)) {
+      newErrors.leasedLand = t('errLeasedLandValid');
+    }
+
+    if (
+      !newErrors.totalLand && !newErrors.ownLand && !newErrors.leasedLand &&
+      Number.isFinite(totalN) && totalN > 0 &&
+      (Number.isFinite(ownN) ? ownN : 0) + (Number.isFinite(leasedN) ? leasedN : 0) > totalN
+    ) {
+      newErrors.ownLand = t('errLandBreakdown');
     }
 
     if (selectedCrops.length === 0) {
@@ -133,7 +153,7 @@ export default function LandScreen() {
             keyboardType="decimal-pad"
             style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={totalLand}
-            onChangeText={(t) => { setTotalLand(t); setErrors((p) => ({ ...p, totalLand: undefined })); }}
+            onChangeText={(t) => { setTotalLand(t); setErrors((p) => ({ ...p, totalLand: undefined, ownLand: undefined })); }}
           />
         </View>
         {errors.totalLand && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.totalLand}</Text>}
@@ -161,9 +181,10 @@ export default function LandScreen() {
             keyboardType="decimal-pad"
             style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={leasedLand}
-            onChangeText={setLeasedLand}
+            onChangeText={(t) => { setLeasedLand(t); setErrors((p) => ({ ...p, leasedLand: undefined, ownLand: undefined })); }}
           />
         </View>
+        {errors.leasedLand && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.leasedLand}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('selectCrops')}</Text>
         <View style={styles.cropContainer}>

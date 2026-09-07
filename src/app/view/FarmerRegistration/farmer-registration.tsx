@@ -13,6 +13,7 @@ import { router } from "expo-router";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
 import { useRegistration } from "../../../contexts/RegistrationContext";
+import { isBdPhone, isFarmerNid, isPlausibleDob } from "../../../lib/validation";
 
 type FormErrors = {
   nameBn?: string;
@@ -52,18 +53,20 @@ export default function FarmerRegistrationScreen() {
 
     if (!nid.trim()) {
       newErrors.nid = t('errNidRequired');
-    } else if (!/^\d{10}$/.test(nid) && !/^\d{17}$/.test(nid)) {
+    } else if (!isFarmerNid(nid)) {
       newErrors.nid = t('errNidFormat');
     }
 
     if (!phone.trim()) {
       newErrors.phone = t('errPhoneRequired');
-    } else if (!/^1\d{9}$/.test(phone)) {
+    } else if (!isBdPhone(phone)) {
       newErrors.phone = t('errPhoneFormat');
     }
 
     if (!dob.trim()) {
       newErrors.dob = t('errDobRequired');
+    } else if (!isPlausibleDob(dob)) {
+      newErrors.dob = t('errDobImplausible');
     }
 
     if (!password) {
@@ -72,7 +75,9 @@ export default function FarmerRegistrationScreen() {
       newErrors.password = t('errPasswordLength');
     }
 
-    if (password !== confirmPassword) {
+    if (!confirmPassword) {
+      newErrors.confirmPassword = t('errConfirmPasswordRequired');
+    } else if (password !== confirmPassword) {
       newErrors.confirmPassword = t('errPasswordMatch');
     }
 
