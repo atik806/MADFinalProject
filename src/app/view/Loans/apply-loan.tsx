@@ -16,6 +16,7 @@ import { useLoans } from '../../../contexts/LoanContext';
 import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
 import { amountPresets, purposes, durationPresets } from '@/data';
+import { MAX_LOAN_AMOUNT, MIN_LOAN_AMOUNT, parseAmount } from '../../../lib/validation';
 
 type Step = 1 | 2 | 3;
 type InstallmentType = 'monthly' | 'seasonal';
@@ -39,6 +40,7 @@ export default function ApplyLoanScreen() {
   const [purpose, setPurpose] = useState('');
   const [durationMonths, setDurationMonths] = useState(6);
   const [installmentType, setInstallmentType] = useState<InstallmentType>('monthly');
+  const [amountError, setAmountError] = useState<string | null>(null);
 
   const [documents, setDocuments] = useState({
     nid: true,
@@ -63,8 +65,25 @@ export default function ApplyLoanScreen() {
 
   const canContinue = canGoNext();
 
+  // Validates the loan amount is within the allowed range. When a custom amount
+  // is typed it must parse cleanly; otherwise the selected preset is checked.
+  const validateAmount = (): boolean => {
+    const value = customAmount.trim() ? parseAmount(customAmount) : amount;
+    if (!Number.isFinite(value) || value <= 0) {
+      setAmountError(t('errAmountValid'));
+      return false;
+    }
+    if (value < MIN_LOAN_AMOUNT || value > MAX_LOAN_AMOUNT) {
+      setAmountError(t('errLoanAmountRange'));
+      return false;
+    }
+    setAmountError(null);
+    return true;
+  };
+
   const handleNext = () => {
     if (!canContinue) return;
+    if (step === 1 && !validateAmount()) return;
     if (step < 3) setStep((step + 1) as Step);
   };
 
@@ -149,6 +168,8 @@ export default function ApplyLoanScreen() {
             setAmount={setAmount}
             customAmount={customAmount}
             setCustomAmount={setCustomAmount}
+            amountError={amountError}
+            clearAmountError={() => setAmountError(null)}
             purpose={purpose}
             setPurpose={setPurpose}
             durationMonths={durationMonths}
@@ -221,7 +242,7 @@ export default function ApplyLoanScreen() {
 }
 
 function StepLoanDetails({
-  amount, setAmount, customAmount, setCustomAmount,
+  amount, setAmount, customAmount, setCustomAmount, amountError, clearAmountError,
   purpose, setPurpose,
   durationMonths, setDurationMonths,
   installmentType, setInstallmentType,
@@ -231,6 +252,8 @@ function StepLoanDetails({
   setAmount: (v: number) => void;
   customAmount: string;
   setCustomAmount: (v: string) => void;
+  amountError: string | null;
+  clearAmountError: () => void;
   purpose: string;
   setPurpose: (v: string) => void;
   durationMonths: number;
@@ -262,13 +285,19 @@ function StepLoanDetails({
         ))}
       </View>
       <TextInput
-        style={[styles.input, { borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.cardBg }, customAmount.length > 0 && { borderColor: colors.deepGreen }]}
+        style={[
+          styles.input,
+          { borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary, backgroundColor: colors.dashboard.cardBg },
+          customAmount.length > 0 && { borderColor: colors.deepGreen },
+          amountError && { borderColor: colors.dashboard.redDown },
+        ]}
         placeholder={t('customAmount')}
         placeholderTextColor={colors.dashboard.textSecondary}
         keyboardType="decimal-pad"
         value={customAmount}
-        onChangeText={(v) => { setCustomAmount(v); const n = parseInt(v.replace(/,/g, ''), 10); if (!isNaN(n)) setAmount(n); }}
+        onChangeText={(v) => { setCustomAmount(v); clearAmountError(); const n = parseInt(v.replace(/,/g, ''), 10); if (!isNaN(n)) setAmount(n); }}
       />
+      {amountError && <Text style={[styles.errorText, { color: colors.dashboard.redDown }]}>{amountError}</Text>}
 
       <Text style={[styles.sectionLabel, { color: colors.dashboard.textPrimary }]}>{t('loanPurpose')}</Text>
       <View style={styles.purposeGrid}>
@@ -548,6 +577,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 14,
     marginTop: 10,
+  },
+  errorText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 6,
   },
   purposeGrid: {
     flexDirection: 'row',
