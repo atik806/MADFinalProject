@@ -130,6 +130,16 @@ export async function fetchRoleCounts(): Promise<{ success: boolean; data: RoleC
   return api.get<{ success: boolean; data: RoleCounts }>(`/api/admin/users/counts`);
 }
 
+// Permanently removes a farmer account and its related records (loans,
+// transactions, assignments, visits, verifications) via the DB cascade.
+export async function deleteFarmer(
+  id: string,
+): Promise<{ success: boolean; message: string; data: { id: string } }> {
+  return api.del<{ success: boolean; message: string; data: { id: string } }>(
+    `/api/admin/users/${id}`,
+  );
+}
+
 // Field officers
 export async function fetchFieldOfficers(opts: {
   search?: string;

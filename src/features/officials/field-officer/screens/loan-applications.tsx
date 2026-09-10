@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -102,10 +103,14 @@ function filterApplications(apps: LoanApplication[], tab: Tab): LoanApplication[
 
 export default function LoanApplicationsScreen() {
   const colors = useColors();
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const initialTab: Tab = (['all', 'pending', 'verified', 'forwarded'] as const).includes(params.tab as Tab)
+    ? (params.tab as Tab)
+    : 'all';
   const [applications, setApplications] = useState<LoanApplication[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>('all');
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // Server-side verification state is authoritative after the API wiring;
   // only the write-side dedup guard is still needed locally.

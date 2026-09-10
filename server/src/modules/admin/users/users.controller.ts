@@ -51,6 +51,32 @@ export const getById = async (req: Request, res: Response) => {
   }
 };
 
+export const remove = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: 'User id is required' });
+    }
+    const profile = (req as any).profile ?? null;
+    const data = await service.deleteFarmer(String(id), {
+      id: req.user.id,
+      name: profile?.name_en ?? req.user.user_metadata?.full_name ?? null,
+    });
+    return res.status(200).json({
+      success: true,
+      message: 'Farmer removed successfully',
+      data,
+    });
+  } catch (error: any) {
+    const msg = error?.message ?? 'Failed to remove farmer';
+    const status = /not found/i.test(msg) ? 404 : /only farmer/i.test(msg) ? 400 : 500;
+    return res.status(status).json({ message: msg });
+  }
+};
+
 export const counts = async (_req: Request, res: Response) => {
   try {
     const data = await service.getRoleCounts();

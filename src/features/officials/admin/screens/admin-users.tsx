@@ -21,6 +21,7 @@ import { contentMaxWidth } from '@/features/officials/shared/constants/layout';
 import {
   createBankOfficer,
   createFieldOfficer,
+  deleteFarmer,
   fetchFieldOfficers,
   fetchRoleCounts,
   fetchUsers,
@@ -327,6 +328,29 @@ export default function AdminUsersScreen() {
     ]);
   };
 
+  const removeFarmer = (item: AdminUserItem) => {
+    Alert.alert(
+      'Remove farmer',
+      `Permanently remove ${item.name}? This also deletes their loans, transactions and visit history. This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteFarmer(item.id);
+              load('refresh');
+              Alert.alert('Removed', `${item.name} has been removed.`);
+            } catch (e: any) {
+              Alert.alert('Error', e?.message ?? 'Failed to remove farmer');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const [pwTarget, setPwTarget] = useState<AdminUserItem | null>(null);
   const [pwValue, setPwValue] = useState('');
   const [pwSubmitting, setPwSubmitting] = useState(false);
@@ -421,6 +445,16 @@ export default function AdminUsersScreen() {
               <Text style={[styles.actionLabel, { color: colors.userDeactivateText }]}>
                 {(item.status || 'active').toLowerCase() === 'active' ? 'Suspend' : 'Activate'}
               </Text>
+            </Pressable>
+          )}
+          {!isFO && !isBO && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${item.name}`}
+              style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.userDeactivate }, pressed && styles.pressed]}
+              onPress={() => removeFarmer(item)}>
+              <Ionicons name="trash-outline" size={14} color={colors.userDeactivateText} />
+              <Text style={[styles.actionLabel, { color: colors.userDeactivateText }]}>Remove</Text>
             </Pressable>
           )}
         </View>
@@ -642,16 +676,18 @@ export default function AdminUsersScreen() {
         <View style={{ height: 90 }} />
       </ScrollView>
 
-      <Pressable
-        onPress={openCreate}
-        accessibilityRole="button"
-        accessibilityLabel={activeTab === 'bank_officer' ? 'Add Bank Officer' : 'Add Field Officer'}
-        style={({ pressed }) => [{ backgroundColor: colors.deepGreen }, styles.fab, pressed && { opacity: 0.9 }]}>
-        <Ionicons name="add" size={22} color="#FFFFFF" />
-        <Text style={styles.fabText}>
-          {activeTab === 'bank_officer' ? 'Add Bank Officer' : 'Add Field Officer'}
-        </Text>
-      </Pressable>
+      {activeTab !== 'farmer' && (
+        <Pressable
+          onPress={openCreate}
+          accessibilityRole="button"
+          accessibilityLabel={activeTab === 'bank_officer' ? 'Add Bank Officer' : 'Add Field Officer'}
+          style={({ pressed }) => [{ backgroundColor: colors.deepGreen }, styles.fab, pressed && { opacity: 0.9 }]}>
+          <Ionicons name="add" size={22} color="#FFFFFF" />
+          <Text style={styles.fabText}>
+            {activeTab === 'bank_officer' ? 'Add Bank Officer' : 'Add Field Officer'}
+          </Text>
+        </Pressable>
+      )}
 
       {/* View modal */}
       <Modal visible={!!viewItem} transparent animationType="fade" onRequestClose={() => setViewItem(null)}>

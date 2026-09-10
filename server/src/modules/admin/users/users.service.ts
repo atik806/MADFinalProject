@@ -1,5 +1,6 @@
 import { supabase, supabaseAdmin } from '../../../config/supabase';
 import { escapeLike, pgrstValue } from '../../../lib/postgrest';
+import { recordAuditLog } from '../audit/audit.service';
 
 export type UserRoleFilter = 'farmer' | 'field_officer' | 'bank_officer' | 'admin' | 'all';
 
@@ -112,6 +113,62 @@ export const getUserById = async (id: string): Promise<AdminUserSummary> => {
     throw new Error('User not found');
   }
   return buildSummary(data);
+};
+
+export interface AdminActor {
+  id: string;
+  name?: string | null;
+}
+
+// deleteFarmer: permanently remove a farmer account. Deleting the auth user
+// cascades (via `profiles.id references auth.users on delete cascade` and the
+// per-table `on delete cascade` on farmer_id) to the profile row plus the
+// farmer's loans, transactions, assignments, visits and verifications.
+export const deleteFarmer = async (id: string, actor: AdminActor) => {
+  const { data: profile, error: fetchError } = await supabaseAdmin
+    .from('profiles')
+    .select('id, role, name_en, name_bn, phone, farmer_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (fetchError) {
+    throw new Error(fetchError.message);
+  }
+  if (!profile) {
+    throw new Error('Farmer not found');
+  }
+  if (profile.role !== 'farmer') {
+    throw new Error('Only farmer accounts can be removed here');
+  }
+
+  const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id);
+  if (authError && !/not found/i.test(authError.message)) {
+    throw new Error(authError.message || 'Failed to delete farmer account');
+  }
+
+  // Defensive: if the auth user was already gone (orphan profile), the
+  // cascade never fired — remove the profile row directly.
+  const { error: profileError } = await supabaseAdmin.from('profiles').delete().eq('id', id);
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+
+  void recordAuditLog({
+    actorId: actor.id,
+    actorRole: 'admin',
+    actorName: actor.name ?? 'Administrator',
+    action: 'Removed farmer',
+    module: 'User',
+    targetId: id,
+    targetType: 'farmer',
+    status: 'success',
+    details: {
+      name: profile.name_en ?? profile.name_bn ?? null,
+      phone: profile.phone ?? null,
+      farmerId: profile.farmer_id ?? null,
+    },
+  });
+
+  return { id };
 };
 
 export interface RoleCounts {

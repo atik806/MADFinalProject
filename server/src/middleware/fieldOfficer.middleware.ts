@@ -71,7 +71,13 @@ export const fieldOfficerOnly = async (req: Request, res: Response, next: NextFu
         // Some legacy users have the correct role in auth metadata but an old
         // or blank role value in profiles. Trust auth metadata here and repair
         // the profile row to prevent repeated 403s on field-officer endpoints.
-        if (authRole === 'field_officer') {
+        // Only self-heal when the stored role is missing/blank/unrecognized —
+        // never overwrite a profile that already holds another *known* role.
+        // An account re-provisioned as a bank_officer can keep a stale
+        // app_metadata.role='field_officer'; clobbering profiles.role here
+        // would trap it on the field-officer dashboard forever.
+        const KNOWN_ROLES = ['farmer', 'field_officer', 'bank_officer', 'admin'];
+        if (authRole === 'field_officer' && !KNOWN_ROLES.includes(normalizedRole)) {
             const { error: roleFixError } = await supabase
                 .from('profiles')
                 .update({ role: 'field_officer' })
@@ -85,11 +91,7 @@ export const fieldOfficerOnly = async (req: Request, res: Response, next: NextFu
             return next();
         }
 
-        if (normalizedRole !== 'field_officer') {
-            return res.status(403).json({ message: 'Forbidden: User is not a field officer' });
-        }
-
-        next();
+        return res.status(403).json({ message: 'Forbidden: User is not a field officer' });
     } catch (error) {
         console.error('Error checking user role:', error);
         res.status(500).json({ message: 'Role verification failed' });

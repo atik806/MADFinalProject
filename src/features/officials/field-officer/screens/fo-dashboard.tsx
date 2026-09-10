@@ -1,7 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { ActionCard } from '@/features/officials/shared/components/action-card';
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
@@ -11,6 +24,7 @@ import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/sha
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { api } from '@/lib/api';
 import type { ApiResponse, FieldVisitRow, ListResult, OfficerProfileRow, ProfileRow } from '@/lib/api-types';
+import { MAX_LOAN_AMOUNT } from '@/lib/validation';
 
 type Farmer = {
   id: string;
@@ -29,11 +43,13 @@ const farmerFromRow = (row: ProfileRow): Farmer => ({
   status: row.is_verified ? 'verified' : 'pending',
 });
 
-const QUICK_ACTIONS = [
-  { icon: 'person-add-outline' as const, iconBg: '#3A9BD5', title: 'New Farmer\nOnboarding' },
-  { icon: 'location-outline' as const, iconBg: '#1A8F5C', title: 'Record Visit' },
-  { icon: 'document-text-outline' as const, iconBg: '#7C3AED', title: 'Submit\nApplication' },
-  { icon: 'cloud-upload-outline' as const, iconBg: '#F59E0B', title: 'Upload\nDocuments' },
+type QuickActionKey = 'onboard' | 'visit' | 'apply' | 'verify';
+
+const QUICK_ACTIONS: { key: QuickActionKey; icon: keyof typeof Ionicons.glyphMap; iconBg: string; title: string }[] = [
+  { key: 'onboard', icon: 'person-add-outline', iconBg: '#3A9BD5', title: 'New Farmer\nOnboarding' },
+  { key: 'visit', icon: 'location-outline', iconBg: '#1A8F5C', title: 'Record Visit' },
+  { key: 'apply', icon: 'document-text-outline', iconBg: '#7C3AED', title: 'Submit\nApplication' },
+  { key: 'verify', icon: 'shield-checkmark-outline', iconBg: '#F59E0B', title: 'Verify\nApplications' },
 ];
 
 // A scheduled visit, mapped from the officer's visits endpoint. Time is the
@@ -69,6 +85,19 @@ export default function FieldOfficerDashboardScreen() {
   // The officer's own profile (name/designation) from /profile/me.
   const [officer, setOfficer] = useState<OfficerProfileRow | null>(null);
 
+  // ---- Quick action: farmer onboarding ----
+  const [onboardOpen, setOnboardOpen] = useState(false);
+  const [onboarding, setOnboarding] = useState(false);
+  const emptyOnboard = { nameEn: '', nid: '', phone: '', password: '', village: '', district: '', primaryCrop: '' };
+  const [onboardForm, setOnboardForm] = useState(emptyOnboard);
+
+  // ---- Quick action: submit loan application ----
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const emptyApply = { farmerId: '', title: '', amount: '', duration: '', purpose: '', installmentType: 'monthly' as 'monthly' | 'seasonal' };
+  const [applyForm, setApplyForm] = useState(emptyApply);
+  const [showApplyFarmerPicker, setShowApplyFarmerPicker] = useState(false);
+
   const loadDashboard = useCallback(async () => {
     try {
       // Assigned farmers: the officer's own list (server-scoped by token).
@@ -102,6 +131,112 @@ export default function FieldOfficerDashboardScreen() {
     setRefreshing(true);
     loadDashboard().finally(() => setRefreshing(false));
   }, [loadDashboard]);
+
+  const phoneValid = (p: string) => /^(?:\+?880)?1[3-9]\d{8}$|^01[3-9]\d{8}$/.test(p.replace(/[\s-]/g, ''));
+
+  const runQuickAction = (key: QuickActionKey) => {
+    if (key === 'onboard') {
+      setOnboardForm(emptyOnboard);
+      setOnboardOpen(true);
+    } else if (key === 'visit') {
+      router.push('/officials/visits?new=1');
+    } else if (key === 'apply') {
+      if (farmers.length === 0) {
+        Alert.alert('No assigned farmers', 'You can only submit an application for a farmer assigned to you.');
+        return;
+      }
+      setApplyForm(emptyApply);
+      setShowApplyFarmerPicker(false);
+      setApplyOpen(true);
+    } else if (key === 'verify') {
+      router.push('/officials/applications?tab=pending');
+    }
+  };
+
+  const submitOnboarding = async () => {
+    const f = onboardForm;
+    if (!f.nameEn.trim() || !f.nid.trim() || !f.phone.trim() || !f.password) {
+      Alert.alert('Missing details', 'Name, NID, mobile number and a temporary password are required.');
+      return;
+    }
+    if (!/^\d{8,20}$/.test(f.nid.trim())) {
+      Alert.alert('Invalid NID', 'Enter a valid NID (8–20 digits).');
+      return;
+    }
+    if (!phoneValid(f.phone)) {
+      Alert.alert('Invalid number', 'Enter a valid Bangladeshi mobile number.');
+      return;
+    }
+    if (f.password.length < 6) {
+      Alert.alert('Weak password', 'The temporary password must be at least 6 characters.');
+      return;
+    }
+    setOnboarding(true);
+    try {
+      await api.post<ApiResponse<unknown>>('/api/field-officer/farmers', {
+        nameEn: f.nameEn.trim(),
+        nid: f.nid.trim(),
+        phone: f.phone.trim(),
+        password: f.password,
+        village: f.village.trim() || undefined,
+        district: f.district.trim() || undefined,
+        selectedCrops: f.primaryCrop.trim() ? [f.primaryCrop.trim()] : undefined,
+      });
+      setOnboardOpen(false);
+      await loadDashboard();
+      Alert.alert('Farmer onboarded', `${f.nameEn.trim()} has been registered and assigned to you.`);
+    } catch (err: any) {
+      Alert.alert('Onboarding failed', err?.message ?? 'Could not register the farmer.');
+    } finally {
+      setOnboarding(false);
+    }
+  };
+
+  const submitApplication = async () => {
+    const f = applyForm;
+    if (!f.farmerId || !f.title.trim() || !f.amount.trim() || !f.duration.trim() || !f.purpose.trim()) {
+      Alert.alert('Missing details', 'Farmer, title, amount, duration and purpose are required.');
+      return;
+    }
+    const amount = Number(f.amount.replace(/,/g, ''));
+    if (!Number.isFinite(amount) || amount <= 0) {
+      Alert.alert('Invalid amount', 'Enter a loan amount greater than 0.');
+      return;
+    }
+    if (amount > MAX_LOAN_AMOUNT) {
+      Alert.alert('Amount too large', 'Loan amount cannot exceed ৳1,00,00,000.');
+      return;
+    }
+    setApplying(true);
+    try {
+      // Create the draft, then submit it into the review pipeline so it shows
+      // up under "Pending Verification".
+      const created = await api.post<ApiResponse<{ id: string }>>('/api/field-officer/loans', {
+        farmerId: f.farmerId,
+        title: f.title.trim(),
+        amount,
+        duration: f.duration.trim(),
+        purpose: f.purpose.trim(),
+        installmentType: f.installmentType,
+      });
+      const loanId = created?.data?.id;
+      if (loanId) {
+        await api.post<ApiResponse<unknown>>(`/api/field-officer/loans/${loanId}/submit`, {});
+      }
+      setApplyOpen(false);
+      await loadDashboard();
+      Alert.alert('Application submitted', 'The loan application is now pending your verification.');
+    } catch (err: any) {
+      Alert.alert('Submission failed', err?.message ?? 'Could not submit the application.');
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const applyFarmerName = useMemo(
+    () => farmers.find((x) => x.id === applyForm.farmerId)?.name ?? '',
+    [farmers, applyForm.farmerId],
+  );
 
   // Real counts derived from the same server-scoped lists rendered below.
   // Previously these four tiles showed hardcoded mock numbers.
@@ -176,18 +311,13 @@ export default function FieldOfficerDashboardScreen() {
         {/* Quick Actions */}
         <Text style={[styles.sectionLabel, { color: textSecondary }]}>Quick Actions</Text>
         <View style={styles.quickActionsGrid}>
-          {QUICK_ACTIONS.map((action, i) => (
+          {QUICK_ACTIONS.map((action) => (
             <ActionCard
-              key={i}
+              key={action.key}
               icon={action.icon}
               iconBg={action.iconBg}
               title={action.title}
-              onPress={() => {
-                if (i === 0) router.push('/officials/users');
-                else if (i === 1) router.push('/officials/visits');
-                else if (i === 2) router.push('/officials/applications');
-                else if (i === 3) Alert.alert('Success', 'Documents uploaded successfully');
-              }}
+              onPress={() => runQuickAction(action.key)}
             />
           ))}
         </View>
@@ -244,12 +374,7 @@ export default function FieldOfficerDashboardScreen() {
         ) : (
           <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
             {farmers.map((farmer, i) => (
-              <Pressable
-                key={farmer.id}
-                onPress={() => router.push('/officials/users')}
-                accessibilityRole="button"
-                accessibilityLabel={`${farmer.name}, ${farmer.location}, ${farmer.status}`}
-                style={({ pressed }) => pressed && styles.pressed}>
+              <View key={farmer.id} accessibilityLabel={`${farmer.name}, ${farmer.location}, ${farmer.status}`}>
                 <View style={styles.farmerRow}>
                   <Ionicons
                     name="person-circle"
@@ -272,13 +397,215 @@ export default function FieldOfficerDashboardScreen() {
                   <StatusBadge status={farmer.status} />
                 </View>
                 {i < farmers.length - 1 && <View style={[styles.divider, { backgroundColor: border }]} />}
-              </Pressable>
+              </View>
             ))}
           </View>
         )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Quick action: New Farmer Onboarding */}
+      <Modal visible={onboardOpen} transparent animationType="slide" onRequestClose={() => setOnboardOpen(false)}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={[styles.modalContent, { backgroundColor: cardBg }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: textPrimary }]}>New Farmer Onboarding</Text>
+              <Pressable onPress={() => setOnboardOpen(false)} accessibilityRole="button" accessibilityLabel="Close">
+                <Ionicons name="close" size={24} color={textSecondary} />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.modalForm} keyboardShouldPersistTaps="handled">
+              <Text style={[styles.fieldLabel, { color: textSecondary }]}>Full name *</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: bg, borderColor: border, color: textPrimary }]}
+                placeholder="e.g. Rafiq Hasan"
+                placeholderTextColor={textSecondary}
+                value={onboardForm.nameEn}
+                onChangeText={(v) => setOnboardForm((p) => ({ ...p, nameEn: v }))}
+              />
+              <Text style={[styles.fieldLabel, { color: textSecondary }]}>National ID (NID) *</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: bg, borderColor: border, color: textPrimary }]}
+                placeholder="e.g. 1990123456789"
+                placeholderTextColor={textSecondary}
+                keyboardType="number-pad"
+                value={onboardForm.nid}
+                onChangeText={(v) => setOnboardForm((p) => ({ ...p, nid: v }))}
+              />
+              <Text style={[styles.fieldLabel, { color: textSecondary }]}>Mobile number *</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: bg, borderColor: border, color: textPrimary }]}
+                placeholder="e.g. 01XXXXXXXXX"
+                placeholderTextColor={textSecondary}
+                keyboardType="phone-pad"
+                value={onboardForm.phone}
+                onChangeText={(v) => setOnboardForm((p) => ({ ...p, phone: v }))}
+              />
+              <Text style={[styles.fieldLabel, { color: textSecondary }]}>Temporary password *</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: bg, borderColor: border, color: textPrimary }]}
+                placeholder="Minimum 6 characters"
+                placeholderTextColor={textSecondary}
+                secureTextEntry
+                value={onboardForm.password}
+                onChangeText={(v) => setOnboardForm((p) => ({ ...p, password: v }))}
+              />
+              <Text style={[styles.fieldLabel, { color: textSecondary }]}>Village</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: bg, borderColor: border, color: textPrimary }]}
+                placeholder="Optional"
+                placeholderTextColor={textSecondary}
+                value={onboardForm.village}
+                onChangeText={(v) => setOnboardForm((p) => ({ ...p, village: v }))}
+              />
+              <Text style={[styles.fieldLabel, { color: textSecondary }]}>District</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: bg, borderColor: border, color: textPrimary }]}
+                placeholder="Optional"
+                placeholderTextColor={textSecondary}
+                value={onboardForm.district}
+                onChangeText={(v) => setOnboardForm((p) => ({ ...p, district: v }))}
+              />
+              <Text style={[styles.fieldLabel, { color: textSecondary }]}>Primary crop</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: bg, borderColor: border, color: textPrimary }]}
+                placeholder="Optional"
+                placeholderTextColor={textSecondary}
+                value={onboardForm.primaryCrop}
+                onChangeText={(v) => setOnboardForm((p) => ({ ...p, primaryCrop: v }))}
+              />
+              <Pressable
+                onPress={submitOnboarding}
+                disabled={onboarding}
+                accessibilityRole="button"
+                accessibilityLabel="Register farmer"
+                style={[styles.submitBtn, { backgroundColor: colors.greenLight }, onboarding && { opacity: 0.6 }]}>
+                <Ionicons name="person-add" size={18} color="#FFFFFF" />
+                <Text style={styles.submitBtnText}>{onboarding ? 'Registering…' : 'Register Farmer'}</Text>
+              </Pressable>
+              <View style={{ height: 12 }} />
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Quick action: Submit Application */}
+      <Modal visible={applyOpen} transparent animationType="slide" onRequestClose={() => setApplyOpen(false)}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={[styles.modalContent, { backgroundColor: cardBg }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: textPrimary }]}>Submit Loan Application</Text>
+              <Pressable onPress={() => setApplyOpen(false)} accessibilityRole="button" accessibilityLabel="Close">
+                <Ionicons name="close" size={24} color={textSecondary} />
+              </Pressable>
+            </View>
+            <ScrollView style={styles.modalForm} keyboardShouldPersistTaps="handled">
+              <Text style={[styles.fieldLabel, { color: textSecondary }]}>Farmer *</Text>
+              <Pressable
+                onPress={() => setShowApplyFarmerPicker((s) => !s)}
+                accessibilityRole="button"
+                accessibilityLabel={applyFarmerName ? `Farmer: ${applyFarmerName}` : 'Select a farmer'}
+                style={[styles.input, { backgroundColor: bg, borderColor: border }]}>
+                <Text style={{ color: applyFarmerName ? textPrimary : textSecondary, flex: 1 }}>
+                  {applyFarmerName || 'Select a farmer'}
+                </Text>
+                <Ionicons name="chevron-down" size={16} color={textSecondary} />
+              </Pressable>
+              {showApplyFarmerPicker && (
+                <View style={[styles.pickerDropdown, { backgroundColor: cardBg, borderColor: border }]}>
+                  {farmers.map((f) => (
+                    <Pressable
+                      key={f.id}
+                      accessibilityRole="button"
+                      accessibilityLabel={f.name}
+                      onPress={() => {
+                        setApplyForm((p) => ({ ...p, farmerId: f.id }));
+                        setShowApplyFarmerPicker(false);
+                      }}
+                      style={({ pressed }) => [
+                        styles.pickerItem,
+                        pressed && styles.pressed,
+                        applyForm.farmerId === f.id && { backgroundColor: colors.greenLight + '10' },
+                      ]}>
+                      <Text style={[styles.pickerItemText, { color: textPrimary }]}>{f.name}</Text>
+                      {applyForm.farmerId === f.id && <Ionicons name="checkmark" size={18} color={colors.greenLight} />}
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
+              <Text style={[styles.fieldLabel, { color: textSecondary }]}>Title *</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: bg, borderColor: border, color: textPrimary }]}
+                placeholder="e.g. Boro paddy input loan"
+                placeholderTextColor={textSecondary}
+                value={applyForm.title}
+                onChangeText={(v) => setApplyForm((p) => ({ ...p, title: v }))}
+              />
+              <Text style={[styles.fieldLabel, { color: textSecondary }]}>Amount (Tk) *</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: bg, borderColor: border, color: textPrimary }]}
+                placeholder="e.g. 50000"
+                placeholderTextColor={textSecondary}
+                keyboardType="number-pad"
+                value={applyForm.amount}
+                onChangeText={(v) => setApplyForm((p) => ({ ...p, amount: v }))}
+              />
+              <Text style={[styles.fieldLabel, { color: textSecondary }]}>Duration *</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: bg, borderColor: border, color: textPrimary }]}
+                placeholder="e.g. 12 months"
+                placeholderTextColor={textSecondary}
+                value={applyForm.duration}
+                onChangeText={(v) => setApplyForm((p) => ({ ...p, duration: v }))}
+              />
+              <Text style={[styles.fieldLabel, { color: textSecondary }]}>Installment type *</Text>
+              <View style={styles.segmentRow}>
+                {(['monthly', 'seasonal'] as const).map((opt) => {
+                  const active = applyForm.installmentType === opt;
+                  return (
+                    <Pressable
+                      key={opt}
+                      onPress={() => setApplyForm((p) => ({ ...p, installmentType: opt }))}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      style={[
+                        styles.segmentBtn,
+                        { borderColor: border },
+                        active && { backgroundColor: colors.greenLight + '15', borderColor: colors.greenLight },
+                      ]}>
+                      <Text style={[styles.segmentText, { color: active ? colors.greenLight : textSecondary }]}>
+                        {opt === 'monthly' ? 'Monthly' : 'Seasonal'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <Text style={[styles.fieldLabel, { color: textSecondary }]}>Purpose *</Text>
+              <TextInput
+                style={[styles.input, styles.inputMultiline, { backgroundColor: bg, borderColor: border, color: textPrimary }]}
+                placeholder="What the loan will be used for"
+                placeholderTextColor={textSecondary}
+                multiline
+                numberOfLines={3}
+                value={applyForm.purpose}
+                onChangeText={(v) => setApplyForm((p) => ({ ...p, purpose: v }))}
+              />
+              <Pressable
+                onPress={submitApplication}
+                disabled={applying}
+                accessibilityRole="button"
+                accessibilityLabel="Submit application"
+                style={[styles.submitBtn, { backgroundColor: colors.greenLight }, applying && { opacity: 0.6 }]}>
+                <Ionicons name="document-text" size={18} color="#FFFFFF" />
+                <Text style={styles.submitBtnText}>{applying ? 'Submitting…' : 'Submit Application'}</Text>
+              </Pressable>
+              <View style={{ height: 12 }} />
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -448,5 +775,98 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '88%',
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    paddingBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalForm: {
+    paddingHorizontal: 20,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+    marginTop: 12,
+  },
+  input: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+  },
+  inputMultiline: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+    paddingTop: 12,
+  },
+  pickerDropdown: {
+    borderWidth: 1,
+    borderRadius: borderRadius.sm,
+    marginTop: 4,
+    overflow: 'hidden',
+  },
+  pickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  pickerItemText: {
+    fontSize: 14,
+  },
+  segmentRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  segmentBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: borderRadius.sm,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  segmentText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  submitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: borderRadius.sm,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  submitBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
