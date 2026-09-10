@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  Pressable,
   View,
   Text,
   TextInput,
@@ -13,6 +14,7 @@ import { router } from "expo-router";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
 import { useRegistration } from "../../../contexts/RegistrationContext";
+import DatePicker from "../../../components/DatePicker";
 import { bdPhoneFieldStatus, isBdPhone, isFarmerNid, isPlausibleDob, nidFieldStatus, type FieldStatus } from "../../../lib/validation";
 
 type FormErrors = {
@@ -39,6 +41,7 @@ export default function FarmerRegistrationScreen() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [nidStatus, setNidStatus] = useState<FieldStatus>('idle');
   const [phoneStatus, setPhoneStatus] = useState<FieldStatus>('idle');
+  const [dobPickerVisible, setDobPickerVisible] = useState(false);
 
   const { patch } = useRegistration();
 
@@ -211,17 +214,28 @@ export default function FarmerRegistrationScreen() {
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('dateOfBirthLabel')}</Text>
 
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('dateOfBirthLabel')}
+          onPress={() => setDobPickerVisible(true)}
+          style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, errors.dob && { borderColor: colors.dashboard.redDown }]}
+        >
           <Ionicons name="calendar-outline" size={22} color={colors.dashboard.textSecondary} />
-          <TextInput
-            placeholder={t('dobPlaceholder2')}
-            placeholderTextColor={colors.dashboard.textSecondary}
-            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
-            value={dob}
-            onChangeText={(t) => { setDob(t); setErrors((p) => ({ ...p, dob: undefined })); }}
-          />
-        </View>
+          <Text
+            style={[styles.iconInput, { color: dob ? colors.dashboard.textPrimary : colors.dashboard.textSecondary, fontSize: 15 }]}
+          >
+            {dob || t('dobPlaceholder2')}
+          </Text>
+          <Ionicons name="chevron-forward" size={20} color={colors.dashboard.textSecondary} />
+        </Pressable>
         {errors.dob && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.dob}</Text>}
+
+        <DatePicker
+          visible={dobPickerVisible}
+          initialDate={dob || undefined}
+          onCancel={() => setDobPickerVisible(false)}
+          onConfirm={(isoDate) => { setDob(isoDate); setErrors((p) => ({ ...p, dob: undefined })); setDobPickerVisible(false); }}
+        />
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('passwordLabel')}</Text>
         <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>

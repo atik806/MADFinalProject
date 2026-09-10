@@ -410,6 +410,7 @@ export const translations = {
   showPassword: { en: 'Show password', bn: 'পাসওয়ার্ড দেখান' },
   hidePassword: { en: 'Hide password', bn: 'পাসওয়ার্ড লুকান' },
   close: { en: 'Close', bn: 'বন্ধ করুন' },
+  selectDate: { en: 'Select Date', bn: 'তারিখ নির্বাচন করুন' },
   acres: { en: 'acres', bn: 'একর' },
   ac: { en: 'ac', bn: 'একর' },
   yr: { en: 'yr', bn: 'বছর' },
