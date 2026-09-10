@@ -328,9 +328,11 @@ export const registerFarmerByOfficer = async (input: RegisterFarmerInput, office
   const profileRow = {
     id: authData.user.id,
     role: 'farmer',
-    status: 'pending',
+    // The field officer verifies identity in person before registering, so the
+    // farmer is immediately active and verified — no waiting for admin approval.
+    status: 'active',
     farmer_id: `FRM-${shortHex()}`,
-    is_verified: false,
+    is_verified: true,
     credit_score: 0,
     member_since: new Date().toISOString(),
     name_bn: optionalText(nameBn, 'nameBn', 120),
