@@ -51,6 +51,7 @@ export default function RegisterFarmerScreen() {
     control,
     handleSubmit,
     watch,
+    reset,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<RegistrationForm>({
@@ -69,9 +70,14 @@ export default function RegisterFarmerScreen() {
     setRequestError(null);
     try {
       await api.post('/api/field-officer/farmers', values);
-      Alert.alert('Farmer registered', 'The farmer was added to your assigned farmer list.', [
-        { text: 'OK', onPress: () => router.replace('/officials/(field-officer)') },
-      ]);
+      Alert.alert(
+        'Farmer registered',
+        'The farmer can log in immediately using their NID or phone number and the temporary password you set.',
+        [
+          { text: 'Register Another', style: 'default', onPress: () => { reset(); setRequestError(null); } },
+          { text: 'Done', style: 'cancel', onPress: () => router.replace('/officials/(field-officer)') },
+        ],
+      );
     } catch (error: any) {
       const message = error?.message ?? 'Could not register the farmer. Please try again.';
       setRequestError(message);
