@@ -1,123 +1,95 @@
-# SOFOL — AI Companion (quick orientation)
+# README_AI — orientation for AI coding agents
 
-Concise companion to the two longer docs:
+Read this first, then `work.md` for the deep architecture reference.
 
-- **[AI_README.md](AI_README.md)** — the durable, honest per-feature technical "memory" (what is
-  implemented, partial, planned; exact route/behaviour details and live-verification status).
-- **[README.md](README.md)** — human-facing setup, architecture, full API reference, security
-  notes, database overview and testing guide.
-- **[README_USER.md](README_USER.md)** — end-user/roles guide.
+## What this project is
 
-This file is the short orientation so an agent (or engineer) can resume work with minimal reading:
-architecture, response contract, role/permission model, where the code lives, and how to verify.
+SOFOL — an Expo React Native app (`src/`) plus an Express 5 + TypeScript API
+(`server/`) backed by Supabase (PostgreSQL, Auth, Storage). It is an AIUB Mobile
+Application Development final-term project. Four roles: farmer, admin, bank-officer,
+field-officer.
 
----
+**The app is no longer "frontend only".** Older notes (and `code.md`) describe an
+in-memory prototype and a plan to move straight to Supabase — that is history. The
+team built an Express API instead; the app talks to Supabase only through it.
 
-## Golden rules
+## Ground rules
 
-- **Documented ≠ proven.** Nothing counts as "implemented" in `AI_README.md` until it has been
-  **run and verified live**. Desk-checked code is explicitly labelled "not live-verified".
-- **DB schema work is parked.** Do **not** run new DDL/migrations/RLS changes unplanned. The
-  bank-officer columns from `server/admin.sql` **are applied live** and the whole bank-officer
-  module is **verified live (94/94)**; treat any unapplied-schema notes in older doc history as
-  superseded.
-- **Roles are server-resolved, never client-trusted.** The role guard reads `profiles`.role and
-  status on every request; Supabase `user_metadata.role` is **never** used for authorization
-  (it is client-writable and was the source of a privilege-escalation vector, now closed).
-  Demo-only endpoints (`farmer/auth/reset-password`, admin `auth/reseed`) are hard-disabled
-  under `NODE_ENV=production`, and `ADMIN_EMAIL`/`ADMIN_PASSWORD` are mandatory in production.
-- **Branch discipline.** Work on `feature/akash`, never `main`, never force-push.
-- **Secrets.** `.env` files are git-ignored; commit only `.env.example` placeholders.
+- **Expo SDK 56.** APIs changed in recent Expo versions — check the versioned docs
+  (`https://docs.expo.dev/versions/v56.0.0/`) before using an Expo module. See `AGENTS.md`.
+- **Do not commit secrets.** `.env` and `server/.env` are git-ignored; only the
+  `.example` files belong in version control. `server/src/config/supabase.ts` will
+  refuse to start if `SUPABASE_SERVICE_ROLE_KEY` is not actually a service_role key.
+- **This repo does not use Claude attribution trailers** in commit messages.
+- Run `npm run typecheck` (root) and `cd server && npm run build` after changes.
 
----
+## Where things live
 
-## Architecture
+| Concern | Path |
+|---|---|
+| App routes / screens | `src/app/view/**` (farmer), `src/app/officials/**` + `src/features/officials/**` (officials) |
+| HTTP client | `src/lib/api.ts` (`api.get/post/put/patch/del`, `ApiError`, `setAuthToken`, 401 handler). `src/config/api.ts` re-exports it. |
+| App state | `src/contexts/*.tsx` — `Auth`, `Language`, `Theme`, `Transaction`, `Loan`, `Profile`, `Notification`; `Registration` is scoped to the farmer-registration layout |
+| Static option lists | `src/data/*.ts` (dropdown presets, settings copy) — **not** mock domain data anymore |
+| API server entry | `server/src/app.ts` (wiring), `server/src/server.ts` (listener) |
+| API modules | `server/src/modules/{farmer,admin,fieldOfficer,bankOfficer}/**` — each has `*.routes.ts` / `*.controller.ts` / `*.service.ts` |
+| Auth / role guards | `server/src/middleware/**` |
+| DB schema | `server/schema.sql` (consolidated) + per-module `*.sql` |
 
-```
-Expo app (src/)  --Bearer-->  Express 5 + TS (server/src/)  --service-role-->  Supabase
-  expo-router + Context            modular: modules/<role>/<feature>/{controller,routes,service}
-```
+## Session / auth model
 
-- **Frontend** — repo root `src/`. File-based routing (`expo-router`), state via React Context.
-  Typed API client `src/lib/api.ts`, shared contracts `src/lib/api-types.ts`.
-- **Backend** — `server/`, all business logic + the only Supabase access, using the **service-role**
-  client (`server/src/config/supabase.ts`) which bypasses RLS. The key never ships to the app.
-- **Request flow:** Route → `authenticate` → role guard → Controller → Service → Supabase.
+`AuthContext` logs in via the API, stores the bearer token in `src/lib/api.ts`
+module state via `setAuthToken`, and registers a 401 handler that clears auth state.
+The token is **not** persisted to device storage in this milestone (no storage dep is
+wired for it), so closing the app ends the session. `AuthContext.isBootstrapping`
+gates the root layout on a splash until any restored session is validated.
 
-### Response contract
+## Conventions
 
-Every endpoint targets `{ success, message, data }`. Admin, farmer, field-officer, and
-bank-officer modules all follow it.
+- Farmer data screens read from a context; the context exposes `loading` and `error`
+  and a `reload`/`refresh` function. Screens must render a loading state and an
+  error+retry state (not just the happy path).
+- All `Pressable` / `TouchableOpacity` need `accessibilityRole` and a meaningful
+  `accessibilityLabel` (icon-only controls especially).
+- Officials route files under `src/app/officials/(role)/` are one-line re-exports of
+  the real screen in `src/features/officials/<role>/screens/`.
+- Server responses are `{ data, ... }` or `{ message }` on error; let `ApiError`
+  carry the status to the screen.
 
-### Frontend error model
+## Field Officer farmer registration
 
-Every failure becomes an `ApiError` (`src/lib/api.ts`) with a user-safe message. A **401 clears the
-session** so the app cannot stay falsely authenticated. Farmers/officers/admin differ only by role;
-bank-officer screens run against the live `/api/bank-officer` review API.
+An authenticated Field Officer is routed to `officials/(field-officer)`. The
+dashboard's **Add Farmer** action opens
+`officials/field-officer/register-farmer`, which submits the validated form to
+`POST /api/field-officer/farmers`. The server assigns the new farmer to the
+authenticated officer. The registered profile is created `active` + `is_verified`
+(the officer verified identity in person), so **the farmer can log in
+immediately**; the success dialog offers **Register Another** (form reset in
+place) or **Done**.
 
----
+## Recent changes on `feature/akash`
 
-## Roles & permission matrix
-
-Roles are **never trusted from the client** — the `authenticate` middleware resolves the user, then
-role guards read the role from the `profiles` table server-side and re-check `status` on every
-request (so suspension takes effect immediately, even with a valid token).
-
-| Role         | Resolved from | Can do (representative)                                  | Writables / guards |
-| ------------ | ------------- | -------------------------------------------------------- | ------------------ |
-| `farmer`     | `profiles`    | own profile, transactions, loan apply, notifications, dashboard, credit | only own rows; privileged columns (`is_verified`, `credit_score`, `farmer_id`, `role`, `status`) never settable |
-| `field_officer` | `profiles`  | assigned-farmer management, verification, visits, loan workflow (draft→submit→verify→forward) | only assigned farmers / owned visits & verifications / authored loans |
-| `bank_officer` | `profiles`   | review forward-queue, decision (`approved`/`rejected`) | only forwarded apps; decision not overridable; approve ≤ requested amount |
-| `admin`      | `profiles` (env `ADMIN_EMAIL` short-circuits) | user directory, officer provisioning, status changes, farmers directory, dashboard, audit | admin status never changeable (no lockout recovery); all admin actions audit-logged |
-
-Key rules enforced server-side:
-
-- **Farmer** tx/loan/credit/dashboard are scoped to the authenticated farmer (IDOR-proof).
-- **Field officer** sees only actively assigned farmers; foreign farmer/visit/loan → 404 (not 403).
-- **Bank officer** only ever sees **forwarded** applications; a draft/unforwarded id returns 404 —
-  the upstream pipeline cannot be enumerated.
-- **Suspension is immediate**: role guards re-read `profiles.status` per request.
-- **No client-supplied role/status/privileged fields** are ever trusted (they are stripped or ignored).
-
----
-
-## Where things are
-
-- Frontend contexts: `src/contexts/` — `Auth`, `Notification`, `Transaction`, `Loan`, `Profile`
-  (all session-scoped; the session guard is normalized on `user?.id ?? null` so it converges on
-  logout/switch).
-- Backend guards: `server/src/middleware/` — `auth`, `role`, `admin`, `fieldOfficer`,
-  `bankOfficer`, `security` (helmet, CORS allow-list, rate limits, 1 MiB body, error hygiene).
-- API client / types: `src/lib/api.ts`, `src/lib/api-types.ts`.
-- SQL schema: `server/farmer_db.sql`, `server/admin.sql` (idempotent; re-run after pulling new columns).
-
----
-
-## How to verify
-
-Backend must be running and current before E2E. If the server was started earlier, **touch
-`server/src/server.ts`** (or restart `npm run dev`) so `ts-node-dev --respawn` picks up the latest
-code — a stale process returns spurious 404s.
-
-```bash
-# backend (server/)
-npm run build                              # tsc → dist/
-npm run dev                                # http://localhost:3000
-
-# E2E (against a running server, from server/). All self-provisioning + self-cleaning.
-node test/admin.e2e.cjs                    # 81/81
-node test/farmer.e2e.cjs                   # 79/79
-node test/field-officer.e2e.cjs            # 50/50
-node test/field-officer-loans.e2e.cjs      # 48/48
-node test/bank-officer.e2e.cjs             # 94/94
-node test/security.e2e.cjs                 # 25/25
-node test/cleanup.cjs && node test/cleanup-sweep.cjs   # remove test fixtures
-
-# frontend (repo root)
-npm run typecheck                          # tsc --noEmit
-npm run lint                               # expo lint
-```
-
-> The **bank-officer schema is applied live** and `/api/bank-officer` is verified by the
-> bank-officer suite (94/94). Run the suites against the current server: if the server was
-> started earlier, `touch server/src/server.ts` first (see above).
+- **photo.tsx** — removed nested `<button>`-in-`<button>` markup from the photo
+  picker: with a photo the outer element is the single `TouchableOpacity`;
+  without one the container is a plain `View` holding the gallery/camera controls.
+- **Live NID/phone validation** — `src/lib/validation.ts` exports `FieldStatus`,
+  `nidFieldStatus`, `bdPhoneFieldStatus`. The farmer self-registration and the FO
+  "Add Farmer" screens render a trailing check/close icon with green/red border as
+  the value is typed. The FO zod schema and the server both enforce the canonical
+  farmer rules: NID = 10 or 17 digits, phone = valid Bangladeshi mobile.
+  Server-side enforcement lives in `farmers.service.ts#registerFarmerByOfficer`
+  (mirrors `isFarmerNid` / `isBdPhone`).
+- **Calendar DOB picker** — `src/components/DatePicker.tsx`: dependency-free
+  `Modal` calendar (month/year navigation, leap-year-safe grid, Cancel/OK via the
+  existing `cancel`/`ok` translation keys). The farmer registration DOB field is a
+  `Pressable` that opens it; output is `YYYY-MM-DD`, which `parseLooseDate` /
+  `isPlausibleDob` accept. The calendar body mounts only while the modal is open,
+  so its state resets naturally (no `setState`-in-`useEffect`).
+- **Immediate farmer login** — `registerFarmerByOfficer` now inserts the profile
+  with `status: 'active'`, `is_verified: true`.
+- **FO success flow** — success `Alert` reflects immediate login and adds
+  "Register Another".
+- **Loan workflow fix** — the FO loan screen could verify but never forward, so
+  verified loans never reached the bank queue (which requires `forwarded_at`).
+  The screen now calls `POST /api/field-officer/loans/:id/forward` from a
+  **Forward to Bank** action shown on verified, not-yet-forwarded applications.
