@@ -30,7 +30,7 @@ const farmerFromRow = (row: ProfileRow): Farmer => ({
 });
 
 const QUICK_ACTIONS = [
-  { icon: 'person-add-outline' as const, iconBg: '#3A9BD5', title: 'New Farmer\nOnboarding' },
+  { icon: 'person-add-outline' as const, iconBg: '#3A9BD5', title: 'Add Farmer' },
   { icon: 'location-outline' as const, iconBg: '#1A8F5C', title: 'Record Visit' },
   { icon: 'document-text-outline' as const, iconBg: '#7C3AED', title: 'Submit\nApplication' },
   { icon: 'cloud-upload-outline' as const, iconBg: '#F59E0B', title: 'Upload\nDocuments' },
@@ -183,7 +183,7 @@ export default function FieldOfficerDashboardScreen() {
               iconBg={action.iconBg}
               title={action.title}
               onPress={() => {
-                if (i === 0) router.push('/officials/(field-officer)/applications');
+                if (i === 0) router.push('/officials/field-officer/register-farmer');
                 else if (i === 1) router.push('/officials/(field-officer)/visits');
                 else if (i === 2) router.push('/officials/(field-officer)/applications');
                 else if (i === 3) Alert.alert('Success', 'Documents uploaded successfully');

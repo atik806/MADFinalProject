@@ -1,3 +1,6 @@
+import { Redirect } from 'expo-router';
+
+import { useAuth } from '@/contexts/AuthContext';
 import { RoleTabLayout, type TabRoute } from '@/features/officials/shared/components/role-tab-layout';
 
 const routes: TabRoute[] = [
@@ -8,5 +11,11 @@ const routes: TabRoute[] = [
 ];
 
 export default function FieldOfficerTabLayout() {
+  const { isLoggedIn, user } = useAuth();
+
+  if (!isLoggedIn || user?.role !== 'field-officer') {
+    return <Redirect href={'/officials/login' as any} />;
+  }
+
   return <RoleTabLayout routes={routes} />;
 }
