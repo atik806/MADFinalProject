@@ -12,6 +12,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
+import { useRegistration } from "../../../contexts/RegistrationContext";
+import { bdPhoneFieldStatus, isBdPhone, isFarmerNid, isPlausibleDob, nidFieldStatus, type FieldStatus } from "../../../lib/validation";
 
 type FormErrors = {
   nameBn?: string;
@@ -19,6 +21,8 @@ type FormErrors = {
   nid?: string;
   phone?: string;
   dob?: string;
+  password?: string;
+  confirmPassword?: string;
 };
 
 export default function FarmerRegistrationScreen() {
@@ -30,7 +34,13 @@ export default function FarmerRegistrationScreen() {
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState("");
   const [gender, setGender] = useState(t('male'));
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
+  const [nidStatus, setNidStatus] = useState<FieldStatus>('idle');
+  const [phoneStatus, setPhoneStatus] = useState<FieldStatus>('idle');
+
+  const { patch } = useRegistration();
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
@@ -45,18 +55,32 @@ export default function FarmerRegistrationScreen() {
 
     if (!nid.trim()) {
       newErrors.nid = t('errNidRequired');
-    } else if (!/^\d{10}$/.test(nid) && !/^\d{17}$/.test(nid)) {
+    } else if (!isFarmerNid(nid)) {
       newErrors.nid = t('errNidFormat');
     }
 
     if (!phone.trim()) {
       newErrors.phone = t('errPhoneRequired');
-    } else if (!/^1\d{9}$/.test(phone)) {
+    } else if (!isBdPhone(phone)) {
       newErrors.phone = t('errPhoneFormat');
     }
 
     if (!dob.trim()) {
       newErrors.dob = t('errDobRequired');
+    } else if (!isPlausibleDob(dob)) {
+      newErrors.dob = t('errDobImplausible');
+    }
+
+    if (!password) {
+      newErrors.password = t('errPasswordRequired');
+    } else if (password.length < 6) {
+      newErrors.password = t('errPasswordLength');
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = t('errConfirmPasswordRequired');
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = t('errPasswordMatch');
     }
 
     setErrors(newErrors);
@@ -65,6 +89,7 @@ export default function FarmerRegistrationScreen() {
 
   const handleNext = () => {
     if (validate()) {
+      patch({ nameBn, nameEn, nid, phone, password, dob, gender });
       router.push("/view/FarmerRegistration/land");
     }
   };
@@ -73,7 +98,7 @@ export default function FarmerRegistrationScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()}>
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t('back')}>
             <Ionicons name="chevron-back" size={22} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
           <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
@@ -137,7 +162,7 @@ export default function FarmerRegistrationScreen() {
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('nidNumber')}</Text>
 
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, nidStatus === 'invalid' && { borderColor: colors.dashboard.redDown }, nidStatus === 'valid' && { borderColor: colors.deepGreen }]}>
           <Ionicons name="document-text-outline" size={22} color={colors.dashboard.textSecondary} />
           <TextInput
             placeholder={t('nidPlaceholder2')}
@@ -145,10 +170,17 @@ export default function FarmerRegistrationScreen() {
             keyboardType="number-pad"
             style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
             value={nid}
-            onChangeText={(t) => { setNid(t); setErrors((p) => ({ ...p, nid: undefined })); }}
+            onChangeText={(value) => { setNid(value); setErrors((p) => ({ ...p, nid: undefined })); setNidStatus(nidFieldStatus(value)); }}
+            accessibilityLabel={t('nidNumber')}
           />
+          <View style={styles.fieldStatusIcon}>
+            {nidStatus === 'valid' && <Ionicons name="checkmark-circle" size={20} color={colors.deepGreen} accessibilityLabel={t('validValue')} />}
+            {nidStatus === 'invalid' && <Ionicons name="close-circle" size={20} color={colors.dashboard.redDown} accessibilityLabel={t('invalidValue')} />}
+          </View>
         </View>
-        {errors.nid && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.nid}</Text>}
+        {nidStatus === 'invalid'
+          ? <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{t('errNidFormat')}</Text>
+          : errors.nid && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.nid}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('mobileNumber')}</Text>
 
@@ -157,16 +189,25 @@ export default function FarmerRegistrationScreen() {
             <Text style={[styles.countryCodeText, { color: colors.dashboard.textPrimary }]}>+880</Text>
           </View>
 
-          <TextInput
-            placeholder={t('mobilePlaceholder')}
-            placeholderTextColor={colors.dashboard.textSecondary}
-            keyboardType="phone-pad"
-            style={[styles.phoneInput, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary }]}
-            value={phone}
-            onChangeText={(t) => { setPhone(t); setErrors((p) => ({ ...p, phone: undefined })); }}
-          />
+          <View style={[styles.phoneInput, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, phoneStatus === 'invalid' && { borderColor: colors.dashboard.redDown }, phoneStatus === 'valid' && { borderColor: colors.deepGreen }]}>
+            <TextInput
+              placeholder={t('mobilePlaceholder')}
+              placeholderTextColor={colors.dashboard.textSecondary}
+              keyboardType="phone-pad"
+              style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
+              value={phone}
+              onChangeText={(value) => { setPhone(value); setErrors((p) => ({ ...p, phone: undefined })); setPhoneStatus(bdPhoneFieldStatus(value)); }}
+              accessibilityLabel={t('mobileNumber')}
+            />
+            <View style={styles.fieldStatusIcon}>
+              {phoneStatus === 'valid' && <Ionicons name="checkmark-circle" size={20} color={colors.deepGreen} accessibilityLabel={t('validValue')} />}
+              {phoneStatus === 'invalid' && <Ionicons name="close-circle" size={20} color={colors.dashboard.redDown} accessibilityLabel={t('invalidValue')} />}
+            </View>
+          </View>
         </View>
-        {errors.phone && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.phone}</Text>}
+        {phoneStatus === 'invalid'
+          ? <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{t('errPhoneFormat')}</Text>
+          : errors.phone && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.phone}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('dateOfBirthLabel')}</Text>
 
@@ -182,12 +223,43 @@ export default function FarmerRegistrationScreen() {
         </View>
         {errors.dob && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.dob}</Text>}
 
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('passwordLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="lock-closed-outline" size={22} color={colors.dashboard.textSecondary} />
+          <TextInput
+            placeholder={t('passwordPlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
+            secureTextEntry
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
+            value={password}
+            onChangeText={(t) => { setPassword(t); setErrors((p) => ({ ...p, password: undefined })); }}
+          />
+        </View>
+        {errors.password && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.password}</Text>}
+
+        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('confirmPasswordLabel')}</Text>
+        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+          <Ionicons name="lock-closed-outline" size={22} color={colors.dashboard.textSecondary} />
+          <TextInput
+            placeholder={t('confirmPasswordPlaceholder')}
+            placeholderTextColor={colors.dashboard.textSecondary}
+            secureTextEntry
+            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
+            value={confirmPassword}
+            onChangeText={(t) => { setConfirmPassword(t); setErrors((p) => ({ ...p, confirmPassword: undefined })); }}
+          />
+        </View>
+        {errors.confirmPassword && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.confirmPassword}</Text>}
+
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('genderLabel2')}</Text>
 
         <View style={styles.genderRow}>
           {[t('male'), t('female'), t('other')].map((item) => (
             <TouchableOpacity
               key={item}
+              accessibilityRole="button"
+              accessibilityState={{ selected: gender === item }}
+              accessibilityLabel={item}
               style={[styles.genderBtn, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }, gender === item && { borderColor: colors.deepGreen, borderWidth: 2, backgroundColor: colors.userVerified }]}
               onPress={() => setGender(item)}
             >
@@ -199,7 +271,7 @@ export default function FarmerRegistrationScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.deepGreen }]} onPress={handleNext}>
+        <TouchableOpacity style={[styles.nextBtn, { backgroundColor: colors.deepGreen }]} onPress={handleNext} accessibilityRole="button" accessibilityLabel={t('nextStep')}>
           <Text style={styles.nextBtnText}>{t('nextStep')}</Text>
           <Ionicons name="chevron-forward" size={20} color="#fff" />
         </TouchableOpacity>
@@ -317,11 +389,18 @@ const styles = StyleSheet.create({
   },
   phoneInput: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
     borderLeftWidth: 0,
     borderTopRightRadius: 18,
     borderBottomRightRadius: 18,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+  },
+  fieldStatusIcon: {
+    width: 24,
+    justifyContent: "center",
+    alignItems: "center",
   },
   genderRow: {
     flexDirection: "row",

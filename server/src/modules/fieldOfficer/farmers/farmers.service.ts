@@ -1,7 +1,7 @@
 import { supabase, supabaseAdmin } from '../../../config/supabase';
 import { recordAuditLog } from '../../admin/audit/audit.service';
 import { isUuid, optionalText, requireText, requireUuid } from '../validation';
-import { pgrstValue } from '../../../lib/postgrest';
+import { escapeLike, pgrstValue } from '../../../lib/postgrest';
 
 const shortHex = (): string => {
   return Math.floor(Math.random() * 0xffffff)
@@ -105,8 +105,7 @@ export const listAssignedFarmers = async (officerId: string, filters: ListFarmer
     query = query.eq('status', filters.status);
   }
   if (filters.search) {
-    const term = filters.search.replace(/[%_]/g, '\\$&');
-    const pattern = `%${term}%`;
+    const pattern = pgrstValue(`%${escapeLike(filters.search)}%`);
     query = query.or(
       `name_en.ilike.${pattern},name_bn.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},nid.ilike.${pattern},farmer_id.ilike.${pattern}`,
     );
@@ -242,10 +241,16 @@ export const registerFarmerByOfficer = async (input: RegisterFarmerInput, office
 
   const validNameEn = requireText(nameEn, 'nameEn', 120);
   const validNid = requireText(nid, 'nid', 32);
-  if (!/^[0-9A-Za-z-]+$/.test(validNid)) {
-    throw new Error('nid contains invalid characters');
+  // Farmer NIDs follow the canonical 10-digit (legacy) or 17-digit (smart
+  // card) rule. The officer registers farmers, so the farmer rule applies.
+  if (!/^\d{10}$/.test(validNid) && !/^\d{17}$/.test(validNid)) {
+    throw new Error('nid must be a 10 or 17 digit number');
   }
   const validPhone = requireText(phone, 'phone', 32);
+  const phoneDigits = validPhone.replace(/[\s-]/g, '');
+  if (!/^(?:\+?880)?1[3-9]\d{8}$/.test(phoneDigits) && !/^01[3-9]\d{8}$/.test(phoneDigits)) {
+    throw new Error('phone must be a valid Bangladeshi mobile number');
+  }
   const validPassword = requireText(password, 'password', 128);
   if (validPassword.length < 6) {
     throw new Error('Password must be at least 6 characters');
