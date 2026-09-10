@@ -61,7 +61,9 @@ export default function RegisterFarmerScreen() {
     } catch (error: any) {
       const message = error?.message ?? 'Could not register the farmer. Please try again.';
       setRequestError(message);
-      setError('nid', { message });
+      if (error?.status === 400) {
+        setError('nid', { message });
+      }
     }
   };
 

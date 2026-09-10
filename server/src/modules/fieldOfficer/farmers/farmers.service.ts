@@ -1,6 +1,7 @@
 import { supabase, supabaseAdmin } from '../../../config/supabase';
 import { recordAuditLog } from '../../admin/audit/audit.service';
 import { isUuid, optionalText, requireText, requireUuid } from '../validation';
+import { pgrstValue } from '../../../lib/postgrest';
 
 const shortHex = (): string => {
   return Math.floor(Math.random() * 0xffffff)
@@ -146,21 +147,24 @@ export const getAssignedFarmer = async (officerId: string, farmerId: string) => 
   return data;
 };
 
-// findOrphanAuthUser: locates an auth user (email/phone) that has no profile
-// row, i.e. the leftover of a failed prior registration. Used so a duplicate
-// retry can be cleaned up and re-attempted safely.
-const findOrphanAuthUser = async (email: string, phone: string) => {
+export class FarmerRegistrationConflictError extends Error {
+  readonly code = 'FARMER_REGISTRATION_CONFLICT';
+
+  constructor(message = 'Farmer with this NID or phone is already registered') {
+    super(message);
+    this.name = 'FarmerRegistrationConflictError';
+  }
+}
+
+// Finds an auth user matching the identifiers generated for a farmer. An auth
+// user without a profile is an orphan from an interrupted registration.
+const findAuthUserByIdentifier = async (email: string, phone: string) => {
   for (let page = 1; ; page += 1) {
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
     if (error) return null;
     for (const user of data.users) {
-      if (user.email === email || user.phone === phone) {
-        const { data: profile } = await supabaseAdmin
-          .from('profiles')
-          .select('id')
-          .eq('id', user.id)
-          .maybeSingle();
-        if (!profile) return user;
+      if (user.email?.toLowerCase() === email.toLowerCase() || user.phone === phone) {
+        return user;
       }
     }
     if ((data.users?.length ?? 0) < 200) return null;
@@ -252,11 +256,13 @@ export const registerFarmerByOfficer = async (input: RegisterFarmerInput, office
 
   const normalizedPhone = normalizePhone(validPhone);
 
-  // Duplicate guard by NID or phone within profiles.
-  const { data: existing, error: dupError } = await supabase
+  // Duplicate guard is limited to farmer profiles. Staff identifiers live in
+  // the same table, but must not be mistaken for an existing farmer record.
+  const { data: existing, error: dupError } = await supabaseAdmin
     .from('profiles')
-    .select('id')
-    .eq('nid', validNid)
+    .select('id, role')
+    .eq('role', 'farmer')
+    .or(`nid.eq.${pgrstValue(validNid)},phone.eq.${pgrstValue(normalizedPhone)}`)
     .limit(1)
     .maybeSingle();
 
@@ -264,17 +270,8 @@ export const registerFarmerByOfficer = async (input: RegisterFarmerInput, office
     throw new Error(dupError.message);
   }
   if (existing) {
-    throw new Error('Farmer with this NID or phone is already registered');
+    throw new FarmerRegistrationConflictError();
   }
-
-  const { data: existingPhone, error: phoneDupError } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('phone', normalizedPhone)
-    .limit(1)
-    .maybeSingle();
-  if (phoneDupError) throw new Error(phoneDupError.message);
-  if (existingPhone) throw new Error('Farmer with this NID or phone is already registered');
 
   const syntheticEmail = `${validNid}@sofol.local`;
 
@@ -291,18 +288,34 @@ export const registerFarmerByOfficer = async (input: RegisterFarmerInput, office
   let { data: authData, error: authError } = await createAuthUser();
 
   if (authError && /already (been )?registered/i.test(authError.message)) {
-    const orphan = await findOrphanAuthUser(syntheticEmail, normalizedPhone);
-    if (orphan) {
-      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(orphan.id);
-      if (!deleteError) {
-        ({ data: authData, error: authError } = await createAuthUser());
+    const conflictingUser = await findAuthUserByIdentifier(syntheticEmail, normalizedPhone);
+    if (conflictingUser) {
+      const { data: conflictingProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('id, role')
+        .eq('id', conflictingUser.id)
+        .maybeSingle();
+
+      if (!conflictingProfile) {
+        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(conflictingUser.id);
+        if (!deleteError) {
+          ({ data: authData, error: authError } = await createAuthUser());
+        } else {
+          throw new FarmerRegistrationConflictError('The farmer identifiers are already associated with an account.');
+        }
+      } else {
+        throw new FarmerRegistrationConflictError(
+          conflictingProfile.role === 'farmer'
+            ? 'Farmer with this NID or phone is already registered'
+            : 'The NID or phone is already associated with another account',
+        );
       }
     }
   }
 
   if (authError || !authData.user) {
     if (/already (been )?registered/i.test(authError?.message ?? '')) {
-      throw new Error('Farmer with this NID or phone is already registered');
+      throw new FarmerRegistrationConflictError('The farmer identifiers are already associated with an account.');
     }
     throw new Error(authError?.message ?? 'Failed to create auth user');
   }

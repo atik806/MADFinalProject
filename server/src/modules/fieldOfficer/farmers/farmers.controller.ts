@@ -63,8 +63,13 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     const msg = error?.message ?? 'Registration failed';
-    const status = /already (been )?registered/i.test(msg) ? 409 : 400;
-    return res.status(status).json({ message: status === 409 || status === 400 && /required|must be|password|contains invalid/i.test(msg) ? safeErrorMessage(error, 'Farmer registration failed') : 'Farmer registration failed' });
+    const isConflict = error?.code === 'FARMER_REGISTRATION_CONFLICT';
+    const isValidation = /required|must be|password|contains invalid/i.test(msg);
+    const status = isConflict ? 409 : isValidation ? 400 : 500;
+    const message = isConflict || isValidation
+      ? safeErrorMessage(error, 'Farmer registration failed')
+      : 'Farmer registration failed';
+    return res.status(status).json({ success: false, message });
   }
 };
 
