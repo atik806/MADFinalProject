@@ -105,6 +105,7 @@ export default function LoanApplicationsScreen() {
   const [applications, setApplications] = useState<LoanApplication[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [forwardingId, setForwardingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // Server-side verification state is authoritative after the API wiring;
@@ -157,6 +158,21 @@ export default function LoanApplicationsScreen() {
     }
   };
 
+  const handleForward = async (id: string) => {
+    if (forwardingId) return;
+    setForwardingId(id);
+    try {
+      await api.post<ApiResponse<LoanRow>>(`/api/field-officer/loans/${id}/forward`, {
+        notes: 'Forwarded to bank from mobile app.',
+      });
+      await loadApplications();
+    } catch (err: any) {
+      Alert.alert('Forward to Bank', err?.message ?? 'Could not forward the application.');
+    } finally {
+      setForwardingId(null);
+    }
+  };
+
   return (
     <View style={[styles.screen, { backgroundColor: bg }]}>
       <ScreenHeader title="Loan Applications" />
@@ -169,6 +185,9 @@ export default function LoanApplicationsScreen() {
               <Pressable
                 key={tab.key}
                 onPress={() => setActiveTab(tab.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={tab.label}
                 style={[styles.tabBtn, active && { backgroundColor: colors.greenLight + '15' }]}>
                 <Text style={[styles.tabLabel, { color: active ? colors.greenLight : textSecondary }, active && styles.tabLabelActive]}>
                   {tab.label}
@@ -209,6 +228,9 @@ export default function LoanApplicationsScreen() {
               <View key={app.id} style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
                 <Pressable
                   onPress={() => setExpandedId(expanded ? null : app.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded }}
+                  accessibilityLabel={`${farmerName}, ${app.title}`}
                   style={({ pressed }) => pressed && styles.pressed}>
                   <View style={styles.cardHeader}>
                     <View style={styles.cardInfo}>
@@ -291,18 +313,39 @@ export default function LoanApplicationsScreen() {
                         <Pressable
                           onPress={() => handleVerify(app.id)}
                           disabled={verifyingId === app.id}
+                          accessibilityRole="button"
+                          accessibilityLabel="Verify Application"
+                          accessibilityState={{ disabled: verifyingId === app.id, busy: verifyingId === app.id }}
                           style={[styles.verifyBtn, { backgroundColor: colors.greenLight }, verifyingId === app.id && { opacity: 0.6 }]}>
                           <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
                           <Text style={styles.verifyBtnText}>{verifyingId === app.id ? 'Verifying…' : 'Verify Application'}</Text>
                         </Pressable>
                       )}
-                      {(app.verificationStatus === 'verified' || app.verificationStatus === 'rejected' || app.forwarded) && (
+                      {(app.verificationStatus === 'rejected' || app.forwarded) && (
                         <View style={[styles.verifyBtn, styles.verifyBtnDisabled, { backgroundColor: colors.greenLight + '20' }]}>
                           <Ionicons name={app.verificationStatus === 'rejected' ? 'close-circle' : 'checkmark-circle'} size={18} color={colors.greenLight} />
                           <Text style={[styles.verifyBtnText, { color: colors.greenLight }]}>
-                            {app.verificationStatus === 'rejected' ? 'Rejected' : app.forwarded ? 'Forwarded to Bank' : 'Verified'}
+                            {app.verificationStatus === 'rejected' ? 'Rejected' : 'Forwarded to Bank'}
                           </Text>
                         </View>
+                      )}
+                      {app.verificationStatus === 'verified' && !app.forwarded && (
+                        <>
+                          <View style={[styles.verifyBtn, styles.verifyBtnDisabled, { backgroundColor: colors.greenLight + '20' }]}>
+                            <Ionicons name="checkmark-circle" size={18} color={colors.greenLight} />
+                            <Text style={[styles.verifyBtnText, { color: colors.greenLight }]}>Verified</Text>
+                          </View>
+                          <Pressable
+                            onPress={() => handleForward(app.id)}
+                            disabled={forwardingId === app.id}
+                            accessibilityRole="button"
+                            accessibilityLabel="Forward to Bank"
+                            accessibilityState={{ disabled: forwardingId === app.id, busy: forwardingId === app.id }}
+                            style={[styles.forwardBtn, { backgroundColor: colors.blueLight }, forwardingId === app.id && { opacity: 0.6 }]}>
+                            <Ionicons name="arrow-forward-circle" size={18} color="#FFFFFF" />
+                            <Text style={styles.verifyBtnText}>{forwardingId === app.id ? 'Forwarding…' : 'Forward to Bank'}</Text>
+                          </Pressable>
+                        </>
                       )}
                     </View>
                   )}
@@ -478,6 +521,15 @@ const styles = StyleSheet.create({
   },
   verifyBtnDisabled: {
     opacity: 0.6,
+  },
+  forwardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: borderRadius.sm,
+    marginTop: 12,
   },
   expandHint: {
     alignItems: 'center',
