@@ -8,17 +8,32 @@ import {
   StyleSheet,
   Image,
   Alert,
+  Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
+import { useRegistration } from "../../../contexts/RegistrationContext";
+import { useAuth } from "../../../contexts/AuthContext";
+import { api, API_BASE_URL } from "../../../config/api";
 
 type PhotoType = "profile" | "nid" | "land";
 type FormErrors = {
   profile?: string;
   nid?: string;
+};
+
+// Alert.alert is a no-op on react-native-web, which made submit failures
+// completely silent in the browser. Route through window.alert there.
+const showError = (title: string, message?: string) => {
+  if (Platform.OS === "web") {
+    window.alert(message ? `${title}\n${message}` : title);
+  } else {
+    Alert.alert(title, message ?? "");
+  }
 };
 
 export default function PhotoScreen() {
@@ -28,11 +43,15 @@ export default function PhotoScreen() {
   const [nidPhoto, setNidPhoto] = useState<string | null>(null);
   const [landPhoto, setLandPhoto] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const { data, patch, reset } = useRegistration();
+  const { login } = useAuth();
 
   const pickImage = async (type: PhotoType) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(t('galleryPermission'));
+      showError(t('galleryPermission'));
       return;
     }
 
@@ -58,7 +77,7 @@ export default function PhotoScreen() {
   const takePhoto = async (type: PhotoType) => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(t('cameraPermission'));
+      showError(t('cameraPermission'));
       return;
     }
 
@@ -81,6 +100,11 @@ export default function PhotoScreen() {
   };
 
   const showPicker = (type: PhotoType) => {
+    // Alert.alert with buttons is also a no-op on web — go straight to the picker.
+    if (Platform.OS === "web") {
+      pickImage(type);
+      return;
+    }
     const labels: Record<PhotoType, string> = {
       profile: t('profilePhoto'),
       nid: t('nidPhoto'),
@@ -110,9 +134,78 @@ export default function PhotoScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (validate()) {
+  const uploadPhoto = async (uri: string | null, type: string): Promise<string | undefined> => {
+    if (!uri) return undefined;
+    const filename = uri.split('/').pop() || `${type}.jpg`;
+    const extMatch = /\.(\w+)$/.exec(filename);
+    const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
+    const mimeType =
+      ext === 'png' ? 'image/png' :
+      ext === 'webp' ? 'image/webp' :
+      ext === 'gif' ? 'image/gif' : 'image/jpeg';
+
+    const formData = new FormData();
+    if (Platform.OS === "web") {
+      // { uri } parts only work on native; web needs a Blob.
+      const blob = await (await fetch(uri)).blob();
+      formData.append('file', blob, filename);
+    } else {
+      // react-native attaches the local file uri as a multipart part
+      formData.append('file', { uri, name: filename, type: mimeType } as any);
+    }
+    formData.append('type', type);
+
+    const res = await fetch(`${API_BASE_URL}/api/farmer/auth/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    const json = await res.json();
+    if (!res.ok || !json?.url) {
+      throw new Error(json?.message || t('photoUploadFailed'));
+    }
+    return json.url as string;
+  };
+
+  const handleSubmit = async () => {
+    if (submitting) return;
+
+    if (!validate()) {
+      return;
+    }
+
+    if (!data.phone || !data.password) {
+      showError(t('error'), t('registrationMissingAuth'));
+      return;
+    }
+
+    const phone = data.phone;
+    const password = data.password;
+
+    try {
+      setSubmitting(true);
+      const [profileUrl, nidUrl, landUrl] = await Promise.all([
+        uploadPhoto(profilePhoto, 'profile'),
+        uploadPhoto(nidPhoto, 'nid'),
+        uploadPhoto(landPhoto, 'land'),
+      ]);
+
+      const payload = {
+        ...data,
+        profilePhotoUrl: profileUrl,
+        nidPhotoUrl: nidUrl,
+        landPhotoUrl: landUrl,
+      };
+
+      patch({ profilePhotoUrl: profileUrl, nidPhotoUrl: nidUrl, landPhotoUrl: landUrl });
+
+      await api.post('/api/farmer/auth/register', payload);
+      await login(phone, password);
+      reset();
       router.replace("/view/FarmerDashboard/farmer-dashboard");
+    } catch (e: any) {
+      showError(t('error'), e?.message ?? t('registrationFailed'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -131,19 +224,28 @@ export default function PhotoScreen() {
       </Text>
       <Text style={[styles.photoSubtitle, { color: colors.dashboard.textSecondary }]}>{subtitle}</Text>
 
-      <TouchableOpacity
-        style={[styles.photoBox, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}
-        onPress={() => showPicker(type)}
-      >
-        {photoUri ? (
-          <>
-            <Image source={{ uri: photoUri }} style={styles.previewImage} />
-            <View style={styles.photoOverlay}>
-              <Ionicons name="camera" size={24} color="#fff" />
-              <Text style={styles.changeText}>{t('change')}</Text>
-            </View>
-          </>
-        ) : (
+      {/* A photo exists: a single pressable "change" box. This branch never
+          contains nested pressables, so it is safe as a button. */}
+      {photoUri ? (
+        <TouchableOpacity
+          style={[styles.photoBox, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}
+          onPress={() => showPicker(type)}
+          accessibilityRole="button"
+          accessibilityLabel={`${label}, ${t('change')}`}
+        >
+          <Image source={{ uri: photoUri }} style={styles.previewImage} />
+          <View style={styles.photoOverlay}>
+            <Ionicons name="camera" size={24} color="#fff" />
+            <Text style={styles.changeText}>{t('change')}</Text>
+          </View>
+        </TouchableOpacity>
+      ) : (
+        /* No photo selected: the outer container is a plain View (never a
+           button), and the gallery/camera controls below are the only
+           pressables — there is no <button> nesting on web. */
+        <View
+          style={[styles.photoBox, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}
+        >
           <View style={styles.photoPlaceholder}>
             <Ionicons name={icon} size={48} color={colors.dashboard.textSecondary} />
             <Text style={[styles.uploadText, { color: colors.dashboard.textSecondary }]}>{t('selectPhoto')}</Text>
@@ -151,6 +253,8 @@ export default function PhotoScreen() {
               <TouchableOpacity
                 style={[styles.photoActionBtn, { backgroundColor: colors.userVerified }]}
                 onPress={() => pickImage(type)}
+                accessibilityRole="button"
+                accessibilityLabel={t('gallery')}
               >
                 <Ionicons name="images-outline" size={18} color={colors.deepGreen} />
                 <Text style={[styles.photoActionText, { color: colors.deepGreen }]}>{t('gallery')}</Text>
@@ -158,14 +262,16 @@ export default function PhotoScreen() {
               <TouchableOpacity
                 style={[styles.photoActionBtn, { backgroundColor: colors.userVerified }]}
                 onPress={() => takePhoto(type)}
+                accessibilityRole="button"
+                accessibilityLabel={t('camera')}
               >
                 <Ionicons name="camera-outline" size={18} color={colors.deepGreen} />
                 <Text style={[styles.photoActionText, { color: colors.deepGreen }]}>{t('camera')}</Text>
               </TouchableOpacity>
             </View>
           </View>
-        )}
-      </TouchableOpacity>
+        </View>
+      )}
       {type !== "land" && errors[type] && (
         <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors[type]}</Text>
       )}
@@ -176,7 +282,7 @@ export default function PhotoScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.dashboard.bg }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()}>
+          <TouchableOpacity style={[styles.backBtn, { backgroundColor: colors.dashboard.cardBg }]} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t('back')}>
             <Ionicons name="chevron-back" size={22} color={colors.dashboard.textPrimary} />
           </TouchableOpacity>
           <View style={[styles.headerLogo, { backgroundColor: colors.deepGreen }]}>
@@ -252,9 +358,23 @@ export default function PhotoScreen() {
           landPhoto
         )}
 
-        <TouchableOpacity style={[styles.submitBtn, { backgroundColor: colors.deepGreen }]} onPress={handleSubmit}>
-          <Ionicons name="checkmark-circle" size={22} color="#fff" />
-          <Text style={styles.submitBtnText}>{t('submitRegistration')}</Text>
+        <TouchableOpacity
+          style={[styles.submitBtn, { backgroundColor: colors.deepGreen }, submitting && { opacity: 0.6 }]}
+          onPress={handleSubmit}
+          disabled={submitting}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={t('submitRegistration')}
+          accessibilityState={{ disabled: submitting, busy: submitting }}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle" size={22} color="#fff" />
+              <Text style={styles.submitBtnText}>{t('submitRegistration')}</Text>
+            </>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
