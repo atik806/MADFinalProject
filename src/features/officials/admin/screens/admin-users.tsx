@@ -43,12 +43,16 @@ const ROLE_FROM_BACKEND: Record<string, User['role']> = {
 const userFromRow = (row: AdminDirectoryRow): User => {
   const role = ROLE_FROM_BACKEND[String(row.role ?? '').toLowerCase()] ?? 'Farmer';
   const status = String(row.status ?? '').toLowerCase();
+  // The authoritative account status is profiles.status — a suspended or
+  // deactivated account must never be masked by is_verified (a verified
+  // farmer the admin just suspended still shows a red badge after reload).
   const badgeStatus: User['status'] =
     status === 'active'
       ? 'verified'
       : status === 'inactive' || status === 'suspended'
         ? 'rejected'
         : 'pending';
+  const isSuspended = status === 'inactive' || status === 'suspended';
   return {
     id: String(row.id),
     name: row.name_en ?? row.name_bn ?? 'Unnamed',
@@ -57,7 +61,9 @@ const userFromRow = (row: AdminDirectoryRow): User => {
     crop: role === 'Farmer'
       ? (row.farmer_id ?? '—')
       : (row.designation ?? row.employee_id ?? '—'),
-    status: role === 'Farmer' && row.is_verified === true ? 'verified' : badgeStatus,
+    // Farmers: is_verified refines an ACTIVE account (verified vs pending);
+    // it must never override a suspension. Officers show by account status.
+    status: role === 'Farmer' && !isSuspended && row.is_verified === true ? 'verified' : badgeStatus,
   };
 };
 
