@@ -18,7 +18,6 @@ const normalizePhone = (phone: string): string => {
 
 export interface CreateFieldOfficerByAdminInput {
   nameEn: string;
-  nameBn?: string;
   nid: string;
   phone: string;
   password: string;
@@ -60,7 +59,6 @@ export const createFieldOfficerByAdmin = async (
 ) => {
   const {
     nameEn,
-    nameBn,
     nid,
     phone,
     password,
@@ -139,7 +137,6 @@ export const createFieldOfficerByAdmin = async (
     credit_score: 0,
     member_since: new Date().toISOString(),
     name_en: nameEn,
-    name_bn: nameBn ?? null,
     nid,
     phone: normalizedPhone,
     email: finalEmail,
@@ -219,7 +216,7 @@ const withCounts = async (rows: any[]): Promise<FieldOfficerSummary[]> => {
 
     out.push({
       id: row.id,
-      name: row.name_en ?? row.name_bn ?? 'Unnamed',
+      name: row.name_en ?? 'Unnamed',
       email: row.email ?? null,
       phone: row.phone ?? null,
       role: row.role ?? 'field_officer',
@@ -268,7 +265,7 @@ export const listFieldOfficers = async (filters: ListFieldOfficersFilters) => {
   if (filters.search) {
     const pattern = pgrstValue(`%${escapeLike(filters.search)}%`);
     query = query.or(
-      `name_en.ilike.${pattern},name_bn.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},employee_id.ilike.${pattern},nid.ilike.${pattern}`,
+      `name_en.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},employee_id.ilike.${pattern},nid.ilike.${pattern}`,
     );
   }
 
@@ -321,11 +318,11 @@ export const getFieldOfficerById = async (id: string) => {
     const ids = assignments.map((a: any) => a.farmer_id);
     const { data: farmerRows } = await supabaseAdmin
       .from('profiles')
-      .select('id, name_en, name_bn')
+      .select('id, name_en')
       .in('id', ids);
     const farmerById = new Map<string, { id: string; name: string }>();
     (farmerRows ?? []).forEach((f: any) => {
-      farmerById.set(f.id, { id: f.id, name: f.name_en ?? f.name_bn ?? 'Unnamed' });
+      farmerById.set(f.id, { id: f.id, name: f.name_en ?? 'Unnamed' });
     });
     farmers = assignments.map((a: any) => ({
       id: a.farmer_id,
@@ -342,7 +339,6 @@ export const getFieldOfficerById = async (id: string) => {
 // change role, status, is_verified, or farmer_id.
 const FIELD_OFFICER_UPDATE_FIELDS = [
   'name_en',
-  'name_bn',
   'email',
   'phone',
   'designation',

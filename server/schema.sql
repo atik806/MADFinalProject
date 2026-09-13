@@ -29,7 +29,6 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   role text,
   status text default 'pending',
-  name_bn text,
   name_en text,
   nid text,
   phone text,
@@ -357,3 +356,7 @@ alter table if exists public.farmer_verifications
   add column if not exists farmer_present boolean default false,
   add column if not exists land_verified boolean default false,
   add column if not exists documents_verified boolean default false;
+
+-- Bangla name field removed app-wide (English-only now).
+alter table if exists public.profiles
+  drop column if exists name_bn;

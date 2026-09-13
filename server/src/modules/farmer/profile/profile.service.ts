@@ -2,7 +2,6 @@ import { supabase } from '../../../config/supabase';
 
 // Maps the app's camelCase profile fields to the DB snake_case columns.
 export const PROFILE_FIELD_MAP: Record<string, string> = {
-  nameBn: 'name_bn',
   nameEn: 'name_en',
   nid: 'nid',
   phone: 'phone',

@@ -79,7 +79,6 @@ export const FARMER_SETTINGS: SettingSection[] = [
     items: [
       { icon: 'person-outline', label: 'Edit Profile', route: '/view/Profile/edit-profile' },
       { icon: 'lock-closed-outline', label: 'Change Password' },
-      { icon: 'language-outline', label: 'Language', subtitle: 'English', value: 'en' },
     ],
   },
   {

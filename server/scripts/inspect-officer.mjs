@@ -13,9 +13,9 @@ if (!term) throw new Error('pass an email / phone / nid / name fragment');
 
 const { data: profiles, error } = await admin
   .from('profiles')
-  .select('id, role, status, name_en, name_bn, nid, phone, email, designation, bank_name, branch_name, supervised_district')
+  .select('id, role, status, name_en, nid, phone, email, designation, bank_name, branch_name, supervised_district')
   .or(
-    `name_en.ilike.%${term}%,name_bn.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%,nid.ilike.%${term}%`,
+    `name_en.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%,nid.ilike.%${term}%`,
   );
 if (error) throw error;
 
@@ -28,7 +28,7 @@ for (const p of profiles) {
   const { data: authRes } = await admin.auth.admin.getUserById(p.id);
   const u = authRes?.user;
   console.log('────────────────────────────────');
-  console.log('name        ', p.name_en ?? p.name_bn);
+  console.log('name        ', p.name_en);
   console.log('id          ', p.id);
   console.log('profiles.role', p.role, '| status', p.status);
   console.log('designation ', p.designation);

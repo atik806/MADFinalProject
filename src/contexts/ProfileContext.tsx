@@ -9,7 +9,6 @@ const isFarmerRole = (role?: string) =>
     .replace(/[_\s]+/g, '-') === 'farmer';
 
 export type FarmerProfile = {
-  nameBn: string;
   nameEn: string;
   nid: string;
   phone: string;
@@ -50,7 +49,7 @@ export type FarmerProfile = {
 };
 
 const emptyProfile: FarmerProfile = {
-  nameBn: '', nameEn: '', nid: '', phone: '', dob: '', gender: '',
+  nameEn: '', nid: '', phone: '', dob: '', gender: '',
   totalLand: 0, ownLand: 0, leasedLand: 0, selectedCrops: [], location: '',
   farmingIncome: 0, otherSources: [], otherIncome: 0, familyMembers: 0, occupation: '',
   hasLoan: false, loanAmount: 0, loanPurpose: '', loanSource: '',
@@ -61,7 +60,6 @@ const emptyProfile: FarmerProfile = {
 };
 
 const mapProfile = (row: any): FarmerProfile => ({
-  nameBn: row?.name_bn ?? '',
   nameEn: row?.name_en ?? '',
   nid: row?.nid ?? '',
   phone: row?.phone ?? '',

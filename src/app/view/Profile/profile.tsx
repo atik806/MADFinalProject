@@ -28,10 +28,10 @@ export default function ProfileScreen() {
   const colors = useColors();
   const { logout } = useAuth();
   const { profile, loading, error, reload } = useProfile();
-  const { t, lang, toggleLang } = useTranslation();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('profile');
 
-  const profileEmpty = !profile.nameEn && !profile.nameBn && !profile.farmerId;
+  const profileEmpty = !profile.nameEn && !profile.farmerId;
 
   const tabs: TabDef[] = [
     { key: 'home', activeIcon: 'home', inactiveIcon: 'home-outline', labelKey: 'home' },
@@ -73,14 +73,6 @@ export default function ProfileScreen() {
         <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('myProfileTitle')}</Text>
         <View style={styles.headerIcons}>
           <TouchableOpacity
-            onPress={toggleLang}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={lang === 'en' ? 'Switch to Bangla' : 'Switch to English'}
-            style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
-            <Text style={[styles.langText, { color: colors.userVerifiedText }]}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
             onPress={() => router.push('/view/Notifications/notifications')}
             hitSlop={8}
             accessibilityRole="button"
@@ -103,7 +95,7 @@ export default function ProfileScreen() {
         <View style={[styles.heroCard, { backgroundColor: colors.deepGreen }]}>
           <View style={styles.heroTop}>
             <View style={styles.heroInfo}>
-              <Text style={styles.farmerName}>{lang === 'bn' && profile.nameBn ? profile.nameBn : profile.nameEn}</Text>
+              <Text style={styles.farmerName}>{profile.nameEn}</Text>
               <Text style={[styles.farmerId, { color: colors.scoreCardText }]}>{t('farmerId')}: {profile.farmerId}</Text>
             </View>
             {profile.isVerified && (
@@ -143,7 +135,7 @@ export default function ProfileScreen() {
 
         <Text style={[styles.sectionTitle, { color: colors.dashboard.textPrimary }]}>{t('personalInfo')}</Text>
         <View style={[styles.infoCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
-          <ProfileRow label={t('fullName')} value={lang === 'bn' && profile.nameBn ? profile.nameBn : profile.nameEn} colors={colors} />
+          <ProfileRow label={t('fullName')} value={profile.nameEn} colors={colors} />
           <ProfileRow label={t('nationalId')} value={profile.nid} colors={colors} />
           <ProfileRow label={t('dateOfBirth')} value={profile.dob} colors={colors} />
           <ProfileRow label={t('gender')} value={profile.gender} colors={colors} />
@@ -267,15 +259,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  langBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  langText: {
-    fontSize: 12,
-    fontWeight: '700',
   },
   logo: {
     width: 32,

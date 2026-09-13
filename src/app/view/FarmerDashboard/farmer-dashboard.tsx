@@ -43,7 +43,7 @@ export default function DashboardScreen() {
   const { transactions, loading: txLoading, error: txError, reload: reloadTx } = useTransactions();
   const { profile, loading: profileLoading, error: profileError, reload: reloadProfile } = useProfile();
   const { user } = useAuth();
-  const { t, lang, toggleLang } = useTranslation();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>("home");
 
   const anyLoading = loansLoading || notifLoading || txLoading || profileLoading;
@@ -85,10 +85,7 @@ export default function DashboardScreen() {
     }
   };
 
-  const farmerName =
-    lang === 'bn' && profile.nameBn
-      ? profile.nameBn
-      : profile.nameEn || user?.name || t('farmerName');
+  const farmerName = profile.nameEn || user?.name || t('farmerName');
   const farmerInitials = getInitials(farmerName);
   const location = [profile.village, profile.upazila, profile.district].filter(Boolean).join(', ');
 
@@ -120,14 +117,6 @@ export default function DashboardScreen() {
         <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('dashboard')}</Text>
 
         <View style={styles.headerIcons}>
-          <TouchableOpacity
-            onPress={toggleLang}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={lang === 'en' ? 'Switch to Bangla' : 'Switch to English'}
-            style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
-            <Text style={[styles.langText, { color: colors.userVerifiedText }]}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
-          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push('/view/Notifications/notifications')}
             hitSlop={8}
@@ -526,15 +515,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  langBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  langText: {
-    fontSize: 12,
-    fontWeight: '700',
   },
   logo: {
     width: 32,

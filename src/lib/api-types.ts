@@ -58,7 +58,6 @@ export type ProfileRow = {
   role?: string;
   status?: string;
   name_en?: string | null;
-  name_bn?: string | null;
   nid?: string | null;
   phone?: string | null;
   email?: string | null;
@@ -162,7 +161,7 @@ export type LoanRow = {
   decision_at?: string | null;
   loan_timeline?: LoanTimelineStep[];
   // Embedded by the field-officer loans endpoints only.
-  farmer?: { id: string; name_en?: string | null; name_bn?: string | null } | null;
+  farmer?: { id: string; name_en?: string | null; } | null;
 };
 
 export type LoanApplicationInput = {
@@ -182,7 +181,6 @@ export type LoanApplicationInput = {
 export type BankReviewFarmer = {
   id: string;
   name_en?: string | null;
-  name_bn?: string | null;
   farmer_id?: string | null;
   phone?: string | null;
   district?: string | null;
@@ -214,7 +212,7 @@ export type BankReviewRow = {
   application_date?: string | null;
   created_at?: string;
   farmer?: BankReviewFarmer | null;
-  field_officer?: { id: string; name_en?: string | null; name_bn?: string | null } | null;
+  field_officer?: { id: string; name_en?: string | null; } | null;
   timeline?: LoanTimelineStep[];
 };
 
@@ -246,7 +244,6 @@ export type OfficerProfileRow = {
   role?: string;
   status?: string;
   name_en?: string | null;
-  name_bn?: string | null;
   phone?: string | null;
   email?: string | null;
   designation?: string | null;
@@ -260,7 +257,6 @@ export type BankOfficerProfileRow = {
   role?: string;
   status?: string;
   name_en?: string | null;
-  name_bn?: string | null;
   phone?: string | null;
   email?: string | null;
   designation?: string | null;
@@ -319,7 +315,6 @@ export type AdminDirectoryRow = {
   role?: string;
   status?: string;
   name_en?: string | null;
-  name_bn?: string | null;
   email?: string | null;
   phone?: string | null;
   district?: string | null;

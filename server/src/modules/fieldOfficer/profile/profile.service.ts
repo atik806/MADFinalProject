@@ -8,7 +8,6 @@ import { optionalText } from '../validation';
 // of role or verification state).
 const FIELD_OFFICER_UPDATE_FIELDS = [
   'name_en',
-  'name_bn',
   'email',
   'phone',
   'nid',

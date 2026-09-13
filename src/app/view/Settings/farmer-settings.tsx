@@ -29,7 +29,6 @@ const SECTION_TITLE_KEYS: Record<string, string> = {
 const ITEM_LABEL_KEYS: Record<string, string> = {
   'Edit Profile': 'editProfile',
   'Change Password': 'changePassword',
-  Language: 'language',
   'Dark Mode': 'darkMode',
   Notifications: 'notifications',
   Version: 'version',
@@ -56,7 +55,7 @@ export default function FarmerSettingsScreen() {
   const colors = useColors();
   const { isDark, toggleTheme } = useThemeContext();
   const { logout } = useAuth();
-  const { t, lang, toggleLang } = useTranslation();
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState(true);
 
   const notify = (title: string, msg: string) => {
@@ -96,14 +95,6 @@ export default function FarmerSettingsScreen() {
       }
       if (item.label === 'Notifications') {
         return { ...item, type: 'toggle' as const, value: notifications, onToggle: setNotifications };
-      }
-      if (item.label === 'Language') {
-        return {
-          ...item,
-          type: 'navigate' as const,
-          subtitle: lang === 'en' ? t('english') : t('bangla'),
-          onPress: toggleLang,
-        };
       }
       if (item.label === 'Version') {
         return { ...item, type: 'navigate' as const, onPress: () => {} };

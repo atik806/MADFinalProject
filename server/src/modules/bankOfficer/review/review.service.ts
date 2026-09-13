@@ -73,7 +73,7 @@ const profileSummaries = async (ids: (string | null | undefined)[]) => {
   }
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name_en, name_bn, farmer_id, phone, district, is_verified, credit_score, role')
+    .select('id, name_en, farmer_id, phone, district, is_verified, credit_score, role')
     .in('id', unique);
   if (error) {
     return new Map<string, Record<string, any>>();

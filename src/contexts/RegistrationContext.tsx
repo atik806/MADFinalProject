@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 
 export type RegistrationData = {
-  nameBn?: string;
   nameEn?: string;
   nid?: string;
   phone?: string;

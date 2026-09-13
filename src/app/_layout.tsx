@@ -2,7 +2,6 @@ import { Slot, DefaultTheme, ThemeProvider } from 'expo-router';
 import { ActivityIndicator, useColorScheme, View } from 'react-native';
 
 import { ThemeProvider as AppThemeProvider } from '../contexts/ThemeContext';
-import { LanguageProvider } from '../contexts/LanguageContext';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { TransactionProvider } from '../contexts/TransactionContext';
 import { LoanProvider } from '../contexts/LoanContext';
@@ -30,21 +29,19 @@ export default function RootLayout() {
 
   return (
     <AppThemeProvider>
-      <LanguageProvider>
-        <AuthProvider>
-          <NotificationProvider>
-            <TransactionProvider>
-              <LoanProvider>
-                <ProfileProvider>
-                  <ThemeProvider value={colorScheme === 'dark' ? DefaultTheme : DefaultTheme}>
-                    <AuthGate />
-                  </ThemeProvider>
-                </ProfileProvider>
-              </LoanProvider>
-            </TransactionProvider>
-          </NotificationProvider>
-        </AuthProvider>
-      </LanguageProvider>
+      <AuthProvider>
+        <NotificationProvider>
+          <TransactionProvider>
+            <LoanProvider>
+              <ProfileProvider>
+                <ThemeProvider value={colorScheme === 'dark' ? DefaultTheme : DefaultTheme}>
+                  <AuthGate />
+                </ThemeProvider>
+              </ProfileProvider>
+            </LoanProvider>
+          </TransactionProvider>
+        </NotificationProvider>
+      </AuthProvider>
     </AppThemeProvider>
   );
 }

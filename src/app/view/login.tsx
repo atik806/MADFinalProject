@@ -48,7 +48,7 @@ export default function LoginScreen() {
   const passwordRef = useRef<TextInput>(null);
 
   const { login, isLoggedIn, user } = useAuth();
-  const { t, lang, toggleLang } = useTranslation();
+  const { t } = useTranslation();
   const router = useRouter();
 
   useEffect(() => {
@@ -95,17 +95,6 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.root}>
-          <View style={styles.langRow}>
-            <View />
-            <TouchableOpacity
-              onPress={toggleLang}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={lang === 'en' ? 'Switch to Bangla' : 'Switch to English'}
-              style={[styles.langBtn, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
-              <Text style={styles.langText}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
-            </TouchableOpacity>
-          </View>
           <View style={styles.header}>
             <View style={[styles.logoBox, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
               <Ionicons name="leaf" size={40} color="#fff" />
@@ -300,24 +289,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 14,
     opacity: 0.9,
-  },
-  langRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 18,
-    paddingTop: 12,
-  },
-  langBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  langText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
   },
   card: {
     flex: 1,

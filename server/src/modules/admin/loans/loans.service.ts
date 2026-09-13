@@ -33,7 +33,7 @@ export interface AdminLoanSummary {
 const buildSummary = (row: any, farmer: any, officer: any): AdminLoanSummary => ({
   id: row.id,
   farmer_id: row.farmer_id,
-  farmer_name: farmer?.name_en ?? farmer?.name_bn ?? 'Unknown',
+  farmer_name: farmer?.name_en ?? 'Unknown',
   farmer_phone: farmer?.phone ?? null,
   amount: Number(row.amount ?? 0),
   purpose: row.purpose ?? null,
@@ -44,7 +44,7 @@ const buildSummary = (row: any, farmer: any, officer: any): AdminLoanSummary => 
   forwarded_at: row.forwarded_at ?? null,
   recommended_amount: Number(row.recommended_amount ?? 0),
   field_officer_id: row.field_officer_id ?? null,
-  field_officer_name: officer?.name_en ?? officer?.name_bn ?? null,
+  field_officer_name: officer?.name_en ?? null,
   created_at: row.created_at,
 });
 
@@ -92,10 +92,10 @@ export const listLoans = async (filters: ListLoansFilters) => {
 
   const [{ data: farmers }, { data: officers }] = await Promise.all([
     farmerIds.length > 0
-      ? supabaseAdmin.from('profiles').select('id, name_en, name_bn, phone').in('id', farmerIds)
+      ? supabaseAdmin.from('profiles').select('id, name_en, phone').in('id', farmerIds)
       : Promise.resolve({ data: [] as any[] }),
     officerIds.length > 0
-      ? supabaseAdmin.from('profiles').select('id, name_en, name_bn').in('id', officerIds)
+      ? supabaseAdmin.from('profiles').select('id, name_en').in('id', officerIds)
       : Promise.resolve({ data: [] as any[] }),
   ]);
 
@@ -163,7 +163,7 @@ export const getLoanById = async (id: string): Promise<AdminLoanDetail> => {
   if (data.farmer_id) {
     const { data: f } = await supabaseAdmin
       .from('profiles')
-      .select('id, name_en, name_bn, phone, location, nid, primary_crop, selected_crops')
+      .select('id, name_en, phone, location, nid, primary_crop, selected_crops')
       .eq('id', data.farmer_id)
       .maybeSingle();
     farmer = f;
@@ -173,7 +173,7 @@ export const getLoanById = async (id: string): Promise<AdminLoanDetail> => {
   if (data.field_officer_id) {
     const { data: o } = await supabaseAdmin
       .from('profiles')
-      .select('id, name_en, name_bn')
+      .select('id, name_en')
       .eq('id', data.field_officer_id)
       .maybeSingle();
     officer = o;
@@ -197,7 +197,7 @@ export const getLoanById = async (id: string): Promise<AdminLoanDetail> => {
   if (actorIds.length > 0) {
     const { data: actors } = await supabaseAdmin
       .from('profiles')
-      .select('id, name_en, name_bn')
+      .select('id, name_en')
       .in('id', actorIds);
     (actors ?? []).forEach((a: any) => actorById.set(a.id, a));
   }
@@ -209,7 +209,7 @@ export const getLoanById = async (id: string): Promise<AdminLoanDetail> => {
     new_status: t.new_status ?? null,
     notes: t.notes ?? null,
     created_at: t.created_at,
-    actor_name: actorById.get(t.field_officer_id)?.name_en ?? actorById.get(t.field_officer_id)?.name_bn ?? null,
+    actor_name: actorById.get(t.field_officer_id)?.name_en ?? null,
   }));
 
   return {

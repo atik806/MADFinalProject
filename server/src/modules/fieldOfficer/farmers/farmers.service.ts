@@ -107,7 +107,7 @@ export const listAssignedFarmers = async (officerId: string, filters: ListFarmer
   if (filters.search) {
     const pattern = pgrstValue(`%${escapeLike(filters.search)}%`);
     query = query.or(
-      `name_en.ilike.${pattern},name_bn.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},nid.ilike.${pattern},farmer_id.ilike.${pattern}`,
+      `name_en.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},nid.ilike.${pattern},farmer_id.ilike.${pattern}`,
     );
   }
 
@@ -168,7 +168,6 @@ const findOrphanAuthUser = async (email: string, phone: string) => {
 };
 
 export interface RegisterFarmerInput {
-  nameBn: string;
   nameEn: string;
   nid: string;
   phone: string;
@@ -206,7 +205,6 @@ export interface RegisterFarmerInput {
 // auth material (password) is never returned.
 export const registerFarmerByOfficer = async (input: RegisterFarmerInput, officer: { id: string; name: string | null }) => {
   const {
-    nameBn,
     nameEn,
     nid,
     phone,
@@ -315,7 +313,6 @@ export const registerFarmerByOfficer = async (input: RegisterFarmerInput, office
     is_verified: false,
     credit_score: 0,
     member_since: new Date().toISOString(),
-    name_bn: optionalText(nameBn, 'nameBn', 120),
     name_en: validNameEn,
     nid: validNid,
     phone: normalizedPhone,
@@ -393,7 +390,6 @@ export const registerFarmerByOfficer = async (input: RegisterFarmerInput, office
 // state is handled exclusively through the verification module.
 const FARMER_UPDATE_FIELDS = [
   'name_en',
-  'name_bn',
   'nid',
   'phone',
   'email',
@@ -444,7 +440,7 @@ export const updateAssignedFarmer = async (
   const numericFields = new Set(['total_land', 'own_land', 'leased_land', 'farming_income', 'other_income', 'family_members', 'loan_amount']);
   const arrayFields = new Set(['selected_crops', 'other_sources']);
   const booleanFields = new Set(['has_loan']);
-  const textFields = new Set(['name_en', 'name_bn', 'nid', 'email', 'dob', 'gender', 'location', 'village', 'union_', 'upazila', 'district', 'occupation', 'loan_purpose', 'loan_source', 'profile_photo_url', 'nid_photo_url', 'land_photo_url']);
+  const textFields = new Set(['name_en', 'nid', 'email', 'dob', 'gender', 'location', 'village', 'union_', 'upazila', 'district', 'occupation', 'loan_purpose', 'loan_source', 'profile_photo_url', 'nid_photo_url', 'land_photo_url']);
   for (const [key, value] of Object.entries(updates)) {
     if (numericFields.has(key)) updates[key] = toNumber(value, key);
     if (key === 'family_members' && updates[key] !== undefined) updates[key] = Math.trunc(updates[key]);

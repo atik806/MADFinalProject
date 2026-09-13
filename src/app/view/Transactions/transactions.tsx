@@ -32,7 +32,7 @@ type FilterType = 'all' | 'income' | 'expense';
 export default function TransactionsScreen() {
   const colors = useColors();
   const { transactions, removeTransaction, loading, error, reload } = useTransactions();
-  const { t, lang, toggleLang } = useTranslation();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('transactions');
   const [filter, setFilter] = useState<FilterType>('all');
 
@@ -92,14 +92,6 @@ export default function TransactionsScreen() {
         </View>
         <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('transactions')}</Text>
         <View style={styles.headerIcons}>
-          <TouchableOpacity
-            onPress={toggleLang}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={lang === 'en' ? 'Switch to Bangla' : 'Switch to English'}
-            style={[styles.langBtn, { backgroundColor: colors.userVerified }]}>
-            <Text style={[styles.langText, { color: colors.userVerifiedText }]}>{lang === 'en' ? 'বাং' : 'EN'}</Text>
-          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push('/view/Notifications/notifications')}
             hitSlop={8}
@@ -305,15 +297,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  langBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  langText: {
-    fontSize: 12,
-    fontWeight: '700',
   },
   logo: {
     width: 32,

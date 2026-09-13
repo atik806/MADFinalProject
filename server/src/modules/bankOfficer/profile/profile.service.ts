@@ -8,7 +8,6 @@ import { optionalText } from '../validation';
 // officer reassign themselves to another branch.
 const BANK_OFFICER_UPDATE_FIELDS = [
   'name_en',
-  'name_bn',
   'email',
   'phone',
   'dob',

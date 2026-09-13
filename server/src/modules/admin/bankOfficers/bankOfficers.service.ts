@@ -13,7 +13,6 @@ import { escapeLike, pgrstValue } from '../../../lib/postgrest';
 
 export interface CreateBankOfficerByAdminInput {
   nameEn: string;
-  nameBn?: string;
   nid: string;
   phone: string;
   password: string;
@@ -33,7 +32,6 @@ export const createBankOfficerByAdmin = async (
 ) => {
   const {
     nameEn,
-    nameBn,
     nid,
     phone,
     password,
@@ -97,7 +95,6 @@ export const createBankOfficerByAdmin = async (
     credit_score: 0,
     member_since: new Date().toISOString(),
     name_en: nameEn,
-    name_bn: nameBn ?? null,
     nid,
     phone: normalizedPhone,
     email: finalEmail,
@@ -174,7 +171,7 @@ export const listBankOfficers = async (filters: ListBankOfficersFilters) => {
   if (filters.search) {
     const pattern = pgrstValue(`%${escapeLike(filters.search)}%`);
     query = query.or(
-      `name_en.ilike.${pattern},name_bn.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},employee_id.ilike.${pattern},nid.ilike.${pattern}`,
+      `name_en.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},employee_id.ilike.${pattern},nid.ilike.${pattern}`,
     );
   }
 
@@ -192,7 +189,7 @@ export const listBankOfficers = async (filters: ListBankOfficersFilters) => {
 
     items.push({
       id: row.id,
-      name: row.name_en ?? row.name_bn ?? 'Unnamed',
+      name: row.name_en ?? 'Unnamed',
       email: row.email ?? null,
       phone: row.phone ?? null,
       role: row.role ?? 'bank_officer',

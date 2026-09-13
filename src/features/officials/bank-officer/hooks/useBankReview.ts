@@ -79,4 +79,4 @@ export const num = (v: unknown): number => {
 };
 
 export const farmerName = (row: BankReviewRow): string =>
-  row.farmer?.name_en ?? row.farmer?.name_bn ?? row.farmer?.farmer_id ?? 'Farmer';
+  row.farmer?.name_en ?? row.farmer?.farmer_id ?? 'Farmer';

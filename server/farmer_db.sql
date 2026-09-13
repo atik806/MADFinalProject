@@ -15,7 +15,6 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   role text,
   status text default 'pending',
-  name_bn text,
   name_en text,
   nid text,
   phone text,
