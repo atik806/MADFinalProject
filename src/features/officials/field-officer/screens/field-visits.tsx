@@ -96,14 +96,14 @@ export default function FieldVisitsScreen() {
       ]);
       const farmerRows: ProfileRow[] = farmersRes?.data?.items ?? [];
       const nameByFarmerId = new Map(
-        farmerRows.map((f) => [String(f.id), f.name_en ?? f.name_bn ?? 'Farmer']),
+        farmerRows.map((f) => [String(f.id), f.name_en ?? 'Farmer']),
       );
       const rows: FieldVisitRow[] = visitsRes?.data?.items ?? [];
       const mapped = rows.map((v) => visitFromRow(v, nameByFarmerId.get(String(v.farmer_id)) ?? 'Farmer'));
       setUpcoming(mapped.filter((v) => v.status === 'scheduled' || v.status === 'in-progress'));
       setCompleted(mapped.filter((v) => v.status === 'completed' || v.status === 'cancelled'));
       setAssignedFarmers(
-        farmerRows.map((f) => ({ id: String(f.id), name: f.name_en ?? f.name_bn ?? 'Farmer' })),
+        farmerRows.map((f) => ({ id: String(f.id), name: f.name_en ?? 'Farmer' })),
       );
       setLoadError(null);
     } catch (err: any) {
@@ -273,7 +273,12 @@ export default function FieldVisitsScreen() {
                     </View>
                   </View>
 
-                  {expanded && (
+                  <View style={styles.expandHint}>
+                    <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={textSecondary} />
+                  </View>
+                </Pressable>
+
+                {expanded && (
                     <View style={[styles.expandedArea, { borderTopColor: border }]}>
                       <Text style={[styles.expandedLabel, { color: textSecondary }]}>Notes</Text>
                       <Text style={[styles.notesText, { color: textPrimary }]}>{visit.notes}</Text>
@@ -294,12 +299,7 @@ export default function FieldVisitsScreen() {
                         </Pressable>
                       )}
                     </View>
-                  )}
-
-                  <View style={styles.expandHint}>
-                    <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={textSecondary} />
-                  </View>
-                </Pressable>
+                )}
               </View>
             );
           })

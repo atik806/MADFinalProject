@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
 import { StatusBadge } from '@/features/officials/shared/components/status-badge';
@@ -8,6 +8,31 @@ import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/sha
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { farmerName, num, useBankReview } from '@/features/officials/bank-officer/hooks/useBankReview';
 import type { BankReviewRow } from '@/lib/api-types';
+
+// react-native-web's Alert.alert is a no-op, so every confirm-before-acting
+// flow here would silently do nothing in a browser. Route through
+// window.confirm on web and the real native alert everywhere else.
+function confirmAction(title: string, message: string, confirmLabel: string, onConfirm: () => void, destructive = false) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.confirm(`${title}\n\n${message}`)) {
+      onConfirm();
+    }
+    return;
+  }
+  Alert.alert(title, message, [
+    { text: 'Cancel', style: 'cancel' },
+    { text: confirmLabel, style: destructive ? 'destructive' : 'default', onPress: onConfirm },
+  ]);
+}
+
+// Same web gap as confirmAction, for plain success/error notices.
+function notify(title: string, message: string) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.alert(message);
+    return;
+  }
+  Alert.alert(title, message);
+}
 
 export default function ApprovalsScreen() {
   const colors = useColors();
@@ -29,51 +54,46 @@ export default function ApprovalsScreen() {
 
   const submit = async (row: BankReviewRow, decision: 'approved' | 'rejected') => {
     if (decision === 'rejected' && !notes.trim()) {
-      Alert.alert('Reason required', 'Add a note explaining the rejection — the farmer sees it.');
+      notify('Reason required', 'Add a note explaining the rejection — the farmer sees it.');
       return;
     }
     const approvedAmount = decision === 'approved' ? num(amount) : undefined;
     if (decision === 'approved') {
       if (!approvedAmount || approvedAmount <= 0) {
-        Alert.alert('Amount required', 'Enter the sanctioned amount.');
+        notify('Amount required', 'Enter the sanctioned amount.');
         return;
       }
       if (approvedAmount > num(row.amount)) {
-        Alert.alert('Amount too high', `Cannot sanction more than the requested ৳${num(row.amount).toLocaleString()}.`);
+        notify('Amount too high', `Cannot sanction more than the requested ৳${num(row.amount).toLocaleString()}.`);
         return;
       }
     }
-    Alert.alert(
+    confirmAction(
       decision === 'approved' ? 'Approve loan' : 'Reject loan',
       decision === 'approved'
         ? `Sanction ৳${approvedAmount?.toLocaleString()} for ${farmerName(row)}?`
         : `Reject ${farmerName(row)}'s application?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          style: decision === 'rejected' ? 'destructive' : 'default',
-          onPress: async () => {
-            const res = await decide(row.id, {
-              status: decision,
-              ...(notes.trim() ? { notes: notes.trim() } : {}),
-              ...(approvedAmount !== undefined ? { approvedAmount } : {}),
-            });
-            if (res.ok) {
-              setFormId(null);
-              Alert.alert('Done', `Application ${decision}.`);
-            } else {
-              Alert.alert('Failed', res.message);
-            }
-          },
-        },
-      ],
+      'Confirm',
+      async () => {
+        const res = await decide(row.id, {
+          status: decision,
+          ...(notes.trim() ? { notes: notes.trim() } : {}),
+          ...(approvedAmount !== undefined ? { approvedAmount } : {}),
+        });
+        if (res.ok) {
+          setFormId(null);
+          notify('Done', `Application ${decision}.`);
+        } else {
+          notify('Failed', res.message);
+        }
+      },
+      decision === 'rejected',
     );
   };
 
   const onStartReview = async (row: BankReviewRow) => {
     const res = await startReview(row.id);
-    if (!res.ok) Alert.alert('Failed', res.message);
+    if (!res.ok) notify('Failed', res.message);
   };
 
   const renderCard = (row: BankReviewRow, actionable: boolean) => {
@@ -120,6 +140,11 @@ export default function ApprovalsScreen() {
             </View>
           )}
 
+          <View style={styles.expandHint}>
+            <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.dashboard.textSecondary} />
+          </View>
+        </Pressable>
+
           {expanded && (
             <View style={[styles.expandedArea, { borderTopColor: colors.dashboard.border }]}>
               {row.purpose ? (
@@ -151,7 +176,7 @@ export default function ApprovalsScreen() {
                 <>
                   <Text style={[styles.expandedLabel, { color: colors.dashboard.textSecondary, marginTop: 12 }]}>Verified by</Text>
                   <Text style={[styles.expandedValue, { color: colors.dashboard.textPrimary }]}>
-                    {row.field_officer.name_en ?? row.field_officer.name_bn ?? 'Field officer'}
+                    {row.field_officer.name_en ?? 'Field officer'}
                   </Text>
                 </>
               ) : null}
@@ -245,11 +270,6 @@ export default function ApprovalsScreen() {
               )}
             </View>
           )}
-
-          <View style={styles.expandHint}>
-            <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.dashboard.textSecondary} />
-          </View>
-        </Pressable>
       </View>
     );
   };
