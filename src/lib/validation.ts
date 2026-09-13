@@ -84,14 +84,20 @@ export function isPositiveInteger(value: string): boolean {
 // Dates
 // ---------------------------------------------------------------------------
 
-// Strict YYYY-MM-DD. Rejects impossible dates (2026-02-30) by round-tripping
-// through Date.
+// Strict YYYY-MM-DD. Rejects impossible dates (2026-02-30) by checking the
+// parsed date's own components rather than round-tripping through
+// Date#toISOString — that method reports UTC, so for any timezone ahead of
+// UTC (e.g. Bangladesh, UTC+6) a locally-parsed midnight rolls back to the
+// previous day in UTC and a perfectly valid date would fail the check.
 export function isIsoDate(value: string): boolean {
   const v = String(value).trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
-  const d = new Date(`${v}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return false;
-  return d.toISOString().slice(0, 10) === v;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  if (!m) return false;
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const d = new Date(year, month - 1, day);
+  return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day;
 }
 
 // A YYYY-MM-DD date that is today or later (for scheduling forward-dated events
