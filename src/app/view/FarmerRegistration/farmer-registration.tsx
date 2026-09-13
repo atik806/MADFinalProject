@@ -7,16 +7,32 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
 import { useRegistration } from "../../../contexts/RegistrationContext";
 import { isBdPhone, isFarmerNid, isPlausibleDob } from "../../../lib/validation";
 
+const formatDob = (date: Date): string => {
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${mm}/${dd}/${date.getFullYear()}`;
+};
+
+// Best-effort parse of the app's MM/DD/YYYY display format, used only to seed
+// the picker's initial selection when a value already exists.
+const parseDob = (value: string): Date => {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
+  if (m) return new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]));
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? new Date(2000, 0, 1) : d;
+};
+
 type FormErrors = {
-  nameBn?: string;
   nameEn?: string;
   nid?: string;
   phone?: string;
@@ -28,11 +44,11 @@ type FormErrors = {
 export default function FarmerRegistrationScreen() {
   const colors = useColors();
   const { t } = useTranslation();
-  const [nameBn, setNameBn] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [nid, setNid] = useState("");
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState("");
+  const [showDobPicker, setShowDobPicker] = useState(false);
   const [gender, setGender] = useState(t('male'));
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -42,10 +58,6 @@ export default function FarmerRegistrationScreen() {
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {};
-
-    if (!nameBn.trim()) {
-      newErrors.nameBn = t('errNameBnRequired');
-    }
 
     if (!nameEn.trim()) {
       newErrors.nameEn = t('errNameEnRequired');
@@ -85,9 +97,19 @@ export default function FarmerRegistrationScreen() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleDobChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === "android") {
+      setShowDobPicker(false);
+    }
+    if (event.type === "set" && selectedDate) {
+      setDob(formatDob(selectedDate));
+      setErrors((p) => ({ ...p, dob: undefined }));
+    }
+  };
+
   const handleNext = () => {
     if (validate()) {
-      patch({ nameBn, nameEn, nid, phone, password, dob, gender });
+      patch({ nameEn, nid, phone, password, dob, gender });
       router.push("/view/FarmerRegistration/land");
     }
   };
@@ -138,16 +160,6 @@ export default function FarmerRegistrationScreen() {
           </View>
         </View>
 
-        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('fullNameBn')}</Text>
-        <TextInput
-          placeholder={t('nameBnPlaceholder2')}
-          placeholderTextColor={colors.dashboard.textSecondary}
-          style={[styles.input, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border, color: colors.dashboard.textPrimary }]}
-          value={nameBn}
-          onChangeText={(t) => { setNameBn(t); setErrors((p) => ({ ...p, nameBn: undefined })); }}
-        />
-        {errors.nameBn && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.nameBn}</Text>}
-
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('fullNameEn')}</Text>
         <TextInput
           placeholder={t('nameEnPlaceholder2')}
@@ -193,17 +205,39 @@ export default function FarmerRegistrationScreen() {
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('dateOfBirthLabel')}</Text>
 
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => setShowDobPicker(true)}
+          accessibilityRole="button"
+          accessibilityLabel={t('dateOfBirthLabel')}
+          style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
           <Ionicons name="calendar-outline" size={22} color={colors.dashboard.textSecondary} />
-          <TextInput
-            placeholder={t('dobPlaceholder2')}
-            placeholderTextColor={colors.dashboard.textSecondary}
-            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
-            value={dob}
-            onChangeText={(t) => { setDob(t); setErrors((p) => ({ ...p, dob: undefined })); }}
-          />
-        </View>
+          <Text style={[styles.iconInput, { color: dob ? colors.dashboard.textPrimary : colors.dashboard.textSecondary }]}>
+            {dob || t('dobPlaceholder2')}
+          </Text>
+        </TouchableOpacity>
         {errors.dob && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.dob}</Text>}
+
+        {showDobPicker && (
+          <>
+            <DateTimePicker
+              value={dob ? parseDob(dob) : new Date(2000, 0, 1)}
+              mode="date"
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              maximumDate={new Date()}
+              onChange={handleDobChange}
+            />
+            {Platform.OS === "ios" && (
+              <TouchableOpacity
+                style={[styles.dobDoneBtn, { backgroundColor: colors.deepGreen }]}
+                onPress={() => setShowDobPicker(false)}
+                accessibilityRole="button"
+                accessibilityLabel={t('ok')}>
+                <Text style={styles.dobDoneBtnText}>{t('ok')}</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('passwordLabel')}</Text>
         <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: colors.dashboard.border }]}>
@@ -416,5 +450,18 @@ const styles = StyleSheet.create({
     marginHorizontal: 22,
     marginTop: 4,
     fontWeight: "500",
+  },
+  dobDoneBtn: {
+    marginHorizontal: 18,
+    marginTop: 8,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dobDoneBtnText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });

@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useProfile } from '../../../contexts/ProfileContext';
 import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
@@ -29,23 +30,38 @@ import {
 } from '../../../lib/validation';
 
 type FormErrors = Partial<Record<
-  | 'nameBn' | 'nameEn' | 'nid' | 'phone' | 'dob'
+  | 'nameEn' | 'nid' | 'phone' | 'dob'
   | 'totalLand' | 'ownLand' | 'leasedLand' | 'location'
   | 'farmingIncome' | 'otherIncome' | 'familyMembers' | 'occupation'
   | 'loanAmount' | 'loanPurpose' | 'loanSource',
   string
 >>;
 
+const formatDob = (date: Date): string => {
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${mm}/${dd}/${date.getFullYear()}`;
+};
+
+// Best-effort parse of the app's stored dob string (MM/DD/YYYY or ISO), used
+// only to seed the picker's initial selection when a value already exists.
+const parseDob = (value: string): Date => {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
+  if (m) return new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]));
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? new Date(2000, 0, 1) : d;
+};
+
 export default function EditProfileScreen() {
   const colors = useColors();
   const { profile, updateProfile } = useProfile();
   const { t } = useTranslation();
 
-  const [nameBn, setNameBn] = useState(profile.nameBn);
   const [nameEn, setNameEn] = useState(profile.nameEn);
   const [nid, setNid] = useState(profile.nid);
   const [phone, setPhone] = useState(profile.phone);
   const [dob, setDob] = useState(profile.dob);
+  const [showDobPicker, setShowDobPicker] = useState(false);
   const [gender, setGender] = useState(profile.gender);
   const [totalLand, setTotalLand] = useState(String(profile.totalLand));
   const [ownLand, setOwnLand] = useState(String(profile.ownLand));
@@ -70,7 +86,6 @@ export default function EditProfileScreen() {
   // screen first mounts. Re-seed the form fields whenever the profile changes
   // so the inputs reflect the loaded values instead of blanks.
   useEffect(() => {
-    setNameBn(profile.nameBn);
     setNameEn(profile.nameEn);
     setNid(profile.nid);
     setPhone(profile.phone);
@@ -92,6 +107,16 @@ export default function EditProfileScreen() {
     setLoanSource(profile.hasLoan ? profile.loanSource : '');
   }, [profile]);
 
+  const handleDobChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDobPicker(false);
+    }
+    if (event.type === 'set' && selectedDate) {
+      setDob(formatDob(selectedDate));
+      clearError('dob');
+    }
+  };
+
   const toggleCrop = (crop: string) => {
     setSelectedCrops((prev) =>
       prev.includes(crop) ? prev.filter((c) => c !== crop) : [...prev, crop]
@@ -107,7 +132,6 @@ export default function EditProfileScreen() {
   const validate = (): boolean => {
     const e: FormErrors = {};
 
-    if (!nameBn.trim()) e.nameBn = t('errNameBnRequired');
     if (!nameEn.trim()) e.nameEn = t('errNameEnRequired');
     else if (!/^[A-Za-z][A-Za-z .'-]*$/.test(nameEn.trim())) e.nameEn = t('errNameEnLetters');
 
@@ -160,7 +184,6 @@ export default function EditProfileScreen() {
     try {
       setIsSaving(true);
       await updateProfile({
-        nameBn,
         nameEn,
         nid,
         phone,
@@ -222,16 +245,6 @@ export default function EditProfileScreen() {
       >
         <Text style={[styles.sectionLabel, { color: colors.deepGreen }]}>{t('personalInfoSection')}</Text>
 
-        <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('nameBnLabel')}</Text>
-        <TextInput
-          style={[styles.input, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.nameBn ? colors.dashboard.redDown : colors.dashboard.border, color: colors.dashboard.textPrimary }]}
-          value={nameBn}
-          onChangeText={(v) => { setNameBn(v); clearError('nameBn'); }}
-          placeholder={t('nameBnPlaceholder')}
-          placeholderTextColor={colors.dashboard.textSecondary}
-        />
-        {errors.nameBn && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.nameBn}</Text>}
-
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('nameEnLabel')}</Text>
         <TextInput
           style={[styles.input, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.nameEn ? colors.dashboard.redDown : colors.dashboard.border, color: colors.dashboard.textPrimary }]}
@@ -273,17 +286,39 @@ export default function EditProfileScreen() {
         {errors.phone && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.phone}</Text>}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('dobLabel')}</Text>
-        <View style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.dob ? colors.dashboard.redDown : colors.dashboard.border }]}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => setShowDobPicker(true)}
+          accessibilityRole="button"
+          accessibilityLabel={t('dobLabel')}
+          style={[styles.inputIcon, { backgroundColor: colors.dashboard.cardBg, borderColor: errors.dob ? colors.dashboard.redDown : colors.dashboard.border }]}>
           <Ionicons name="calendar-outline" size={20} color={colors.dashboard.textSecondary} />
-          <TextInput
-            style={[styles.iconInput, { color: colors.dashboard.textPrimary }]}
-            value={dob}
-            onChangeText={(v) => { setDob(v); clearError('dob'); }}
-            placeholder={t('dobPlaceholder')}
-            placeholderTextColor={colors.dashboard.textSecondary}
-          />
-        </View>
+          <Text style={[styles.iconInput, { color: dob ? colors.dashboard.textPrimary : colors.dashboard.textSecondary }]}>
+            {dob || t('dobPlaceholder')}
+          </Text>
+        </TouchableOpacity>
         {errors.dob && <Text style={[styles.error, { color: colors.dashboard.redDown }]}>{errors.dob}</Text>}
+
+        {showDobPicker && (
+          <>
+            <DateTimePicker
+              value={dob ? parseDob(dob) : new Date(2000, 0, 1)}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              maximumDate={new Date()}
+              onChange={handleDobChange}
+            />
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={[styles.dobDoneBtn, { backgroundColor: colors.deepGreen }]}
+                onPress={() => setShowDobPicker(false)}
+                accessibilityRole="button"
+                accessibilityLabel={t('ok')}>
+                <Text style={styles.dobDoneBtnText}>{t('ok')}</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
 
         <Text style={[styles.label, { color: colors.dashboard.textSecondary }]}>{t('genderLabel')}</Text>
         <View style={styles.genderRow}>
@@ -747,5 +782,17 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  dobDoneBtn: {
+    height: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  dobDoneBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
