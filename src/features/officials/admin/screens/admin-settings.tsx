@@ -23,7 +23,6 @@ import { useColors } from '@/features/officials/shared/constants/theme';
 import { contentMaxWidth } from '@/features/officials/shared/constants/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useThemeContext } from '@/contexts/ThemeContext';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { changeAdminPassword } from '@/features/officials/admin/services/admin-api';
 
 function Row({
@@ -87,7 +86,6 @@ export default function AdminSettingsScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useThemeContext();
-  const { lang, toggleLang } = useLanguage();
 
   const [pwOpen, setPwOpen] = useState(false);
   const [current, setCurrent] = useState('');
@@ -135,20 +133,6 @@ export default function AdminSettingsScreen() {
 
         <Text style={[styles.sectionLabel, { color: colors.dashboard.textSecondary }]}>General</Text>
         <Card>
-          <Row
-            icon="globe-outline"
-            label="Language"
-            right={
-              <Pressable
-                onPress={toggleLang}
-                accessibilityRole="button"
-                accessibilityLabel={lang === 'en' ? 'Language, English. Switch to Bangla' : 'ভাষা, বাংলা। ইংরেজিতে পরিবর্তন করুন'}
-                style={[styles.langPill, { borderColor: colors.dashboard.border }]}>
-                <Text style={[styles.langPillText, { color: colors.dashboard.textPrimary }]}>{lang === 'en' ? 'English' : 'বাংলা'}</Text>
-              </Pressable>
-            }
-          />
-          <Divider />
           <Row
             icon="moon-outline"
             label="Dark Mode"
@@ -229,8 +213,6 @@ const styles = StyleSheet.create({
   rowLabel: { fontSize: 14, fontWeight: '500' },
   rowRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   rowValue: { fontSize: 14, fontWeight: '500', flexShrink: 1 },
-  langPill: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
-  langPillText: { fontSize: 13, fontWeight: '600' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalCard: { width: '100%', maxWidth: 440, borderRadius: 20, padding: 22 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
