@@ -157,6 +157,19 @@ columns; loan decision columns).
 **Auth model:** Supabase Auth. Farmers/officers use synthetic email `${nid}@sofol.local`;
 admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trusted from the client.
 
+**Farmer registration policy (two doors, deliberate):**
+- **Field Officer door** (`POST /api/field-officer/farmers`, guarded): the officer verified
+  identity in person, so the profile is created `role=farmer`, `status=active`,
+  `is_verified=true` and assigned to that officer. The farmer can log in immediately
+  with the temporary password — no admin approval step exists or is needed.
+- **Self-registration door** (`POST /api/farmer/auth/register`, public): starts at
+  `status=pending`, `is_verified=false`. `pending` is the registration default, not a
+  lock — it passes `farmerOnly` (only `inactive`/`suspended` block). Field verification
+  (`/api/field-officer/verification/farmers/:id`) flips `is_verified` later; account
+  status stays a separate admin concern (`/api/admin/users/:id/status`).
+- The login screen accepts phone or email (never NID). App-created farmers log in by
+  phone; the backend maps the phone to the `<nid>@sofol.local` auth email.
+
 ---
 
 ## Milestone log

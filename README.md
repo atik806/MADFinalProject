@@ -31,10 +31,11 @@ FinalProject/
 │   ├── src/middleware/     # auth, role guards, security (helmet/cors/rate-limit)
 │   ├── src/config/supabase.ts   # Supabase service-role client (verifies key role)
 │   ├── src/lib/postgrest.ts     # Query helpers over Supabase PostgREST
-│   └── *.sql               # Database schema (schema.sql = consolidated)
-├── assets/                 # App icon, splash, images
-├── app.json                # Expo config
-└── REPORT_GAP_ANALYSIS.md  # Checklist gap analysis vs the report template
+│   └── *.sql                    # Database schema (schema.sql = consolidated)
+├── assets/                     # App icon, splash, images
+├── app.json                    # Expo config
+├── README_AI.md                 # AI-agent orientation (also CLAUDE.md → AGENTS.md)
+└── AI_README.md                 # Engineering log: verified status per feature
 ```
 
 ---
@@ -131,7 +132,9 @@ Seeded/bootstrapped on the backend (see `server/.env.example` and the admin auth
 | Field Officer | `field@gmail.com` | `123456` |
 | Farmer | `farmer@test.com` (phone `01302228993`) | `123456` |
 
-> Change these before any non-classroom deployment.
+> Change these before any non-classroom deployment. Farmer accounts created in
+> the app do not have a real email — they use the synthetic `<nid>@sofol.local`
+> auth address and log in by phone number.
 
 ---
 
@@ -142,7 +145,7 @@ Mounted in `server/src/app.ts`:
 | Prefix | Module |
 |---|---|
 | `/api/farmer` | auth, dashboard, profile, transactions (full CRUD), loans, notifications |
-| `/api/admin` | auth, users, bank-officers, field-officers, loans, dashboard, audit |
+| `/api/admin` | auth, users, field-officers, bank-officers, farmers, dashboard, audit |
 | `/api/field-officer` | profile, farmers, loans, visits, verification |
 | `/api/bank-officer` | profile, review (list / detail / review / decision) |
 
@@ -158,32 +161,52 @@ the farmer with role `farmer`, sets the profile to **active** and **verified**
 
 ### Farmer registration & loan workflow
 
-- **Farmer self-registration** (`src/app/view/FarmerRegistration/`) validates the
-  NID (10 or 17 digits) and Bangladeshi phone number **live** — a check/close icon
-  and green/red border appear as the user types — and picks the date of birth from
-  a calendar modal (`src/components/DatePicker.tsx`) instead of a free-text field.
-  Impossible dates are structurally impossible to select, and plausible-age (14–120)
-  checks still reject too-young/too-old values.
-- **Field Officer registration** applies the same canonical NID/phone rules
-  client- *and* server-side and stamps the new farmer `active` + `is_verified`, so
-  the farmer can log in immediately with the temporary password. The success dialog
-  offers **Register Another** (resets the form in place) or **Done**.
-- **Loan lifecycle** — farmer applies (`POST /api/farmer/loans`) → the assigned
-  Field Officer verifies (`/api/field-officer/loans/:id/verify`) and then
-  **forwards** (`/api/field-officer/loans/:id/forward`, wired to the "Forward to
-  Bank" action in the app) → the Bank Officer reviews
-  (`/api/bank-officer/loans/:id/review`) and decides
-  (`/api/bank-officer/loans/:id/decision`). Only forwarded, field-verified loans
-  reach the bank queue; decisions can never be silently flipped.
+There are two registration doors, and they intentionally produce different
+starting states:
+
+- **Field Officer registration** (`POST /api/field-officer/farmers`, guarded —
+  the officer's **Add Farmer** action): creates the farmer with `role = farmer`,
+  `status = active` and `is_verified = true` (the officer verified identity in
+  person), assigns the new record to that officer, and the farmer **can log in
+  immediately** with the temporary password set on the form. **No Admin approval
+  is required** for this door. The success dialog offers **Register Another**
+  (resets the form in place) or **Done**.
+- **Farmer self-registration** (`POST /api/farmer/auth/register`, public —
+  `src/app/view/FarmerRegistration/`): intentionally starts at
+  `status = pending`, `is_verified = false`. `pending` is the registration
+  default, not a lock — it still passes the farmer role guard, so the farmer can
+  log in and use the app while field verification
+  (`POST /api/field-officer/verification/farmers/:id`) is outstanding. Only
+  `inactive` / `suspended` (set by an Admin) block access.
+- **Login identifier:** the login screen accepts the registered **phone number
+  or email**. App-created farmer accounts use the synthetic email
+  `<nid>@sofol.local`, so in practice the farmer logs in with the phone number
+  they registered with.
+- **Shared validation** (both doors, client- and server-side): NID = 10 or 17
+  digits and a valid Bangladeshi mobile number, with live check/close field
+  feedback while typing (`src/lib/validation.ts`); the date of birth is picked
+  from a calendar modal (`src/components/DatePicker.tsx`) instead of a
+  free-text field, so impossible dates are structurally impossible to select,
+  and plausible-age (14–120) checks still reject too-young/too-old values.
+- **Loan lifecycle** — farmer applies (`POST /api/farmer/loans`, enters as
+  `pending`) → the assigned Field Officer verifies
+  (`POST /api/field-officer/loans/:id/verify`) and then **forwards**
+  (`POST /api/field-officer/loans/:id/forward`, the "Forward to Bank" action in
+  the app) → the Bank Officer reviews
+  (`POST /api/bank-officer/loans/:id/review`) and decides
+  (`POST /api/bank-officer/loans/:id/decision`). Only forwarded, field-verified
+  loans reach the bank queue; decisions can never be silently flipped. The
+  Field Officer can also create applications as drafts and submit them
+  (`POST /api/field-officer/loans`, `POST /api/field-officer/loans/:id/submit`);
+  disbursement and repayment tracking are **not** implemented.
 
 ---
 
 ## Documentation
 
-- `work.md` — app architecture, route map, contexts, data models, theme & i18n
 - `README_AI.md` — orientation for AI coding agents working in this repo
 - `code.md` — *historical* Supabase-conversion plan (superseded by the `server/` API)
-- `REPORT_GAP_ANALYSIS.md` — what still needs doing for the report submission
+- `AI_README.md` — detailed engineering log of what is implemented and verified
 
 ## License
 
