@@ -72,7 +72,7 @@ export default function RegisterFarmerScreen() {
       await api.post('/api/field-officer/farmers', values);
       Alert.alert(
         'Farmer registered',
-        'The farmer can log in immediately using their NID or phone number and the temporary password you set.',
+        'The farmer can log in immediately using the registered phone number (or email) and the temporary password you set.',
         [
           { text: 'Register Another', style: 'default', onPress: () => { reset(); setRequestError(null); } },
           { text: 'Done', style: 'cancel', onPress: () => router.replace('/officials/(field-officer)') },
