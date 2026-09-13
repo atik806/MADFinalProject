@@ -739,7 +739,51 @@ admin uses `ADMIN_EMAIL`. Roles resolved server-side from `profiles`, never trus
   schema (owner action) → run `bank-officer.e2e.cjs` → wire the Bank
   Officer frontend.
 
-### Milestone 5 — Bank Officer backend (loan review & decision)
+### Milestone 9 — Final submission live QA + finalization fixes
+- **Status:** Complete. Live QA passed against the running server and the
+  connected Supabase project; `npm run build` (server) passes; frontend
+  typecheck is clean except two errors in an untracked scratch hook
+  (`src/features/officials/bank-officer/hooks/useBankReview.ts`, not imported
+  by any screen) that predates this milestone and was deliberately left
+  untouched.
+- **Live QA (performed in the finalization session, scripts:
+  `server/qa-status-live.cjs`, `server/qa-debug-login.cjs`):**
+  - FO registration → farmer created `role=farmer`, `status=active`,
+    `is_verified=true`, assigned to the registering officer (201).
+  - Immediate farmer login by NID and by phone (the login endpoint maps both
+    to the `<nid>@sofol.local` auth email); wrong password → 401.
+  - FO session preserved across registration — `/me` and the officer's
+    scoped lists still work on the same token (no session poisoning).
+  - Admin user directory, farmer directory and farmer detail all show the
+    FO-registered farmer `active` + `is_verified=true`; no pending state for
+    this door anywhere.
+  - Loan workflow end-to-end: farmer apply → FO verify → forward → bank
+    review → approve/reject through the real endpoints.
+  - Role isolation: farmer token 403 on FO and admin routes; suspended farmer
+    403 on a still-valid token; reactivation restores access.
+  - QA cleanup: all test-created officers/farmers removed, DB back to
+    baseline.
+- **Finalization fixes (this milestone):**
+  - `4a346bb` — FO-registered farmers are immediately login-eligible
+    (`status=active`, `is_verified=true` on insert; the original bug created
+    them pending/unverified).
+  - `93dc493` — FO loan screen gained the **Forward to Bank** action on
+    verified, not-yet-forwarded applications (verified loans previously
+    never reached the bank queue, which requires `forwarded_at`).
+  - Finalization commits: registration policy documented; FO success-dialog
+    login guidance aligned with the actual login (phone/email, not NID);
+    admin directory badge no longer lets `is_verified` mask a
+    suspended/inactive farmer; missing `moderateRisk`/`highRisk` translation
+    keys added (any farmer credit score < 670 previously crashed the
+    dashboard render).
+- **E2E suites:** the historical `server/test/*.e2e.cjs` suites
+  (admin 81, farmer 79, field-officer 50, field-officer-loans 48,
+  bank-officer 94, security 25 at their last passing runs) were deleted from
+  the working tree before final submission and intentionally not restored;
+  their recorded counts remain as history, not as a re-run claim. The live QA
+  above is the final verification evidence.
+
+
 - **Status:** ⚠️ **Implemented but NOT live-verified — blocked solely on schema
   application.** All code is written and `npm run build` (tsc) passes. **Zero Bank
   Officer endpoints have been executed.** As of the finalization session (this

@@ -202,6 +202,34 @@ starting states:
 
 ---
 
+## Verification status (final)
+
+Live verification against the running server and the connected Supabase project:
+
+- **Build/typecheck** — server `npm run build` (tsc) passes.
+- **FO farmer registration** — Field Officer registers a farmer →
+  `role=farmer`, `status=active`, `is_verified=true`, assigned to the officer.
+- **Immediate farmer login** — the new farmer can log in right away (phone or
+  NID via the API); wrong passwords are rejected.
+- **FO session preservation** — the officer's session/token survives
+  mid-registration use (registration does not poison the officer's auth).
+- **Admin directories** — the user directory, farmer directory and farmer
+  detail all show the FO-registered farmer as `active` / `is_verified=true`;
+  no pending state appears anywhere for this door.
+- **Loan workflow** — farmer → FO verify → forward → bank review → approve /
+  reject, exercised end-to-end through the real endpoints.
+- **Role isolation & security** — farmer tokens get 403 on field-officer and
+  admin routes; suspension blocks a still-valid token immediately and
+  reactivation restores it.
+- **QA cleanup** — test-created officers/farmers/records were removed after the
+  run; the database was returned to its baseline.
+
+Historical note: the repo's E2E suites (`server/test/*.e2e.cjs`) were
+deleted from the working tree before final submission and were intentionally
+**not** restored; the counts recorded for them in `AI_README.md` are their
+last-known passing state, not a claim they were re-run. The checks above are
+the live verification performed for the final submission.
+
 ## Documentation
 
 - `README_AI.md` — orientation for AI coding agents working in this repo
