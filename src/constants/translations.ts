@@ -71,6 +71,8 @@ export const translations = {
   details: { en: 'Details', bn: 'বিস্তারিত' },
   outOf: { en: 'out of 850', bn: '৮৫০ এর মধ্যে' },
   lowRisk: { en: 'Low Risk', bn: 'কম ঝুঁকি' },
+  moderateRisk: { en: 'Moderate Risk', bn: 'মাঝারি ঝুঁকি' },
+  highRisk: { en: 'High Risk', bn: 'উচ্চ ঝুঁকি' },
   poor: { en: 'Poor', bn: 'দুর্বল' },
   fair: { en: 'Fair', bn: 'মাঝারি' },
   good: { en: 'Good', bn: 'ভাল' },
