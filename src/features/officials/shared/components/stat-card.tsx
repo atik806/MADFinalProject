@@ -23,21 +23,19 @@ export function StatCard({ icon, iconBg, value, label, sub, trend, trendLabel, h
     return (
       <View style={[heroStyles.card, { borderRadius: borderRadius.md }]}>
         <View style={[heroStyles.iconWrap, { backgroundColor: iconBg ? iconBg + '30' : 'rgba(255,255,255,0.15)' }]}>
-          <Ionicons name={icon} size={20} color="#FFFFFF" />
+          <Ionicons name={icon} size={18} color="#FFFFFF" />
         </View>
-        <View style={heroStyles.info}>
-          <Text style={heroStyles.value}>{value}</Text>
-          <Text style={heroStyles.label}>{label}</Text>
-          {trend && (
-            <View style={heroStyles.trendRow}>
-              <Text style={[heroStyles.trend, isPositive ? heroStyles.trendUp : heroStyles.trendDown]}>
-                {trend}
-              </Text>
-              {trendLabel && <Text style={heroStyles.trendLabel}>{trendLabel}</Text>}
-            </View>
-          )}
-          {sub && <Text style={heroStyles.sub}>{sub}</Text>}
-        </View>
+        <Text style={heroStyles.value}>{value}</Text>
+        <Text style={heroStyles.label}>{label}</Text>
+        {trend && (
+          <View style={heroStyles.trendRow}>
+            <Text style={[heroStyles.trend, isPositive ? heroStyles.trendUp : heroStyles.trendDown]}>
+              {trend}
+            </Text>
+            {trendLabel && <Text style={heroStyles.trendLabel}>{trendLabel}</Text>}
+          </View>
+        )}
+        {sub && <Text style={heroStyles.sub} numberOfLines={1}>{sub}</Text>}
       </View>
     );
   }
@@ -99,35 +97,33 @@ const heroStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.1)',
     padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+    alignItems: 'flex-start',
   },
   iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  info: {
-    flex: 1,
+    marginBottom: 10,
   },
   value: {
     fontSize: 22,
     fontWeight: '800',
     color: '#FFFFFF',
+    marginBottom: 2,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.75)',
+    lineHeight: 15,
   },
   trendRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 2,
+    marginTop: 4,
   },
   trend: {
     fontSize: 11,
@@ -144,8 +140,8 @@ const heroStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
   },
   sub: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.6)',
-    marginTop: 2,
+    fontSize: 10.5,
+    color: 'rgba(255,255,255,0.55)',
+    marginTop: 3,
   },
 });
