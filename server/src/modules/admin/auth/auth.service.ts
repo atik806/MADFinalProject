@@ -149,14 +149,15 @@ export const loginAdmin = async (identifier: string, password: string) => {
   const rawIdentifier = String(identifier ?? '').trim();
   const { email: adminEmail, password: adminPassword } = getAdminCredentials();
 
-  // Normalize identifier to email if it doesn't already look like one.
-  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawIdentifier);
-  const candidateEmail = isEmail ? rawIdentifier.toLowerCase() : adminEmail;
-
-  // Hard guard: only the configured admin email can sign in here. The
-  // password is verified by Supabase below against the supplied value
-  // (not the env value) so a password changed via changeAdminPassword
-  // keeps working without an env edit + redeploy.
+  // Hard guard: only the configured admin email can sign in here. Compare
+  // the identifier as-supplied — do NOT default a non-email identifier
+  // (phone/NID/username) to adminEmail, or any account whose password
+  // happens to match the admin's password (e.g. the shared demo password
+  // used across seed accounts) would silently authenticate as admin via
+  // this endpoint. The password itself is verified by Supabase below
+  // against the supplied value (not the env value) so a password changed
+  // via changeAdminPassword keeps working without an env edit + redeploy.
+  const candidateEmail = rawIdentifier.toLowerCase();
   if (candidateEmail !== adminEmail) {
     throw new Error('Invalid admin credentials');
   }

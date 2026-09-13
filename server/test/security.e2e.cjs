@@ -107,13 +107,13 @@ async function req(method, url, opts = {}) {
     ['jwt-shaped junk', 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.badsignature'],
     ['empty-ish', '.'],
   ]) {
-    r = await req('GET', '/api/farmer/me', { token: tok });
+    r = await req('GET', '/api/farmer/auth/me', { token: tok });
     report(`malformed token (${label}) 401`, r.status === 401, `status=${r.status}`);
   }
 
   // 1d. Wrong scheme header (no Bearer prefix) is still treated as a raw
   // token by the middleware and must fail as 401.
-  r = await req('GET', '/api/farmer/me', { rawAuth: 'Basic dXNlcjpwYXNz' });
+  r = await req('GET', '/api/farmer/auth/me', { rawAuth: 'Basic dXNlcjpwYXNz' });
   report('basic auth scheme 401', r.status === 401, `status=${r.status}`);
 
   // ================= 2. CLIENT-SUPPLIED ROLE IGNORED =================
@@ -141,6 +141,15 @@ async function req(method, url, opts = {}) {
   report('register body role ignored', r.status === 201 && (r.data?.data?.profile?.role ?? r.data?.data?.role) === 'farmer',
     `role=${r.data?.data?.profile?.role ?? r.data?.data?.role}`);
 
+  // A fresh registration starts 'pending' and is blocked from logging in
+  // until an admin approves it — approve with the admin token set up above
+  // so this check exercises the IDOR guard, not the approval gate.
+  if (regFarmerId) {
+    await req('PATCH', `/api/admin/users/${regFarmerId}/verification`, {
+      token: ADMIN_TOKEN, json: true, body: { action: 'approve' },
+    });
+  }
+
   r = await req('POST', '/api/farmer/auth/login', { json: true, body: { identifier: `${regNid}@sofol.local`, password: 'regfarmer123' } });
   const REG_TOKEN = r.data?.token ?? null;
   if (REG_TOKEN) {
@@ -154,6 +163,13 @@ async function req(method, url, opts = {}) {
   // 3a. Officer credentials against the admin login endpoint -> 401.
   r = await req('POST', '/api/admin/auth/login', { json: true, body: { identifier: `${officerNid}@sofol.local`, password: 'securitypass123' } });
   report('officer creds on admin login 401', r.status === 401, `status=${r.status}`);
+
+  // 3a-2. A non-email identifier (phone/NID/username) must NOT be treated
+  // as "the admin" just because it isn't shaped like an email — even when
+  // the password happens to equal the real admin password. Regression for
+  // a bug where a non-email identifier silently fell back to adminEmail.
+  r = await req('POST', '/api/admin/auth/login', { json: true, body: { identifier: '01700000000', password: ADMIN_PASSWORD } });
+  report('non-email identifier on admin login 401', r.status === 401, `status=${r.status}`);
 
   // 3b. Wrong password on the shared login endpoint -> 401.
   r = await req('POST', '/api/farmer/auth/login', { json: true, body: { identifier: `${officerNid}@sofol.local`, password: 'wrong-password' } });
