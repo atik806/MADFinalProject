@@ -27,6 +27,7 @@ import {
   fetchUsers,
   resetFieldOfficerPassword,
   setBankOfficerStatus,
+  setFarmerVerification,
   setFieldOfficerStatus,
   updateFieldOfficer,
   type AdminUserItem,
@@ -55,6 +56,38 @@ function avatarColor(seed: string): string {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
+// react-native-web's Alert.alert is a no-op (see node_modules/react-native-web
+// /dist/exports/Alert), so every confirm-before-acting flow here would
+// silently do nothing in a browser. Route through window.confirm on web and
+// the real native alert everywhere else.
+function confirmAction(
+  title: string,
+  message: string,
+  confirmLabel: string,
+  onConfirm: () => void,
+  destructive = false,
+) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.confirm(`${title}\n\n${message}`)) {
+      onConfirm();
+    }
+    return;
+  }
+  Alert.alert(title, message, [
+    { text: 'Cancel', style: 'cancel' },
+    { text: confirmLabel, style: destructive ? 'destructive' : 'default', onPress: onConfirm },
+  ]);
+}
+
+// Same web gap as confirmAction, for plain success/error notices.
+function notify(title: string, message: string) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.alert(message);
+    return;
+  }
+  Alert.alert(title, message);
+}
+
 type StatusView = { label: string; kind: 'good' | 'warn' | 'bad' };
 function statusView(item: AdminUserItem): StatusView {
   if (item.role === 'field_officer') {
@@ -67,6 +100,15 @@ function statusView(item: AdminUserItem): StatusView {
   const s = (item.status || 'pending').toLowerCase();
   if (s === 'rejected' || s === 'suspended') return { label: 'Rejected', kind: 'bad' };
   return { label: 'Pending', kind: 'warn' };
+}
+
+// A farmer registration the admin hasn't decided on yet — not yet verified
+// and not already declined. Only these show the Approve/Decline actions.
+function isFarmerPending(item: AdminUserItem): boolean {
+  return !item.is_verified && (item.status || 'pending').toLowerCase() !== 'rejected';
+}
+function isFarmerRejected(item: AdminUserItem): boolean {
+  return !item.is_verified && (item.status || '').toLowerCase() === 'rejected';
 }
 
 export default function AdminUsersScreen() {
@@ -167,7 +209,6 @@ export default function AdminUsersScreen() {
   // ---- Officer create/edit form ----
   const emptyForm = {
     nameEn: '',
-    nameBn: '',
     nid: '',
     phone: '',
     password: '',
@@ -261,11 +302,10 @@ export default function AdminUsersScreen() {
           officeAddress: form.officeAddress.trim() || undefined,
         });
         setFormOpen(false);
-        Alert.alert('Saved', `${form.nameEn.trim()} has been updated.`);
+        notify('Saved', `${form.nameEn.trim()} has been updated.`);
       } else if (formKind === 'bank_officer') {
         await createBankOfficer({
           nameEn: form.nameEn.trim(),
-          nameBn: form.nameBn.trim() || undefined,
           nid: form.nid.trim(),
           phone: form.phone.trim(),
           password: form.password,
@@ -277,12 +317,11 @@ export default function AdminUsersScreen() {
           branchCode: form.branchCode.trim() || undefined,
         });
         setFormOpen(false);
-        Alert.alert('Created', `Bank officer ${form.nameEn.trim()} has been created.`);
+        notify('Created', `Bank officer ${form.nameEn.trim()} has been created.`);
         setActiveTab('bank_officer');
       } else {
         await createFieldOfficer({
           nameEn: form.nameEn.trim(),
-          nameBn: form.nameBn.trim() || undefined,
           nid: form.nid.trim(),
           phone: form.phone.trim(),
           password: form.password,
@@ -294,12 +333,12 @@ export default function AdminUsersScreen() {
           officeAddress: form.officeAddress.trim() || undefined,
         });
         setFormOpen(false);
-        Alert.alert('Created', `Field officer ${form.nameEn.trim()} has been created.`);
+        notify('Created', `Field officer ${form.nameEn.trim()} has been created.`);
         setActiveTab('field_officer');
       }
       load('refresh');
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'Request failed');
+      notify('Error', e?.message ?? 'Request failed');
     } finally {
       setSubmitting(false);
     }
@@ -310,44 +349,61 @@ export default function AdminUsersScreen() {
     const current = (fo.status || 'active').toLowerCase();
     const nextStatus = current === 'active' ? 'suspended' : 'active';
     const verb = nextStatus === 'active' ? 'Reactivate' : 'Suspend';
-    Alert.alert(`${verb} ${isBank ? 'bank' : 'field'} officer`, `${verb} ${fo.name}? This can be reversed.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: verb,
-        style: nextStatus === 'active' ? 'default' : 'destructive',
-        onPress: async () => {
-          try {
-            const setStatus = isBank ? setBankOfficerStatus : setFieldOfficerStatus;
-            await setStatus(fo.id, nextStatus as 'active' | 'suspended');
-            load('refresh');
-          } catch (e: any) {
-            Alert.alert('Error', e?.message ?? 'Failed to update status');
-          }
-        },
+    confirmAction(
+      `${verb} ${isBank ? 'bank' : 'field'} officer`,
+      `${verb} ${fo.name}? This can be reversed.`,
+      verb,
+      async () => {
+        try {
+          const setStatus = isBank ? setBankOfficerStatus : setFieldOfficerStatus;
+          await setStatus(fo.id, nextStatus as 'active' | 'suspended');
+          load('refresh');
+        } catch (e: any) {
+          notify('Error', e?.message ?? 'Failed to update status');
+        }
       },
-    ]);
+      nextStatus !== 'active',
+    );
+  };
+
+  const decideFarmer = (item: AdminUserItem, action: 'approve' | 'reject') => {
+    const isReconsider = action === 'approve' && isFarmerRejected(item);
+    const title = action === 'approve' ? (isReconsider ? 'Reconsider farmer' : 'Approve farmer') : 'Decline farmer';
+    const message =
+      action === 'approve'
+        ? `${item.name} will be able to sign in and use their dashboard.`
+        : `${item.name} will not be able to sign in. They'll see a message that their registration was declined.`;
+    confirmAction(
+      title,
+      message,
+      action === 'approve' ? (isReconsider ? 'Reconsider' : 'Approve') : 'Decline',
+      async () => {
+        try {
+          await setFarmerVerification(item.id, action);
+          load('refresh');
+        } catch (e: any) {
+          notify('Error', e?.message ?? 'Failed to update farmer');
+        }
+      },
+      action === 'reject',
+    );
   };
 
   const removeFarmer = (item: AdminUserItem) => {
-    Alert.alert(
+    confirmAction(
       'Remove farmer',
       `Permanently remove ${item.name}? This also deletes their loans, transactions and visit history. This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteFarmer(item.id);
-              load('refresh');
-              Alert.alert('Removed', `${item.name} has been removed.`);
-            } catch (e: any) {
-              Alert.alert('Error', e?.message ?? 'Failed to remove farmer');
-            }
-          },
-        },
-      ],
+      'Remove',
+      async () => {
+        try {
+          await deleteFarmer(item.id);
+          load('refresh');
+          notify('Removed', `${item.name} has been removed.`);
+        } catch (e: any) {
+          notify('Error', e?.message ?? 'Failed to remove farmer');
+        }
+      },
+      true,
     );
   };
 
@@ -357,7 +413,7 @@ export default function AdminUsersScreen() {
   const submitPassword = async () => {
     if (!pwTarget) return;
     if (pwValue.length < 6) {
-      Alert.alert('Invalid', 'Password must be at least 6 characters.');
+      notify('Invalid', 'Password must be at least 6 characters.');
       return;
     }
     setPwSubmitting(true);
@@ -365,9 +421,9 @@ export default function AdminUsersScreen() {
       await resetFieldOfficerPassword(pwTarget.id, pwValue);
       setPwTarget(null);
       setPwValue('');
-      Alert.alert('Done', `Password reset for ${pwTarget.name}.`);
+      notify('Done', `Password reset for ${pwTarget.name}.`);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'Failed to reset password');
+      notify('Error', e?.message ?? 'Failed to reset password');
     } finally {
       setPwSubmitting(false);
     }
@@ -447,14 +503,34 @@ export default function AdminUsersScreen() {
               </Text>
             </Pressable>
           )}
-          {!isFO && !isBO && (
+          {!isFO && !isBO && isFarmerPending(item) && (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Approve ${item.name}`}
+                style={({ pressed }) => [styles.actionBtn, { backgroundColor: badgeColors('good').bg }, pressed && styles.pressed]}
+                onPress={() => decideFarmer(item, 'approve')}>
+                <Ionicons name="checkmark-circle-outline" size={14} color={badgeColors('good').fg} />
+                <Text style={[styles.actionLabel, { color: badgeColors('good').fg }]}>Approve</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Decline ${item.name}`}
+                style={({ pressed }) => [styles.actionBtn, { backgroundColor: badgeColors('bad').bg }, pressed && styles.pressed]}
+                onPress={() => decideFarmer(item, 'reject')}>
+                <Ionicons name="close-circle-outline" size={14} color={badgeColors('bad').fg} />
+                <Text style={[styles.actionLabel, { color: badgeColors('bad').fg }]}>Decline</Text>
+              </Pressable>
+            </>
+          )}
+          {!isFO && !isBO && isFarmerRejected(item) && (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Remove ${item.name}`}
-              style={({ pressed }) => [styles.actionBtn, { backgroundColor: colors.userDeactivate }, pressed && styles.pressed]}
-              onPress={() => removeFarmer(item)}>
-              <Ionicons name="trash-outline" size={14} color={colors.userDeactivateText} />
-              <Text style={[styles.actionLabel, { color: colors.userDeactivateText }]}>Remove</Text>
+              accessibilityLabel={`Reconsider ${item.name}`}
+              style={({ pressed }) => [styles.actionBtn, { backgroundColor: badgeColors('good').bg }, pressed && styles.pressed]}
+              onPress={() => decideFarmer(item, 'approve')}>
+              <Ionicons name="refresh-outline" size={14} color={badgeColors('good').fg} />
+              <Text style={[styles.actionLabel, { color: badgeColors('good').fg }]}>Reconsider</Text>
             </Pressable>
           )}
         </View>
@@ -466,6 +542,16 @@ export default function AdminUsersScreen() {
             style={styles.pwLink}>
             <Ionicons name="key-outline" size={13} color={colors.dashboard.textSecondary} />
             <Text style={[styles.pwLinkText, { color: colors.dashboard.textSecondary }]}>Reset password</Text>
+          </Pressable>
+        )}
+        {!isFO && !isBO && (
+          <Pressable
+            onPress={() => removeFarmer(item)}
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${item.name}`}
+            style={styles.pwLink}>
+            <Ionicons name="trash-outline" size={13} color={colors.userDeactivateText} />
+            <Text style={[styles.pwLinkText, { color: colors.userDeactivateText }]}>Remove farmer</Text>
           </Pressable>
         )}
       </View>
@@ -755,8 +841,7 @@ export default function AdminUsersScreen() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled">
               {sectionHeader('person-outline', 'Identity')}
-              {field('nameEn', 'Full name (English)', 'e.g. Rafiq Hasan', { icon: 'person-outline', required: true })}
-              {!editingId && field('nameBn', 'Full name (Bangla)', 'নাম', { icon: 'language-outline' })}
+              {field('nameEn', 'Full name', 'e.g. Rafiq Hasan', { icon: 'person-outline', required: true })}
               {!editingId &&
                 field('nid', 'National ID (NID)', 'e.g. 1990123456789', {
                   icon: 'card-outline',

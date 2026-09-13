@@ -51,7 +51,6 @@ export type RoleCounts = {
 
 export type CreateFieldOfficerPayload = {
   nameEn: string;
-  nameBn?: string;
   nid: string;
   phone: string;
   password: string;
@@ -140,6 +139,19 @@ export async function deleteFarmer(
   );
 }
 
+// Approves or declines a pending farmer registration. Approving lets the
+// farmer sign in; declining blocks login with a rejection message instead
+// (see loginFarmer's status check on the server).
+export async function setFarmerVerification(
+  id: string,
+  action: 'approve' | 'reject',
+): Promise<{ success: boolean; message: string; data: AdminUserItem }> {
+  return api.patch<{ success: boolean; message: string; data: AdminUserItem }>(
+    `/api/admin/users/${id}/verification`,
+    { action },
+  );
+}
+
 // Field officers
 export async function fetchFieldOfficers(opts: {
   search?: string;
@@ -200,7 +212,6 @@ export async function resetFieldOfficerPassword(
 // create + status (no edit / reset-password endpoint yet).
 export type CreateBankOfficerPayload = {
   nameEn: string;
-  nameBn?: string;
   nid: string;
   phone: string;
   password: string;
@@ -271,7 +282,6 @@ export async function fetchAdminOverview(): Promise<{ success: boolean; data: Ad
 // Field officer update (white-listed fields, see fieldOfficers.service.ts).
 export type UpdateFieldOfficerPayload = Partial<{
   nameEn: string;
-  nameBn: string;
   email: string;
   phone: string;
   designation: string;
@@ -292,7 +302,6 @@ export async function updateFieldOfficer(
   const body: Record<string, unknown> = {};
   const map: Record<keyof UpdateFieldOfficerPayload, string> = {
     nameEn: 'name_en',
-    nameBn: 'name_bn',
     email: 'email',
     phone: 'phone',
     designation: 'designation',

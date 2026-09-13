@@ -113,6 +113,13 @@ async function loginAnyRole(
   identifier: string,
   password: string,
 ): Promise<{ token: string; user: any; profile?: any }> {
+  // The farmer endpoint is tried first and covers farmers and officers alike
+  // (any Supabase-authenticated profile); admin is a fallback for the one
+  // hardcoded admin account. Keep only the FIRST failure: it's the one that
+  // actually matches the identifier's real account (e.g. "pending admin
+  // approval", "declined", "invalid password"), whereas the admin
+  // endpoint's failure for a non-admin identifier is always the generic
+  // "Invalid admin credentials" and would otherwise stomp on it.
   let lastError: unknown;
   for (const endpoint of LOGIN_ENDPOINTS) {
     try {
@@ -121,9 +128,9 @@ async function loginAnyRole(
         password,
       });
       if (res?.token && res?.user) return res;
-      lastError = new Error('Login failed: invalid server response');
+      if (lastError === undefined) lastError = new Error('Login failed: invalid server response');
     } catch (err) {
-      lastError = err;
+      if (lastError === undefined) lastError = err;
     }
   }
   throw lastError instanceof Error ? lastError : new Error('Invalid credentials');

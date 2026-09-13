@@ -10,6 +10,7 @@ router.use(authenticateUser, adminOnly);
 router.get('/counts', controller.counts);
 router.get('/', controller.list);
 router.get('/:id', controller.getById);
+router.patch('/:id/verification', controller.setVerification);
 router.delete('/:id', controller.remove);
 
 export default router;

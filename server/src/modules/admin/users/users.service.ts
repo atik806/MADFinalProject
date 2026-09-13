@@ -34,7 +34,7 @@ export interface ListUsersFilters {
 
 const buildSummary = (row: any): AdminUserSummary => ({
   id: row.id,
-  name: row.name_en ?? row.name_bn ?? 'Unnamed',
+  name: row.name_en ?? 'Unnamed',
   email: row.email ?? null,
   phone: row.phone ?? null,
   role: row.role,
@@ -79,7 +79,7 @@ export const listUsers = async (filters: ListUsersFilters) => {
   if (filters.search) {
     const pattern = pgrstValue(`%${escapeLike(filters.search)}%`);
     query = query.or(
-      `name_en.ilike.${pattern},name_bn.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},farmer_id.ilike.${pattern},employee_id.ilike.${pattern},nid.ilike.${pattern},location.ilike.${pattern}`,
+      `name_en.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},farmer_id.ilike.${pattern},employee_id.ilike.${pattern},nid.ilike.${pattern},location.ilike.${pattern}`,
     );
   }
 
@@ -127,7 +127,7 @@ export interface AdminActor {
 export const deleteFarmer = async (id: string, actor: AdminActor) => {
   const { data: profile, error: fetchError } = await supabaseAdmin
     .from('profiles')
-    .select('id, role, name_en, name_bn, phone, farmer_id')
+    .select('id, role, name_en, phone, farmer_id')
     .eq('id', id)
     .maybeSingle();
   if (fetchError) {
@@ -162,13 +162,59 @@ export const deleteFarmer = async (id: string, actor: AdminActor) => {
     targetType: 'farmer',
     status: 'success',
     details: {
-      name: profile.name_en ?? profile.name_bn ?? null,
+      name: profile.name_en ?? null,
       phone: profile.phone ?? null,
       farmerId: profile.farmer_id ?? null,
     },
   });
 
   return { id };
+};
+
+// setFarmerVerification: admin approves or declines a pending farmer
+// registration. Approving flips is_verified on and sets status 'active' so
+// the farmer can sign in; declining sets status 'rejected' (is_verified stays
+// false) so a login attempt is blocked with a clear message instead of
+// silently succeeding. Restricted to role 'farmer' — officer accounts are
+// always created pre-verified and never go through this flow.
+export const setFarmerVerification = async (
+  id: string,
+  action: 'approve' | 'reject',
+  actor: AdminActor,
+): Promise<AdminUserSummary> => {
+  const update =
+    action === 'approve'
+      ? { is_verified: true, status: 'active' }
+      : { is_verified: false, status: 'rejected' };
+
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .update(update)
+    .eq('id', id)
+    .eq('role', 'farmer')
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error('Farmer not found');
+  }
+
+  void recordAuditLog({
+    actorId: actor.id,
+    actorRole: 'admin',
+    actorName: actor.name ?? 'Administrator',
+    action: action === 'approve' ? 'Approved farmer registration' : 'Declined farmer registration',
+    module: 'User',
+    targetId: id,
+    targetType: 'farmer',
+    status: 'success',
+    details: { name: data.name_en ?? null, farmerId: data.farmer_id ?? null },
+  });
+
+  return buildSummary(data);
 };
 
 export interface RoleCounts {

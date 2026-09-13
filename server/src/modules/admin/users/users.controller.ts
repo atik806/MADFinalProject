@@ -77,6 +77,36 @@ export const remove = async (req: Request, res: Response) => {
   }
 };
 
+export const setVerification = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ message: 'User id is required' });
+    }
+    const { action } = req.body ?? {};
+    if (!['approve', 'reject'].includes(action)) {
+      return res.status(400).json({ message: 'Invalid action' });
+    }
+    const profile = (req as any).profile ?? null;
+    const data = await service.setFarmerVerification(String(id), action, {
+      id: req.user.id,
+      name: profile?.name_en ?? req.user.user_metadata?.full_name ?? null,
+    });
+    return res.status(200).json({
+      success: true,
+      message: action === 'approve' ? 'Farmer approved' : 'Farmer declined',
+      data,
+    });
+  } catch (error: any) {
+    const msg = error?.message ?? 'Failed to update farmer verification';
+    const status = /not found/i.test(msg) ? 404 : 500;
+    return res.status(status).json({ message: msg });
+  }
+};
+
 export const counts = async (_req: Request, res: Response) => {
   try {
     const data = await service.getRoleCounts();

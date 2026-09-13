@@ -2,7 +2,6 @@ import { supabase, createAuthClient } from '../../../config/supabase';
 import { pgrstValue } from '../../../lib/postgrest';
 
 export interface RegisterInput {
-  nameBn: string;
   nameEn: string;
   nid: string;
   phone: string;
@@ -88,7 +87,6 @@ const normalizePhone = (phone: string): string => {
 
 export const registerFarmer = async (input: RegisterInput) => {
   const {
-    nameBn,
     nameEn,
     nid,
     phone,
@@ -114,8 +112,8 @@ export const registerFarmer = async (input: RegisterInput) => {
     landPhotoUrl,
   } = input;
 
-  if (!nameBn || !nameEn || !nid || !phone || !password || !dob || !gender) {
-    throw new Error('Missing required fields: nameBn, nameEn, nid, phone, password, dob and gender are required');
+  if (!nameEn || !nid || !phone || !password || !dob || !gender) {
+    throw new Error('Missing required fields: nameEn, nid, phone, password, dob and gender are required');
   }
 
   const normalizedPhone = normalizePhone(phone);
@@ -184,7 +182,6 @@ export const registerFarmer = async (input: RegisterInput) => {
     is_verified: false,
     credit_score: 0,
     member_since: new Date().toISOString(),
-    name_bn: nameBn,
     name_en: nameEn,
     nid,
     phone: normalizedPhone,
@@ -235,6 +232,28 @@ export const registerFarmer = async (input: RegisterInput) => {
   }
 
   return { user: authData.user, profile };
+};
+
+// Gates a successful password sign-in on the profile's approval status.
+// Farmers start 'pending' at registration and stay blocked until an admin
+// approves them (status 'active'); a declined registration is blocked with
+// its own message. Officer accounts are created pre-approved (status
+// 'active') by the admin, so this never blocks them.
+const PENDING_LOGIN_MESSAGE =
+  'Your account is pending admin approval. Please wait for confirmation before signing in.';
+const REJECTED_LOGIN_MESSAGE =
+  'Your registration was declined by the admin. Please contact support for more information.';
+
+const enforceApprovedStatus = async <T extends { user: { id: string } }>(authData: T): Promise<T> => {
+  const profile = await getProfileById(authData.user.id);
+  const status = String(profile?.status ?? 'pending').toLowerCase();
+  if (status === 'rejected') {
+    throw new Error(REJECTED_LOGIN_MESSAGE);
+  }
+  if (status !== 'active') {
+    throw new Error(PENDING_LOGIN_MESSAGE);
+  }
+  return authData;
 };
 
 export const loginFarmer = async (identifier: string, password: string) => {
@@ -292,7 +311,7 @@ export const loginFarmer = async (identifier: string, password: string) => {
       loginEmail = `${profile.nid}@sofol.local`;
       const bySyntheticEmail = await tryEmailLogin(loginEmail);
       if (bySyntheticEmail) {
-        return bySyntheticEmail;
+        return enforceApprovedStatus(bySyntheticEmail);
       }
     }
 
@@ -300,7 +319,7 @@ export const loginFarmer = async (identifier: string, password: string) => {
     if (profile?.email) {
       const byProfileEmail = await tryEmailLogin(profile.email);
       if (byProfileEmail) {
-        return byProfileEmail;
+        return enforceApprovedStatus(byProfileEmail);
       }
     }
 
@@ -308,7 +327,7 @@ export const loginFarmer = async (identifier: string, password: string) => {
     for (const phoneCandidate of [normalizedPhone, localPhone, rawIdentifier]) {
       const byPhone = await tryPhoneLogin(phoneCandidate);
       if (byPhone) {
-        return byPhone;
+        return enforceApprovedStatus(byPhone);
       }
     }
 
@@ -322,7 +341,7 @@ export const loginFarmer = async (identifier: string, password: string) => {
   if (!byEmail) {
     throw new Error('Invalid login credentials');
   }
-  return byEmail;
+  return enforceApprovedStatus(byEmail);
 };
 
 // Resolves a farmer's auth-user id (== profiles.id) from a phone number,
