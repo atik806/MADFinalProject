@@ -96,7 +96,7 @@ const farmerSummaries = async (farmerIds: string[]) => {
   }
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name_en, name_bn, farmer_id, is_verified')
+    .select('id, name_en, farmer_id, is_verified')
     .in('id', unique);
   if (error) {
     return new Map<string, Record<string, any>>();
@@ -329,8 +329,15 @@ export const updateLoanApplication = async (
 
 // submitLoanApplication: moves a draft into the review pipeline
 // (draft -> pending), stamps the submission time, writes the initial
-// timeline step, and notifies the farmer. The status transition is the only
-// status change an officer can make.
+// timeline step, and notifies the farmer.
+//
+// A draft only ever exists because THIS officer created it (createLoanApplication
+// always stamps field_officer_id = the creating officer), so by submitting it
+// the officer is already vouching for it — there is no separate farmer
+// account to have "self-reported" unchecked details. So submission here also
+// verifies and forwards the application straight to the bank in one step,
+// skipping the manual Verify/Forward actions that a farmer's own submission
+// (POST /api/farmer/loans) still requires from a field officer.
 export const submitLoanApplication = async (
   officerId: string,
   loanId: string,
@@ -346,7 +353,16 @@ export const submitLoanApplication = async (
   const now = new Date().toISOString();
   const { data, error } = await supabase
     .from('loan_applications')
-    .update({ status: 'pending', application_date: now, updated_at: now })
+    .update({
+      status: 'pending',
+      application_date: now,
+      updated_at: now,
+      verification_status: 'verified',
+      verified_at: now,
+      verification_notes: 'Auto-verified: submitted directly by the assigned field officer.',
+      forwarded_at: now,
+      forwarded_by: officerId,
+    })
     .eq('id', loanId)
     .select()
     .maybeSingle();
@@ -360,16 +376,17 @@ export const submitLoanApplication = async (
 
   // Timeline + farmer notification are best-effort follow-ups; a failure
   // there must not roll back the submitted status, matching the farmer
-  // module's applyForLoan behavior.
+  // module's applyForLoan behavior. "Under Review" is marked done up front
+  // since verification/forwarding already happened above.
   await supabase.from('loan_timeline').insert([
     { loan_application_id: loanId, step: 1, label: 'Application Submitted', completed: true },
-    { loan_application_id: loanId, step: 2, label: 'Under Review', completed: false },
+    { loan_application_id: loanId, step: 2, label: 'Under Review', completed: true },
     { loan_application_id: loanId, step: 3, label: 'Decision', completed: false },
   ]);
   await supabase.from('notifications').insert({
     user_id: existing.farmer_id,
     title: 'Loan Application Submitted',
-    description: 'Your loan application has been submitted for review.',
+    description: 'Your loan application has been submitted and sent to the bank for review.',
     read: false,
   });
 
@@ -377,7 +394,7 @@ export const submitLoanApplication = async (
     actorId: officerId,
     actorRole: 'field_officer',
     actorName: officer.name ?? 'Field Officer',
-    action: 'Submitted loan application',
+    action: 'Submitted loan application (auto-verified & forwarded)',
     module: 'FieldOfficer',
     targetId: loanId,
     targetType: 'loan_application',
@@ -394,8 +411,14 @@ export interface VerifyLoanInput {
 }
 
 // verifyLoanApplication: the officer's verification verdict on a submitted
-// application. Only pending -> verified/rejected via verification_status;
-// the application status (under_review/approved/...) stays with the bank.
+// application — used for farmer-submitted applications (POST
+// /api/farmer/loans), which reach the officer already 'pending' with no
+// verification of their own (an officer-created draft skips this entirely,
+// see submitLoanApplication). Only pending -> verified/rejected via
+// verification_status; the application status (under_review/approved/...)
+// stays with the bank. A 'verified' verdict also forwards the application to
+// the bank in the same step, so the officer doesn't need a separate forward
+// action — one decision either sends it on or stops it.
 export const verifyLoanApplication = async (
   officerId: string,
   loanId: string,
@@ -426,6 +449,10 @@ export const verifyLoanApplication = async (
   if (input.notes !== undefined) {
     updates.verification_notes = optionalText(input.notes, 'notes', 2000);
   }
+  if (verdict === 'verified') {
+    updates.forwarded_at = now;
+    updates.forwarded_by = officerId;
+  }
 
   const { data, error } = await supabase
     .from('loan_applications')
@@ -448,7 +475,7 @@ export const verifyLoanApplication = async (
     title: verdict === 'verified' ? 'Loan Application Verified' : 'Loan Application Rejected by Field Officer',
     description:
       verdict === 'verified'
-        ? 'Your loan application passed field verification and will be forwarded to the bank.'
+        ? 'Your loan application passed field verification and has been sent to the bank for review.'
         : 'Your loan application did not pass field verification. Please contact your field officer.',
     read: false,
   });

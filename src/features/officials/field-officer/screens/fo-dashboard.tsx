@@ -34,10 +34,20 @@ type Farmer = {
   status: 'verified' | 'pending' | 'rejected';
 };
 
+// react-native-web's Alert.alert is a no-op, so every success/error notice
+// here would silently vanish in a browser. Fall back to window.alert on web.
+function notify(title: string, message: string) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.alert(message);
+    return;
+  }
+  Alert.alert(title, message);
+}
+
 // Map an assigned-farmer profile row to the card the dashboard renders.
 const farmerFromRow = (row: ProfileRow): Farmer => ({
   id: String(row.id),
-  name: row.name_en ?? row.name_bn ?? 'Farmer',
+  name: row.name_en ?? 'Farmer',
   location: [row.village, row.district].filter(Boolean).join(', ') || row.location || '—',
   crop: row.primary_crop ?? '—',
   status: row.is_verified ? 'verified' : 'pending',
@@ -142,7 +152,7 @@ export default function FieldOfficerDashboardScreen() {
       router.push('/officials/visits?new=1');
     } else if (key === 'apply') {
       if (farmers.length === 0) {
-        Alert.alert('No assigned farmers', 'You can only submit an application for a farmer assigned to you.');
+        notify('No assigned farmers', 'You can only submit an application for a farmer assigned to you.');
         return;
       }
       setApplyForm(emptyApply);
@@ -156,19 +166,19 @@ export default function FieldOfficerDashboardScreen() {
   const submitOnboarding = async () => {
     const f = onboardForm;
     if (!f.nameEn.trim() || !f.nid.trim() || !f.phone.trim() || !f.password) {
-      Alert.alert('Missing details', 'Name, NID, mobile number and a temporary password are required.');
+      notify('Missing details', 'Name, NID, mobile number and a temporary password are required.');
       return;
     }
     if (!/^\d{8,20}$/.test(f.nid.trim())) {
-      Alert.alert('Invalid NID', 'Enter a valid NID (8–20 digits).');
+      notify('Invalid NID', 'Enter a valid NID (8–20 digits).');
       return;
     }
     if (!phoneValid(f.phone)) {
-      Alert.alert('Invalid number', 'Enter a valid Bangladeshi mobile number.');
+      notify('Invalid number', 'Enter a valid Bangladeshi mobile number.');
       return;
     }
     if (f.password.length < 6) {
-      Alert.alert('Weak password', 'The temporary password must be at least 6 characters.');
+      notify('Weak password', 'The temporary password must be at least 6 characters.');
       return;
     }
     setOnboarding(true);
@@ -184,9 +194,9 @@ export default function FieldOfficerDashboardScreen() {
       });
       setOnboardOpen(false);
       await loadDashboard();
-      Alert.alert('Farmer onboarded', `${f.nameEn.trim()} has been registered and assigned to you.`);
+      notify('Farmer onboarded', `${f.nameEn.trim()} has been registered and assigned to you.`);
     } catch (err: any) {
-      Alert.alert('Onboarding failed', err?.message ?? 'Could not register the farmer.');
+      notify('Onboarding failed', err?.message ?? 'Could not register the farmer.');
     } finally {
       setOnboarding(false);
     }
@@ -195,22 +205,24 @@ export default function FieldOfficerDashboardScreen() {
   const submitApplication = async () => {
     const f = applyForm;
     if (!f.farmerId || !f.title.trim() || !f.amount.trim() || !f.duration.trim() || !f.purpose.trim()) {
-      Alert.alert('Missing details', 'Farmer, title, amount, duration and purpose are required.');
+      notify('Missing details', 'Farmer, title, amount, duration and purpose are required.');
       return;
     }
     const amount = Number(f.amount.replace(/,/g, ''));
     if (!Number.isFinite(amount) || amount <= 0) {
-      Alert.alert('Invalid amount', 'Enter a loan amount greater than 0.');
+      notify('Invalid amount', 'Enter a loan amount greater than 0.');
       return;
     }
     if (amount > MAX_LOAN_AMOUNT) {
-      Alert.alert('Amount too large', 'Loan amount cannot exceed ৳1,00,00,000.');
+      notify('Amount too large', 'Loan amount cannot exceed ৳1,00,00,000.');
       return;
     }
     setApplying(true);
     try {
-      // Create the draft, then submit it into the review pipeline so it shows
-      // up under "Pending Verification".
+      // Create the draft, then submit it — the server auto-verifies and
+      // forwards applications an officer creates themselves straight to the
+      // bank, no separate verify/forward step needed (see
+      // submitLoanApplication on the server).
       const created = await api.post<ApiResponse<{ id: string }>>('/api/field-officer/loans', {
         farmerId: f.farmerId,
         title: f.title.trim(),
@@ -225,9 +237,9 @@ export default function FieldOfficerDashboardScreen() {
       }
       setApplyOpen(false);
       await loadDashboard();
-      Alert.alert('Application submitted', 'The loan application is now pending your verification.');
+      notify('Application submitted', 'The loan application has been sent to the bank for review.');
     } catch (err: any) {
-      Alert.alert('Submission failed', err?.message ?? 'Could not submit the application.');
+      notify('Submission failed', err?.message ?? 'Could not submit the application.');
     } finally {
       setApplying(false);
     }
@@ -290,7 +302,7 @@ export default function FieldOfficerDashboardScreen() {
             </View>
             <View style={styles.heroTextCol}>
               <Text style={styles.heroGreeting}>Good morning,</Text>
-              <Text style={styles.heroName}>{officer?.name_en ?? officer?.name_bn ?? 'Field Officer'}</Text>
+              <Text style={styles.heroName}>{officer?.name_en ?? 'Field Officer'}</Text>
               <Text style={styles.heroRole}>{officer?.designation ?? 'Field Officer'} • SOFOL</Text>
             </View>
           </View>

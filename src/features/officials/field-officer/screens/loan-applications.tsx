@@ -1,13 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenHeader } from '@/features/officials/shared/components/screen-header';
 import { borderRadius, contentMaxWidth, shadows } from '@/features/officials/shared/constants/layout';
 import { useColors } from '@/features/officials/shared/constants/theme';
 import { api } from '@/lib/api';
 import type { ApiResponse, ListResult, LoanRow } from '@/lib/api-types';
+
+// react-native-web's Alert.alert is a no-op, so an error notice here would
+// silently vanish in a browser. Fall back to window.alert on web.
+function notify(title: string, message: string) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') window.alert(message);
+    return;
+  }
+  Alert.alert(title, message);
+}
 
 type Tab = 'all' | 'pending' | 'verified' | 'forwarded';
 
@@ -60,7 +70,7 @@ const mapOfficerLoanRow = (row: LoanRow): LoanApplication => {
     emi: Number(row.emi ?? 0),
     verificationStatus,
     timeline,
-    farmerName: row.farmer?.name_en ?? row.farmer?.name_bn ?? 'Unknown Farmer',
+    farmerName: row.farmer?.name_en ?? 'Unknown Farmer',
     forwarded: Boolean(row.forwarded_at),
   };
 };
@@ -156,7 +166,7 @@ export default function LoanApplicationsScreen() {
       setVerifiedIds((prev) => new Set(prev).add(id));
       await loadApplications();
     } catch (err: any) {
-      Alert.alert('Verify Application', err?.message ?? 'Could not record the verification.');
+      notify('Verify Application', err?.message ?? 'Could not record the verification.');
     } finally {
       setVerifyingId(null);
     }
@@ -247,7 +257,12 @@ export default function LoanApplicationsScreen() {
                     </View>
                   </View>
 
-                    {expanded && (
+                  <View style={styles.expandHint}>
+                    <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={textSecondary} />
+                  </View>
+                </Pressable>
+
+                {expanded && (
                     <View style={[styles.expandedArea, { borderTopColor: border }]}>
                       {/* Timeline */}
                       <Text style={[styles.expandedLabel, { color: textSecondary }]}>Timeline</Text>
@@ -297,17 +312,21 @@ export default function LoanApplicationsScreen() {
 
                       {/* Verify button: visible while the application awaits
                           this officer's verdict AND is still with the officer
-                          (forwarded applications belong to the bank now). */}
+                          (forwarded applications belong to the bank now).
+                          A "verified" verdict also forwards it to the bank in
+                          the same step — this only applies to farmer-submitted
+                          applications; ones the officer created and submitted
+                          themselves are auto-verified and forwarded already. */}
                       {app.verificationStatus === 'pending' && !app.forwarded && (
                         <Pressable
                           onPress={() => handleVerify(app.id)}
                           disabled={verifyingId === app.id}
                           accessibilityRole="button"
-                          accessibilityLabel="Verify Application"
+                          accessibilityLabel="Verify and send to bank"
                           accessibilityState={{ disabled: verifyingId === app.id, busy: verifyingId === app.id }}
                           style={[styles.verifyBtn, { backgroundColor: colors.greenLight }, verifyingId === app.id && { opacity: 0.6 }]}>
                           <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
-                          <Text style={styles.verifyBtnText}>{verifyingId === app.id ? 'Verifying…' : 'Verify Application'}</Text>
+                          <Text style={styles.verifyBtnText}>{verifyingId === app.id ? 'Sending…' : 'Verify & Send to Bank'}</Text>
                         </Pressable>
                       )}
                       {(app.verificationStatus === 'verified' || app.verificationStatus === 'rejected' || app.forwarded) && (
@@ -319,12 +338,7 @@ export default function LoanApplicationsScreen() {
                         </View>
                       )}
                     </View>
-                  )}
-
-                  <View style={styles.expandHint}>
-                    <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={textSecondary} />
-                  </View>
-                </Pressable>
+                )}
               </View>
             );
           })
