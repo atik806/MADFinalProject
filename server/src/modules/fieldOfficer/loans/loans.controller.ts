@@ -7,7 +7,7 @@ const officerContext = (req: Request) => ({
   name: req.user?.user_metadata?.full_name ?? null,
 });
 
-const VALIDATION_ERROR = /must be|required|invalid|no updatable|is invalid|only draft|only field-verified|must be submitted|already forwarded|can no longer/i;
+const VALIDATION_ERROR = /must be|required|invalid|no updatable|is invalid|only draft|only field-verified|must be submitted|already forwarded|can no longer|only approved|already been fully repaid|no EMI amount/i;
 const NOT_FOUND = /not found|not assigned|not active/i;
 
 const statusFor = (error: any): number => {
@@ -176,5 +176,24 @@ export const forward = async (req: Request, res: Response) => {
   } catch (error: any) {
     const status = statusFor(error);
     return res.status(status).json({ message: status === 500 ? 'Failed to forward loan application' : safeErrorMessage(error, 'Failed to forward loan application') });
+  }
+};
+
+export const repay = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const { id } = req.params;
+    if (!isUuid(id)) return res.status(400).json({ message: 'Loan id must be a valid UUID' });
+    const data = await loansService.repayLoanApplication(req.user.id, String(id), officerContext(req));
+    return res.status(200).json({
+      success: true,
+      message: 'Loan repayment recorded successfully',
+      data,
+    });
+  } catch (error: any) {
+    const status = statusFor(error);
+    return res.status(status).json({ message: status === 500 ? 'Failed to record repayment' : safeErrorMessage(error, 'Failed to record repayment') });
   }
 };

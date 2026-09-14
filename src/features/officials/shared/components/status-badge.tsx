@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { useColors } from '@/features/officials/shared/constants/theme';
 
-export type StatusType = 'verified' | 'pending' | 'rejected' | 'approved' | 'active' | 'under_review';
+export type StatusType = 'verified' | 'pending' | 'rejected' | 'approved' | 'active' | 'under_review' | 'completed';
 
 type StatusBadgeProps = {
   status: StatusType;
@@ -20,9 +20,13 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     approved: { bg: colors.userVerified, text: 'Approved', color: colors.userVerifiedText, icon: 'checkmark-circle' },
     active: { bg: '#EFF6FF', text: 'Active', color: '#1D4ED8', icon: 'checkmark-circle' },
     under_review: { bg: colors.userPending, text: 'Under Review', color: colors.userPendingText, icon: 'time' },
+    completed: { bg: colors.userVerified, text: 'Fully Repaid', color: colors.userVerifiedText, icon: 'checkmark-done-circle' },
   };
 
-  const cfg = STATUS_CONFIG[status];
+  // A loan can reach the bank's queue at any lifecycle status (approved loans
+  // move on to active/completed once repayment starts) — fall back instead
+  // of crashing on a status this badge doesn't have a style for yet.
+  const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending;
   return (
     <View style={[styles.badge, { backgroundColor: cfg.bg }]}>
       <Ionicons name={cfg.icon} size={12} color={cfg.color} />

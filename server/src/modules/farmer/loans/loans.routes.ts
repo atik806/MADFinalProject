@@ -11,5 +11,6 @@ router.use(farmerOnly);
 router.get('/', loanController.getLoans);
 router.get('/:id', loanController.getLoanById);
 router.post('/', loanController.applyForLoan);
+router.post('/:id/repay', loanController.repayLoan);
 
 export default router;

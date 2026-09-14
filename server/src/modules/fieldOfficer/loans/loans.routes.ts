@@ -14,5 +14,6 @@ router.put('/:id', loansController.update);
 router.post('/:id/submit', loansController.submit);
 router.post('/:id/verify', loansController.verify);
 router.post('/:id/forward', loansController.forward);
+router.post('/:id/repay', loansController.repay);
 
 export default router;

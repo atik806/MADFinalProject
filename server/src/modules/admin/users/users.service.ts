@@ -1,5 +1,6 @@
 import { supabase, supabaseAdmin } from '../../../config/supabase';
 import { escapeLike, pgrstValue } from '../../../lib/postgrest';
+import { ensureFieldOfficerAssignment } from '../../shared/fieldOfficerAssignment';
 import { recordAuditLog } from '../audit/audit.service';
 
 export type UserRoleFilter = 'farmer' | 'field_officer' | 'bank_officer' | 'admin' | 'all';
@@ -171,77 +172,15 @@ export const deleteFarmer = async (id: string, actor: AdminActor) => {
   return { id };
 };
 
-// autoAssignFieldOfficer: load-balances a newly approved farmer onto
-// whichever active field officer currently has the fewest active
-// assignments, so the farmer's loan applications are visible to someone.
-// A no-op if the farmer already has an assignment (e.g. they were
-// registered in person by an officer, which links them immediately) or if
-// no field officer is active yet. Assignment is best-effort and must never
-// block approval, so every failure is swallowed. Returns the assigned
-// officer's id, or null if nothing changed.
-const autoAssignFieldOfficer = async (farmerId: string): Promise<string | null> => {
-  try {
-    const { data: existing } = await supabaseAdmin
-      .from('field_officer_assignments')
-      .select('id')
-      .eq('farmer_id', farmerId)
-      .limit(1)
-      .maybeSingle();
-    if (existing) return null;
-
-    const { data: officers, error: officersError } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .eq('role', 'field_officer')
-      .eq('status', 'active');
-    if (officersError || !officers || officers.length === 0) return null;
-
-    const { data: assignments, error: assignmentsError } = await supabaseAdmin
-      .from('field_officer_assignments')
-      .select('field_officer_id')
-      .eq('status', 'active')
-      .in(
-        'field_officer_id',
-        officers.map((o: any) => o.id),
-      );
-    if (assignmentsError) return null;
-
-    const loadByOfficer = new Map<string, number>(officers.map((o: any) => [o.id, 0]));
-    for (const row of assignments ?? []) {
-      loadByOfficer.set(row.field_officer_id, (loadByOfficer.get(row.field_officer_id) ?? 0) + 1);
-    }
-
-    let chosen: string | null = null;
-    let lowest = Infinity;
-    for (const officer of officers) {
-      const load = loadByOfficer.get(officer.id) ?? 0;
-      if (load < lowest) {
-        lowest = load;
-        chosen = officer.id;
-      }
-    }
-    if (!chosen) return null;
-
-    const { error: insertError } = await supabaseAdmin.from('field_officer_assignments').insert({
-      field_officer_id: chosen,
-      farmer_id: farmerId,
-      status: 'active',
-    });
-    if (insertError) {
-      console.error('autoAssignFieldOfficer insert failed:', insertError);
-      return null;
-    }
-    return chosen;
-  } catch (err) {
-    console.error('autoAssignFieldOfficer failed:', err);
-    return null;
-  }
-};
+// Auto-assignment logic lives in shared/fieldOfficerAssignment.ts — it also
+// runs as a self-healing fallback on farmer login (see auth.service.ts),
+// so an account that was approved before this behavior existed still gets
+// assigned automatically.
 
 // setFarmerVerification: admin approves or declines a pending farmer
 // registration. Approving flips is_verified on, sets status 'active' so the
 // farmer can sign in, and auto-assigns them to a field officer (see
-// autoAssignFieldOfficer) so their loan applications reach someone.
+// ensureFieldOfficerAssignment) so their loan applications reach someone.
 // Declining sets status 'rejected' (is_verified stays false) so a login
 // attempt is blocked with a clear message instead of silently succeeding.
 // Restricted to role 'farmer' — officer accounts are always created
@@ -271,7 +210,7 @@ export const setFarmerVerification = async (
     throw new Error('Farmer not found');
   }
 
-  const assignedFieldOfficerId = action === 'approve' ? await autoAssignFieldOfficer(id) : null;
+  const assignedFieldOfficerId = action === 'approve' ? await ensureFieldOfficerAssignment(id) : null;
 
   void recordAuditLog({
     actorId: actor.id,

@@ -1,5 +1,6 @@
 import { supabase, createAuthClient } from '../../../config/supabase';
 import { pgrstValue } from '../../../lib/postgrest';
+import { ensureFieldOfficerAssignment } from '../../shared/fieldOfficerAssignment';
 
 export interface RegisterInput {
   nameEn: string;
@@ -253,6 +254,11 @@ const enforceApprovedStatus = async <T extends { user: { id: string } }>(authDat
   if (status !== 'active') {
     throw new Error(PENDING_LOGIN_MESSAGE);
   }
+  // Self-healing fallback: an account approved before auto-assignment
+  // existed (or otherwise left without one) would have every loan
+  // application stuck invisible to every field officer forever. Best-effort
+  // and never blocks login.
+  void ensureFieldOfficerAssignment(authData.user.id);
   return authData;
 };
 

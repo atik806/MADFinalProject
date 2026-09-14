@@ -94,22 +94,27 @@ const mapLoanApplication = (row: any): LoanApplication => {
   };
 };
 
-const mapActiveLoan = (row: any): ActiveLoan => ({
-  id: row.id,
-  title: row.title ?? '',
-  date: row.application_date
-    ? new Date(row.application_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-    : '',
-  amount: Number(row.amount) || 0,
-  duration: String(row.duration ?? ''),
-  interest: '9%',
-  emi: Number(row.emi) || 0,
-  progress: 0,
-  installmentsPaid: 0,
-  installmentsTotal: parseInt(String(row.duration ?? ''), 10) || 0,
-  nextPaymentDate: '—',
-  nextPaymentAmount: Number(row.emi) || 0,
-});
+const mapActiveLoan = (row: any): ActiveLoan => {
+  const emi = Number(row.emi) || 0;
+  const installmentsTotal = Number(row.installments_total) || parseInt(String(row.duration ?? ''), 10) || 0;
+  const installmentsPaid = Number(row.installments_paid) || 0;
+  return {
+    id: row.id,
+    title: row.title ?? '',
+    date: row.application_date
+      ? new Date(row.application_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      : '',
+    amount: Number(row.amount) || 0,
+    duration: String(row.duration ?? ''),
+    interest: '9%',
+    emi,
+    progress: Number(row.progress) || 0,
+    installmentsPaid,
+    installmentsTotal,
+    nextPaymentDate: row.next_payment_date ?? '—',
+    nextPaymentAmount: Number(row.next_payment_amount) || emi,
+  };
+};
 
 type LoanContextType = {
   applications: LoanApplication[];
@@ -124,6 +129,7 @@ type LoanContextType = {
     purpose: string;
     installmentType: 'monthly' | 'seasonal';
   }) => Promise<void>;
+  repayLoan: (loanId: string) => Promise<void>;
 };
 
 const LoanContext = createContext<LoanContextType | null>(null);
@@ -143,9 +149,14 @@ export function LoanProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
       const res = await api.get<{ data: any[] }>('/api/farmer/loans');
-      const apps = (res.data ?? []).map(mapLoanApplication);
-      setApplications(apps);
-      setActiveLoans(apps.filter((a) => a.status === 'approved').map(mapActiveLoan));
+      const rows = res.data ?? [];
+      setApplications(rows.map(mapLoanApplication));
+      // mapActiveLoan needs the raw row (progress / installments_paid /
+      // installments_total / next_payment_* are snake_case API fields that
+      // mapLoanApplication doesn't carry over) — mapping the already-mapped
+      // LoanApplication here silently zeroed repayment progress on every
+      // reload, even after a successful repay.
+      setActiveLoans(rows.filter((row) => row.status === 'approved').map(mapActiveLoan));
     } catch (e: any) {
       console.warn('Loan refresh failed:', e);
       setError(e?.message ?? 'Could not load loans.');
@@ -181,8 +192,16 @@ export function LoanProvider({ children }: { children: ReactNode }) {
     [reload],
   );
 
+  const repayLoan = useCallback(
+    async (loanId: string) => {
+      await api.post(`/api/farmer/loans/${loanId}/repay`);
+      await reload();
+    },
+    [reload],
+  );
+
   return (
-    <LoanContext.Provider value={{ applications, activeLoans, loading, error, reload, addApplication }}>
+    <LoanContext.Provider value={{ applications, activeLoans, loading, error, reload, addApplication, repayLoan }}>
       {children}
     </LoanContext.Provider>
   );

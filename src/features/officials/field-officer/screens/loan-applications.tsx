@@ -19,7 +19,7 @@ function notify(title: string, message: string) {
   Alert.alert(title, message);
 }
 
-type Tab = 'all' | 'pending' | 'verified' | 'forwarded';
+type Tab = 'all' | 'pending' | 'verified' | 'forwarded' | 'active';
 
 // The officer-side application card: the farmer summary is embedded by the
 // officer loans endpoint (never a client-supplied name).
@@ -27,7 +27,7 @@ type LoanApplication = {
   id: string;
   title: string;
   date: string;
-  status: 'pending' | 'under_review' | 'approved' | 'rejected';
+  status: 'pending' | 'under_review' | 'approved' | 'rejected' | 'completed';
   amount: number;
   duration: string;
   purpose: string;
@@ -37,6 +37,9 @@ type LoanApplication = {
   timeline: { label: string; date: string; status: 'done' | 'current' | 'pending' | 'failed' }[];
   farmerName: string;
   forwarded: boolean;
+  progress: number;
+  installmentsPaid: number;
+  installmentsTotal: number;
 };
 
 const formatDate = (value: string): string => {
@@ -72,6 +75,9 @@ const mapOfficerLoanRow = (row: LoanRow): LoanApplication => {
     timeline,
     farmerName: row.farmer?.name_en ?? 'Unknown Farmer',
     forwarded: Boolean(row.forwarded_at),
+    progress: Number(row.progress ?? 0),
+    installmentsPaid: Number(row.installments_paid ?? 0),
+    installmentsTotal: Number(row.installments_total) || parseInt(String(row.duration ?? ''), 10) || 0,
   };
 };
 
@@ -80,6 +86,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'pending', label: 'Pending Verification' },
   { key: 'verified', label: 'Verified' },
   { key: 'forwarded', label: 'Forwarded to Bank' },
+  { key: 'active', label: 'Active / Repayment' },
 ];
 
 function getLoanStatusInfo(status: LoanApplication['status']) {
@@ -89,15 +96,18 @@ function getLoanStatusInfo(status: LoanApplication['status']) {
     case 'under_review':
       return { label: 'Verified', bg: '#D1FAE5', color: '#065F46', icon: 'checkmark-circle' as const };
     case 'approved':
-      return { label: 'Forwarded to Bank', bg: '#DBEAFE', color: '#1E40AF', icon: 'arrow-forward-circle' as const };
+      return { label: 'Active', bg: '#DBEAFE', color: '#1E40AF', icon: 'card' as const };
     case 'rejected':
       return { label: 'Rejected', bg: '#FEE2E2', color: '#991B1B', icon: 'close-circle' as const };
+    case 'completed':
+      return { label: 'Fully Repaid', bg: '#D1FAE5', color: '#065F46', icon: 'checkmark-done-circle' as const };
   }
 }
 
 // Tab semantics with real pipeline data: "Pending Verification" = submitted
 // and not yet verified by the officer; "Verified" = verified but not yet
-// forwarded; "Forwarded to Bank" = handed to the bank (forwarded_at set).
+// forwarded; "Forwarded to Bank" = handed to the bank (forwarded_at set);
+// "Active / Repayment" = approved by the bank and now repayable.
 function filterApplications(apps: LoanApplication[], tab: Tab): LoanApplication[] {
   switch (tab) {
     case 'pending':
@@ -105,7 +115,9 @@ function filterApplications(apps: LoanApplication[], tab: Tab): LoanApplication[
     case 'verified':
       return apps.filter((a) => a.verificationStatus === 'verified' && !a.forwarded);
     case 'forwarded':
-      return apps.filter((a) => a.forwarded);
+      return apps.filter((a) => a.forwarded && a.status !== 'approved' && a.status !== 'completed');
+    case 'active':
+      return apps.filter((a) => a.status === 'approved' || a.status === 'completed');
     default:
       return apps;
   }
@@ -114,12 +126,13 @@ function filterApplications(apps: LoanApplication[], tab: Tab): LoanApplication[
 export default function LoanApplicationsScreen() {
   const colors = useColors();
   const params = useLocalSearchParams<{ tab?: string }>();
-  const initialTab: Tab = (['all', 'pending', 'verified', 'forwarded'] as const).includes(params.tab as Tab)
+  const initialTab: Tab = (['all', 'pending', 'verified', 'forwarded', 'active'] as const).includes(params.tab as Tab)
     ? (params.tab as Tab)
     : 'all';
   const [applications, setApplications] = useState<LoanApplication[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [repayingId, setRepayingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // Server-side verification state is authoritative after the API wiring;
@@ -169,6 +182,20 @@ export default function LoanApplicationsScreen() {
       notify('Verify Application', err?.message ?? 'Could not record the verification.');
     } finally {
       setVerifyingId(null);
+    }
+  };
+
+  const handleRepay = async (app: LoanApplication) => {
+    if (repayingId) return;
+    setRepayingId(app.id);
+    try {
+      await api.post<ApiResponse<LoanRow>>(`/api/field-officer/loans/${app.id}/repay`);
+      await loadApplications();
+      notify('Payment Recorded', `EMI payment of Tk ${app.emi.toLocaleString()} recorded for ${app.farmerName}.`);
+    } catch (err: any) {
+      notify('Record Repayment', err?.message ?? 'Could not record the repayment.');
+    } finally {
+      setRepayingId(null);
     }
   };
 
@@ -291,6 +318,45 @@ export default function LoanApplicationsScreen() {
                         );
                       })}
 
+                      {(app.status === 'approved' || app.status === 'completed') ? (
+                        <>
+                          {/* Repayment progress + record-payment action, shown
+                              once the bank has approved the loan — the officer's
+                              own pre-approval checklist (documents/verify) no
+                              longer applies at this stage. */}
+                          <View style={styles.progressHeaderRow}>
+                            <Text style={[styles.expandedLabel, { color: textSecondary, marginTop: 12 }]}>Repayment Progress</Text>
+                            <Text style={[styles.progressPercentText, { color: colors.greenLight }]}>{app.progress}%</Text>
+                          </View>
+                          <View style={[styles.progressBarTrack, { backgroundColor: border }]}>
+                            <View style={[styles.progressBarFill, { backgroundColor: colors.greenLight, width: `${app.progress}%` }]} />
+                          </View>
+                          <Text style={[styles.progressMetaText, { color: textSecondary }]}>
+                            {app.installmentsPaid} of {app.installmentsTotal} installments paid
+                          </Text>
+
+                          {app.status === 'approved' ? (
+                            <Pressable
+                              onPress={() => handleRepay(app)}
+                              disabled={repayingId === app.id}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Record EMI payment of Tk ${app.emi.toLocaleString()}`}
+                              accessibilityState={{ disabled: repayingId === app.id, busy: repayingId === app.id }}
+                              style={[styles.verifyBtn, { backgroundColor: colors.greenLight }, repayingId === app.id && { opacity: 0.6 }]}>
+                              <Ionicons name="card" size={18} color="#FFFFFF" />
+                              <Text style={styles.verifyBtnText}>
+                                {repayingId === app.id ? 'Recording…' : `Record EMI Payment (Tk ${app.emi.toLocaleString()})`}
+                              </Text>
+                            </Pressable>
+                          ) : (
+                            <View style={[styles.verifyBtn, styles.verifyBtnDisabled, { backgroundColor: colors.greenLight + '20' }]}>
+                              <Ionicons name="checkmark-done-circle" size={18} color={colors.greenLight} />
+                              <Text style={[styles.verifyBtnText, { color: colors.greenLight }]}>Fully Repaid</Text>
+                            </View>
+                          )}
+                        </>
+                      ) : (
+                        <>
                       {/* Documents needed */}
                       <Text style={[styles.expandedLabel, { color: textSecondary, marginTop: 12 }]}>Documents Required</Text>
                       <View style={styles.docRow}>
@@ -336,6 +402,8 @@ export default function LoanApplicationsScreen() {
                             {app.verificationStatus === 'rejected' ? 'Rejected' : app.forwarded ? 'Forwarded to Bank' : 'Verified'}
                           </Text>
                         </View>
+                      )}
+                        </>
                       )}
                     </View>
                 )}
@@ -480,6 +548,31 @@ const styles = StyleSheet.create({
   timelineDate: {
     fontSize: 11,
     marginTop: 1,
+  },
+  progressHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressPercentText: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 12,
+  },
+  progressBarTrack: {
+    height: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  progressBarFill: {
+    height: 8,
+    borderRadius: 8,
+  },
+  progressMetaText: {
+    fontSize: 12,
+    marginTop: 6,
+    marginBottom: 4,
   },
   docRow: {
     flexDirection: 'row',

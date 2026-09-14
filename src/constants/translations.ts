@@ -100,6 +100,7 @@ export const translations = {
   recentTransactions: 'Recent Transactions',
   seeAll: 'See All',
   notifications: 'Notifications',
+  refresh: 'Refresh',
   noNotifications: 'No notifications',
   allCaughtUp: "You're all caught up!",
 
@@ -120,6 +121,9 @@ export const translations = {
   myLoans: 'My Loans',
   pendingApproval: 'Pending Approval',
   applyForNewLoan: 'Apply for New Loan',
+  repayLoan: 'Repay Loan',
+  payEmi: 'Pay EMI',
+  processingPayment: 'Processing…',
   myLoansTab: 'My Loans',
   myApplications: 'My Loan Applications',
   noApplications: 'No applications yet',

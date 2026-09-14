@@ -159,6 +159,11 @@ export type LoanRow = {
   reviewed_at?: string | null;
   forwarded_at?: string | null;
   decision_at?: string | null;
+  progress?: number | null;
+  installments_paid?: number | null;
+  installments_total?: number | null;
+  next_payment_date?: string | null;
+  next_payment_amount?: number | null;
   loan_timeline?: LoanTimelineStep[];
   // Embedded by the field-officer loans endpoints only.
   farmer?: { id: string; name_en?: string | null; } | null;

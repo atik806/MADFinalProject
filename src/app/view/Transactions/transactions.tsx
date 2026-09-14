@@ -93,6 +93,15 @@ export default function TransactionsScreen() {
         <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('transactions')}</Text>
         <View style={styles.headerIcons}>
           <TouchableOpacity
+            onPress={() => reload()}
+            disabled={loading}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('refresh')}
+            accessibilityState={{ disabled: loading, busy: loading }}>
+            <Ionicons name="refresh" size={22} color={colors.dashboard.textSecondary} style={loading ? { opacity: 0.4 } : undefined} />
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={() => router.push('/view/Notifications/notifications')}
             hitSlop={8}
             accessibilityRole="button"

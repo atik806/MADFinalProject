@@ -6,6 +6,8 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
+  Alert,
+  Platform,
 } from "react-native";
 import {
   Feather,
@@ -30,6 +32,21 @@ type TabDef = {
   labelKey: string;
 };
 
+// react-native-web's Alert.alert is a no-op, so a repay error/success notice
+// would silently vanish in a browser. Fall back to window.alert on web.
+// window.alert() freezes rendering the instant it's called, so calling it
+// synchronously right after a setState (e.g. right after a repay updates
+// progress) can show the alert BEFORE the browser paints that update —
+// looking like nothing happened until the alert is dismissed. Deferring one
+// frame lets the paint land first.
+function notify(title: string, message: string) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') requestAnimationFrame(() => window.alert(message));
+    return;
+  }
+  Alert.alert(title, message);
+}
+
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
@@ -38,7 +55,21 @@ function getInitials(name: string): string {
 
 export default function DashboardScreen() {
   const colors = useColors();
-  const { activeLoans, loading: loansLoading, error: loansError, reload: reloadLoans } = useLoans();
+  const { activeLoans, loading: loansLoading, error: loansError, reload: reloadLoans, repayLoan } = useLoans();
+  const [payingLoanId, setPayingLoanId] = useState<string | null>(null);
+
+  const handleRepay = async (loanId: string, amount: number) => {
+    if (payingLoanId) return;
+    setPayingLoanId(loanId);
+    try {
+      await repayLoan(loanId);
+      notify('Payment Recorded', `Your EMI payment of ৳${amount.toLocaleString('en-BD')} was recorded.`);
+    } catch (e: any) {
+      notify('Payment Failed', e?.message ?? 'Could not record the payment.');
+    } finally {
+      setPayingLoanId(null);
+    }
+  };
   const { notifications, unreadCount, loading: notifLoading, error: notifError, reload: reloadNotif } = useNotifications();
   const { transactions, loading: txLoading, error: txError, reload: reloadTx } = useTransactions();
   const { profile, loading: profileLoading, error: profileError, reload: reloadProfile } = useProfile();
@@ -227,6 +258,7 @@ export default function DashboardScreen() {
           <ActionButton icon="trending-up" label={t('addIncome')} color={colors.dashboard.greenUp} onPress={() => router.push('/view/Transactions/add-transaction')} />
           <ActionButton icon="trending-down" label={t('addExpense')} color={colors.dashboard.redDown} onPress={() => router.push('/view/Transactions/add-transaction')} />
           <ActionButton icon="credit-card" label={t('applyLoan')} color="#0F766E" onPress={() => router.push('/view/Loans/apply-loan')} />
+          <ActionButton icon="dollar-sign" label={t('repayLoan')} color={colors.deepGreen} onPress={() => router.push('/view/Loans/loans')} />
           <ActionButton icon="user" label={t('myProfile')} color="#7C3AED" onPress={() => router.push('/view/Profile/profile')} />
         </View>
 
@@ -297,6 +329,21 @@ export default function DashboardScreen() {
                 </Text>
               </View>
             </View>
+
+            <TouchableOpacity
+              style={[styles.repayBtn, { backgroundColor: colors.deepGreen }, payingLoanId === activeLoans[0].id && { opacity: 0.6 }]}
+              onPress={() => handleRepay(activeLoans[0].id, activeLoans[0].nextPaymentAmount)}
+              disabled={payingLoanId === activeLoans[0].id}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: payingLoanId === activeLoans[0].id, busy: payingLoanId === activeLoans[0].id }}
+              accessibilityLabel={`${t('payEmi')} ৳${activeLoans[0].nextPaymentAmount.toLocaleString('en-BD')}`}
+            >
+              <Feather name="credit-card" size={16} color="#fff" />
+              <Text style={styles.repayBtnText}>
+                {payingLoanId === activeLoans[0].id ? t('processingPayment') : `${t('payEmi')} ৳${activeLoans[0].nextPaymentAmount.toLocaleString('en-BD')}`}
+              </Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={[styles.emptyLoan, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
@@ -403,7 +450,7 @@ function ActionButton({ icon, label, color, onPress }: { icon: string; label: st
       accessibilityRole="button"
       accessibilityLabel={label}>
       <View style={[styles.actionIcon, { backgroundColor: `${color}12` }]}>
-        <Feather name={icon as any} size={22} color={color} />
+        <Feather name={icon as any} size={18} color={color} />
       </View>
       <Text style={[styles.actionLabel, { color: c.dashboard.textSecondary }]}>{label}</Text>
     </TouchableOpacity>
@@ -412,7 +459,7 @@ function ActionButton({ icon, label, color, onPress }: { icon: string; label: st
 
 function InfoItem({ title, value, colors }: { title: string; value: string; colors: any }) {
   return (
-    <View>
+    <View style={styles.infoItem}>
       <Text style={[styles.infoTitle, { color: colors.dashboard.textSecondary }]}>{title}</Text>
       <Text style={[styles.infoValue, { color: colors.dashboard.textPrimary }]}>{value}</Text>
     </View>
@@ -711,24 +758,27 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
+    rowGap: 14,
     marginBottom: 4,
   },
   actionItem: {
     alignItems: "center",
-    flex: 1,
+    width: "20%",
   },
   actionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 42,
+    height: 42,
+    borderRadius: 13,
     justifyContent: "center",
     alignItems: "center",
   },
   actionLabel: {
-    marginTop: 8,
-    fontSize: 11,
+    marginTop: 6,
+    fontSize: 10,
     fontWeight: "500",
+    textAlign: "center",
   },
   loanCard: {
     borderRadius: 20,
@@ -791,7 +841,12 @@ const styles = StyleSheet.create({
   },
   loanDetails: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
+    rowGap: 14,
+  },
+  infoItem: {
+    width: "48%",
   },
   infoTitle: {
     fontSize: 11,
@@ -861,6 +916,20 @@ const styles = StyleSheet.create({
   },
   remaining: {
     fontSize: 12,
+  },
+  repayBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 44,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  repayBtnText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
   },
   txRow: {
     borderRadius: 16,

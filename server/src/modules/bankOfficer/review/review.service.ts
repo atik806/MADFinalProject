@@ -13,23 +13,24 @@ import {
 // ------------------------------------------------------------------
 // Bank Officer loan review
 // ------------------------------------------------------------------
-// Where this sits in the shared loan lifecycle:
+// Where this sits in the shared loan lifecycle. Two ways in:
 //
-//   draft ──(field officer submits)──> pending
-//     │                                  │
-//     │                        field officer verifies
-//     │                        (verification_status)
-//     │                                  │
-//     │                        field officer forwards
-//     │                        (forwarded_at / forwarded_by)
-//     ▼                                  ▼
-//   never visible to the bank    ┌── BANK OWNS IT FROM HERE ──┐
-//                               pending ──> under_review ──> approved
-//                                                        └──> rejected
+//   (a) farmer applies (POST /api/farmer/loans) — auto-verified and
+//       forwarded to the bank immediately, no field officer involved.
+//   (b) field officer creates a draft on a farmer's behalf, submits it
+//       (auto-verified/forwarded the same way), or submits a farmer's own
+//       application after a verify/reject verdict.
 //
-// Hard boundary: the bank only ever sees applications a field officer has
-// FORWARDED. A draft, or a submitted-but-not-forwarded application, is treated
-// as nonexistent (404) — the bank cannot read it, probe it, or decide on it.
+//   draft ──(officer submits)──┐
+//   pending ──(farmer applies, or officer verifies)──> forwarded_at set
+//                                  │
+//                       ┌── BANK OWNS IT FROM HERE ──┐
+//                      pending ──> under_review ──> approved
+//                                               └──> rejected
+//
+// Hard boundary: the bank only ever sees applications with forwarded_at set.
+// A draft, or a not-yet-forwarded application, is treated as nonexistent
+// (404) — the bank cannot read it, probe it, or decide on it.
 //
 // Out of scope for this module (deliberately, see docs): disbursement
 // (approved -> active) and repayment tracking (-> completed). Those statuses

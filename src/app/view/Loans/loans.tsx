@@ -6,6 +6,8 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  Alert,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -14,6 +16,21 @@ import { useTranslation } from '../../../hooks/use-translation';
 import { useColors } from '../../../features/officials/shared/constants/theme';
 import { ErrorState, LoadingState } from '../../../components/screen-status';
 import { statusConfig } from '@/data';
+
+// react-native-web's Alert.alert is a no-op, so a repay error/success notice
+// would silently vanish in a browser. Fall back to window.alert on web.
+// window.alert() freezes rendering the instant it's called, so calling it
+// synchronously right after a setState (e.g. right after a repay updates
+// progress) can show the alert BEFORE the browser paints that update —
+// looking like nothing happened until the alert is dismissed. Deferring one
+// frame lets the paint land first.
+function notify(title: string, message: string) {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined') requestAnimationFrame(() => window.alert(message));
+    return;
+  }
+  Alert.alert(title, message);
+}
 
 type TabName = 'home' | 'transactions' | 'loans' | 'profile';
 type LoansTab = 'active' | 'applications';
@@ -27,10 +44,24 @@ type TabDef = {
 
 export default function LoansScreen() {
   const colors = useColors();
-  const { applications, activeLoans, loading, error, reload } = useLoans();
+  const { applications, activeLoans, loading, error, reload, repayLoan } = useLoans();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabName>('loans');
   const [loansTab, setLoansTab] = useState<LoansTab>('active');
+  const [payingId, setPayingId] = useState<string | null>(null);
+
+  const handleRepay = async (loan: ActiveLoan) => {
+    if (payingId) return;
+    setPayingId(loan.id);
+    try {
+      await repayLoan(loan.id);
+      notify('Payment Recorded', `Your EMI payment of ৳${loan.nextPaymentAmount.toLocaleString('en-BD')} was recorded.`);
+    } catch (e: any) {
+      notify('Payment Failed', e?.message ?? 'Could not record the payment.');
+    } finally {
+      setPayingId(null);
+    }
+  };
 
   const tabs: TabDef[] = [
     { key: 'home', activeIcon: 'home', inactiveIcon: 'home-outline', labelKey: 'home' },
@@ -73,6 +104,15 @@ export default function LoansScreen() {
         </View>
         <Text style={[styles.headerTitle, { color: colors.dashboard.textPrimary }]}>{t('myLoans')}</Text>
         <View style={styles.headerIcons}>
+          <TouchableOpacity
+            onPress={() => reload()}
+            disabled={loading}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('refresh')}
+            accessibilityState={{ disabled: loading, busy: loading }}>
+            <Ionicons name="refresh" size={22} color={colors.dashboard.textSecondary} style={loading ? { opacity: 0.4 } : undefined} />
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push('/view/Notifications/notifications')}
             hitSlop={8}
@@ -151,7 +191,14 @@ export default function LoansScreen() {
             </View>
           ) : (
             activeLoans.map((loan) => (
-              <ActiveLoanCard key={loan.id} loan={loan} t={t} colors={colors} />
+              <ActiveLoanCard
+                key={loan.id}
+                loan={loan}
+                t={t}
+                colors={colors}
+                onRepay={() => handleRepay(loan)}
+                paying={payingId === loan.id}
+              />
             ))
           )
         ) : (
@@ -202,7 +249,19 @@ export default function LoansScreen() {
   );
 }
 
-function ActiveLoanCard({ loan, t, colors }: { loan: ActiveLoan; t: (key: any) => string; colors: any }) {
+function ActiveLoanCard({
+  loan,
+  t,
+  colors,
+  onRepay,
+  paying,
+}: {
+  loan: ActiveLoan;
+  t: (key: any) => string;
+  colors: any;
+  onRepay: () => void;
+  paying: boolean;
+}) {
   return (
     <View style={[styles.loanCard, { backgroundColor: colors.dashboard.cardBg, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 }]}>
       <View style={styles.loanTop}>
@@ -261,6 +320,21 @@ function ActiveLoanCard({ loan, t, colors }: { loan: ActiveLoan; t: (key: any) =
           </Text>
         </View>
       </View>
+
+      <TouchableOpacity
+        style={[styles.repayBtn, { backgroundColor: colors.deepGreen }, paying && { opacity: 0.6 }]}
+        onPress={onRepay}
+        disabled={paying}
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: paying, busy: paying }}
+        accessibilityLabel={`${t('repayLoan')} ৳${loan.nextPaymentAmount.toLocaleString('en-BD')}`}
+      >
+        <Ionicons name="card" size={18} color="#fff" />
+        <Text style={styles.repayBtnText}>
+          {paying ? t('processingPayment') : `${t('payEmi')} ৳${loan.nextPaymentAmount.toLocaleString('en-BD')}`}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -307,7 +381,7 @@ function ApplicationCard({ app, t, colors }: { app: LoanApplication; t: (key: an
 
 function InfoItem({ title, value, colors }: { title: string; value: string; colors: any }) {
   return (
-    <View>
+    <View style={styles.infoItem}>
       <Text style={[styles.infoTitle, { color: colors.dashboard.textSecondary }]}>{title}</Text>
       <Text style={[styles.infoValue, { color: colors.dashboard.textPrimary }]}>{value}</Text>
     </View>
@@ -449,7 +523,12 @@ const styles = StyleSheet.create({
   },
   loanDetails: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
+    rowGap: 14,
+  },
+  infoItem: {
+    width: '48%',
   },
   infoTitle: {
     fontSize: 11,
@@ -520,6 +599,20 @@ const styles = StyleSheet.create({
   },
   remaining: {
     fontSize: 12,
+  },
+  repayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 46,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  repayBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
   appCard: {
     borderRadius: 18,

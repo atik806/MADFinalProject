@@ -1,5 +1,6 @@
 import { supabase } from '../../../config/supabase';
 import { recordAuditLog } from '../../admin/audit/audit.service';
+import { computeRepaymentUpdate } from '../../shared/loanRepayment';
 import { assertAssigned, fetchAssignedFarmerIdSet } from '../farmers/farmers.service';
 import { optionalText, parseIsoDate, requireText, requireUuid } from '../validation';
 
@@ -243,18 +244,24 @@ export const listLoanApplications = async (officerId: string, filters: ListLoans
 export const getLoanApplication = async (officerId: string, loanId: string) => {
   const loan = await assertLoanForOfficer(officerId, loanId);
 
-  const [timelineRes, farmers] = await Promise.all([
+  const [timelineRes, repaymentsRes, farmers] = await Promise.all([
     supabase
       .from('loan_timeline')
       .select('*')
       .eq('loan_application_id', loanId)
       .order('step', { ascending: true }),
+    supabase
+      .from('loan_repayments')
+      .select('*')
+      .eq('loan_application_id', loanId)
+      .order('created_at', { ascending: false }),
     farmerSummaries([loan.farmer_id]),
   ]);
 
   return {
     ...loan,
     timeline: timelineRes.data ?? [],
+    repayments: repaymentsRes.data ?? [],
     farmer: farmers.get(loan.farmer_id) ?? null,
   };
 };
@@ -563,6 +570,80 @@ export const forwardLoanApplication = async (
     targetType: 'loan_application',
     status: 'success',
     details: { recommendedAmount: updates.recommended_amount ?? null },
+  });
+
+  return data;
+};
+
+// repayLoanApplication: records one EMI payment on behalf of a farmer the
+// officer is actively assigned to, for the common case of a farmer paying
+// their field officer in person. Same authorization guard (assertLoanForOfficer
+// -> assertAssigned) as verify/forward, and the same repayment math as the
+// farmer's own self-service repayment (farmer/loans/loans.service.ts).
+export const repayLoanApplication = async (
+  officerId: string,
+  loanId: string,
+  officer: { id: string; name: string | null },
+) => {
+  const existing = await assertLoanForOfficer(officerId, loanId);
+
+  if (String(existing.status).toLowerCase() !== 'approved') {
+    throw new Error('Only approved loan applications can be repaid');
+  }
+
+  const update = computeRepaymentUpdate(existing);
+
+  const { error: repaymentError } = await supabase.from('loan_repayments').insert({
+    loan_application_id: loanId,
+    farmer_id: existing.farmer_id,
+    amount: update.amount,
+    paid_by: officerId,
+    paid_by_role: 'field_officer',
+  });
+  if (repaymentError) {
+    throw new Error(repaymentError.message);
+  }
+
+  const { data, error } = await supabase
+    .from('loan_applications')
+    .update({
+      installments_paid: update.installments_paid,
+      installments_total: update.installments_total,
+      progress: update.progress,
+      next_payment_date: update.next_payment_date,
+      next_payment_amount: update.next_payment_amount,
+      status: update.completed ? 'completed' : existing.status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', loanId)
+    .select()
+    .maybeSingle();
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error('Loan application not found');
+  }
+
+  await supabase.from('notifications').insert({
+    user_id: existing.farmer_id,
+    title: update.completed ? 'Loan Fully Repaid' : 'Loan Repayment Recorded',
+    description: update.completed
+      ? `Your field officer recorded your final EMI of ৳${update.amount.toLocaleString('en-BD')}. This loan is now fully repaid.`
+      : `Your field officer recorded an EMI payment of ৳${update.amount.toLocaleString('en-BD')}.`,
+    read: false,
+  });
+
+  void recordAuditLog({
+    actorId: officerId,
+    actorRole: 'field_officer',
+    actorName: officer.name ?? 'Field Officer',
+    action: 'Recorded loan repayment on behalf of farmer',
+    module: 'FieldOfficer',
+    targetId: loanId,
+    targetType: 'loan_application',
+    status: 'success',
+    details: { farmerId: existing.farmer_id, amount: update.amount, completed: update.completed },
   });
 
   return data;

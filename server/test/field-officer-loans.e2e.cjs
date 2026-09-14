@@ -219,6 +219,11 @@ async function provisionOfficer(adminToken, nameEn, nid, phone, password) {
   r = await req('POST', `/api/field-officer/loans/${loanId}/verify`, { token: TOKEN, json: true, body: { status: 'verified' } });
   report('loans verify after forward blocked', r.status === 400, `msg=${r.data?.message}`);
 
+  // A23d. Repay is blocked until the bank approves the loan (status is still
+  // 'pending'/'under_review' here — forwarding doesn't touch `status`).
+  r = await req('POST', `/api/field-officer/loans/${loanId}/repay`, { token: TOKEN, json: true, body: {} });
+  report('loans repay non-approved loan blocked', r.status === 400, `msg=${r.data?.message}`);
+
   // A24. Draft cannot be verified (new draft needed)
   r = await req('POST', '/api/field-officer/loans', { token: TOKEN, json: true, body: {
     farmerId, title: 'Draft For Verify Guard', amount: 500, duration: '3 months', purpose: 'guard test', installmentType: 'seasonal'
@@ -279,6 +284,10 @@ async function provisionOfficer(adminToken, nameEn, nid, phone, password) {
     // B4f. Officer B cannot forward officer A's loan -> 404
     r = await req('POST', `/api/field-officer/loans/${loanId}/forward`, { token: officerBToken, json: true, body: {} });
     report('loans IDOR forward foreign loan blocked', r.status === 404, `msg=${r.data?.message}`);
+
+    // B4f2. Officer B cannot repay officer A's loan -> 404
+    r = await req('POST', `/api/field-officer/loans/${loanId}/repay`, { token: officerBToken, json: true, body: {} });
+    report('loans IDOR repay foreign loan blocked', r.status === 404, `msg=${r.data?.message}`);
 
     // B4g. Officer B cannot create a loan for officer A's farmer -> 404
     r = await req('POST', '/api/field-officer/loans', { token: officerBToken, json: true, body: {
