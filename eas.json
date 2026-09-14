@@ -14,7 +14,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.10.178:3000"
+        "EXPO_PUBLIC_API_URL": "https://sofol-backend.vercel.app"
       }
     },
     "production": {
