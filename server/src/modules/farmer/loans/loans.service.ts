@@ -38,6 +38,13 @@ export const applyForLoan = async (farmerId: string, input: Record<string, any>)
   if (!title || !amount || !duration || !purpose || !installment_type) {
     throw new Error('Missing required fields');
   }
+  // emi of 0 (or missing) would leave an approved loan permanently
+  // un-repayable (computeRepaymentUpdate rejects a 0 emi), so it's required
+  // and validated here rather than silently defaulted.
+  const emi = Number(input.emi);
+  if (!Number.isFinite(emi) || emi <= 0) {
+    throw new Error('emi must be a number greater than 0');
+  }
   const now = new Date().toISOString();
   const { data, error } = await supabase
     .from('loan_applications')
@@ -48,7 +55,7 @@ export const applyForLoan = async (farmerId: string, input: Record<string, any>)
       duration,
       purpose,
       installment_type,
-      emi: Number(input.emi) || 0,
+      emi,
       status: 'pending',
       application_date: now,
       // A farmer-submitted application goes straight to the bank — no field

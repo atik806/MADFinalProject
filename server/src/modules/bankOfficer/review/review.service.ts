@@ -309,6 +309,14 @@ export const recordDecision = async (
     throw new Error('Only field-verified loan applications can be decided');
   }
 
+  // Last line of defense: an approved loan with no emi can never be repaid
+  // (computeRepaymentUpdate rejects a 0/missing emi), so it must never reach
+  // 'approved' regardless of how it was created (farmer self-apply, officer
+  // draft, or older data predating stricter validation upstream).
+  if (decision === 'approved' && !(Number(existing.emi) > 0)) {
+    throw new Error('This application has no EMI amount configured and cannot be approved');
+  }
+
   const now = new Date().toISOString();
   const updates: Record<string, any> = {
     status: decision,

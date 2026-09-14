@@ -134,7 +134,10 @@ export const createLoanApplication = async (
   const duration = requireText(input.duration, 'duration', 50);
   const purpose = requireText(input.purpose, 'purpose', 1000);
   const installmentType = requireInstallmentType(input.installmentType);
-  const emi = input.emi === undefined || input.emi === null ? 0 : toNonNegativeNumber(input.emi, 'emi');
+  // Required and must be > 0: an emi of 0 can never be repaid
+  // (computeRepaymentUpdate rejects it), so a loan created without one gets
+  // permanently stuck once approved.
+  const emi = toPositiveNumber(input.emi, 'emi');
   const interest = input.interest === undefined || input.interest === null ? 0 : toNonNegativeNumber(input.interest, 'interest');
   const date = input.date === undefined || input.date === null ? new Date().toISOString() : parseIsoDate(input.date, 'date');
 
@@ -293,7 +296,7 @@ export const updateLoanApplication = async (
       if (key === 'duration') updates.duration = requireText(value, 'duration', 50);
       if (key === 'purpose') updates.purpose = requireText(value, 'purpose', 1000);
       if (key === 'installmentType') updates.installment_type = requireInstallmentType(value);
-      if (key === 'emi') updates.emi = toNonNegativeNumber(value, 'emi');
+      if (key === 'emi') updates.emi = toPositiveNumber(value, 'emi');
       if (key === 'interest') updates.interest = toNonNegativeNumber(value, 'interest');
       if (key === 'date') updates.date = parseIsoDate(value, 'date');
     }
