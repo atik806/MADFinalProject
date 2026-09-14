@@ -14,6 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { File } from "expo-file-system";
 import { useTranslation } from "../../../hooks/use-translation";
 import { useColors } from "../../../features/officials/shared/constants/theme";
 import { useRegistration } from "../../../contexts/RegistrationContext";
@@ -137,12 +138,6 @@ export default function PhotoScreen() {
   const uploadPhoto = async (uri: string | null, type: string): Promise<string | undefined> => {
     if (!uri) return undefined;
     const filename = uri.split('/').pop() || `${type}.jpg`;
-    const extMatch = /\.(\w+)$/.exec(filename);
-    const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
-    const mimeType =
-      ext === 'png' ? 'image/png' :
-      ext === 'webp' ? 'image/webp' :
-      ext === 'gif' ? 'image/gif' : 'image/jpeg';
 
     const formData = new FormData();
     if (Platform.OS === "web") {
@@ -150,8 +145,12 @@ export default function PhotoScreen() {
       const blob = await (await fetch(uri)).blob();
       formData.append('file', blob, filename);
     } else {
-      // react-native attaches the local file uri as a multipart part
-      formData.append('file', { uri, name: filename, type: mimeType } as any);
+      // The classic React Native { uri, name, type } FormData shorthand is
+      // rejected ("Unsupported FormDataPart implementation") by the
+      // spec-compliant fetch/FormData runtime Expo Router ships — it only
+      // accepts a real Blob. expo-file-system's File implements Blob.
+      const file = new File(uri);
+      formData.append('file', file, filename);
     }
     formData.append('type', type);
 
