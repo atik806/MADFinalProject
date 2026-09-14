@@ -154,10 +154,16 @@ export default function PhotoScreen() {
     }
     formData.append('type', type);
 
-    const res = await fetch(`${API_BASE_URL}/api/farmer/auth/upload`, {
-      method: 'POST',
-      body: formData,
-    });
+    // A transient DNS/connectivity blip on mobile data throws before any
+    // response comes back (not an HTTP error status), so it's worth one
+    // short retry rather than failing the whole registration outright.
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE_URL}/api/farmer/auth/upload`, { method: 'POST', body: formData });
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      res = await fetch(`${API_BASE_URL}/api/farmer/auth/upload`, { method: 'POST', body: formData });
+    }
     const json = await res.json();
     if (!res.ok || !json?.url) {
       throw new Error(json?.message || t('photoUploadFailed'));
