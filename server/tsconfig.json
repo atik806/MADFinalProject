@@ -42,5 +42,9 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-  }
+  },
+  // api/ is Vercel's serverless entry point (deploy-only): Vercel's Node
+  // runtime compiles each api/*.ts independently and doesn't need it under
+  // rootDir, so it's excluded from the local build/typecheck here.
+  "exclude": ["node_modules", "dist", "api"]
 }
